@@ -1,0 +1,395 @@
+#!/usr/bin/env python3
+"""Release preparation for one JB mod (spec SharedKit.md section 4.1). Never uploads anything.
+
+    python3 -I release.py <ModDir> [--version X.Y.Z] [--dry] [--no-build] [--desc] [--gallery] [--title]
+                          [--no-wpub-dry] [--release-root DIR] [--date YYYY-MM-DD] [--changenote TEXT] [--csproj FILE] [--strict]
+
+Steps (all checks run, then the first failing group stops before anything is copied):
+  1 build      release build with -p:JBTests=false (skip: --no-build). csproj: --csproj, else Source/**: one that imports JBMod.props, else
+               *.rw17.csproj, else the only *.csproj (obj/bin/_frozen16 ignored).
+  2 dll scan   no test harness in 1.7/Assemblies (KitTestRunnerBase, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST, JB_UI_SHOTS, JB_PROBE,
+               HearthTestRunner), ASCII and UTF-16.
+  3 freeze     freeze16.py --check (1.6 byte-identical to Source/Frozen16.sha256); About lists 1.6 but no manifest = error.
+  4 layout     LoadFolders.xml (v1.6 if About lists 1.6, v1.7; every listed folder exists), no content dirs in the mod root, About fields
+               (packageId, name, author, supportedVersions, modVersion == version), PublishedFileId numeric, Preview.png < 1,000,000 bytes.
+  5 defs       static: defName unique per (def type) in each version view (1.7 view errors; the frozen 1.6 view only warns); texPath/uiIconPath/
+               iconPath resolve inside the view (a missing file next to existing mod textures is an error, a path with no mod textures nearby
+               is a warning "assumed vanilla").
+  6 notes      CHANGELOG.md exists, top entry == version, change note = top entry.  --desc: Workshop/description.bbcode through desc_lint.py.
+  7 copy       rsync --delete to <release-root>/Upload/<Mod> excluding Source Workshop tools obj bin .git *.csproj _frozen16 *.pre-kit *.pdb
+               .DS_Store .gitignore .gitattributes; the copy is verified (no excluded names, 1.6 hashes, DLL scan again).
+  8 job        <release-root>/Jobs/<date>-<mod>/job.json in WPub format (ids are numbers; description only with --desc; preview/images/visibility
+               from Workshop/job_extra.json only with --gallery; title from it only with --title).
+  9 wpub dry   _Tools/WPub/run_dryrun.sh <job> (exit 0 required; it needs one of the 3 shared test slots). The REAL upload command is only
+               printed. This script never calls run_real.sh.
+--dry: do 1-6 (and the build unless --no-build) but write nothing under the release root and run no WPub dry run; prints the job it would write.
+--release-root defaults to <ModDir>/../_Release. --strict: warnings fail too.
+Exit 0 = everything passed, 1 = a check failed, 2 = usage.
+"""
+import datetime, hashlib, importlib.util, json, os, re, shutil, subprocess, sys
+import xml.etree.ElementTree as ET
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+WPUB = os.path.normpath(os.path.join(HERE, "..", "..", "..", "_Tools", "WPub"))      # 22_RimWorld/_Tools/WPub (kit lives in 22_RimWorld/_Shared/JBKit)
+CONTENT = ["Defs", "Patches", "Languages", "Textures", "Sounds"]
+ROOT_FORBIDDEN = CONTENT + ["Assemblies", "Resources"]
+ROOT_ALLOWED = {"About", "Common", "Source", "Workshop", "tools", ".git", ".gitignore", ".gitattributes", "LoadFolders.xml", "CHANGELOG.md",
+                "README.md", "LICENSE", "LICENSE.md", "LICENSE.txt", "CREDITS.md", "AGENTS.md", ".DS_Store"}
+FORBIDDEN_STRINGS = ["KitTestRunnerBase", "KitTestSuite", "KitSuites", "SaveFingerprint", "JB_TEST", "JB_UI_SHOTS", "JB_PROBE", "HearthTestRunner"]
+RSYNC_EXCLUDES = ["/Source/", "/Workshop/", "/tools/", "obj/", "bin/", ".git/", "*.csproj", "_frozen16/", "*.pre-kit", "*.pdb", ".DS_Store",
+                  ".gitignore", ".gitattributes"]
+TEX_TAGS = {"texPath", "uiIconPath", "iconPath"}
+TEX_EXT = (".png", ".jpg", ".jpeg", ".psd", ".tga", ".bmp")
+
+
+def load(name):
+    spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, name + ".py"))
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); return m
+
+
+class Report:
+    def __init__(self): self.errors, self.warns, self.group = [], [], ""
+    def err(self, m): self.errors.append(f"[{self.group}] {m}"); print("ERROR", f"[{self.group}]", m)
+    def warn(self, m): self.warns.append(f"[{self.group}] {m}"); print("WARN ", f"[{self.group}]", m)
+    def ok(self, m): print("ok   ", f"[{self.group}]", m)
+
+
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""): h.update(b)
+    return h.hexdigest()
+
+
+def read_about(mod):
+    p = os.path.join(mod, "About", "About.xml")
+    r = ET.parse(p).getroot()
+    g = lambda t: (r.findtext(t) or "").strip()
+    return {"name": g("name"), "author": g("author"), "packageId": g("packageId"), "modVersion": g("modVersion"), "description": r.findtext("description") or "",
+            "versions": [e.text.strip() for e in r.findall("./supportedVersions/li") if e.text and e.text.strip()]}
+
+
+def load_folders(mod):
+    """-> {'1.6': ['1.6/Root','1.6'], '1.7': [...]} or None when no LoadFolders.xml"""
+    p = os.path.join(mod, "LoadFolders.xml")
+    if not os.path.isfile(p): return None
+    out = {}
+    for v in ET.parse(p).getroot():
+        if re.fullmatch(r"v\d+\.\d+", v.tag):
+            out[v.tag[1:]] = [(li.text or "").strip().strip("/") for li in v.findall("li")]
+    return out
+
+
+def find_csproj(mod, forced):
+    if forced: return forced
+    cands = []
+    for d, ds, fs in os.walk(os.path.join(mod, "Source")):
+        ds[:] = [x for x in ds if x not in ("obj", "obj17", "bin", "_frozen16")]
+        cands += [os.path.join(d, f) for f in fs if f.endswith(".csproj")]
+    if not cands: return None
+    kit = [c for c in cands if "JBMod.props" in open(c, encoding="utf-8", errors="replace").read()]
+    rw = [c for c in cands if c.endswith(".rw17.csproj")]
+    for pool in (kit, rw, cands):
+        if len(pool) == 1: return pool[0]
+        if len(pool) > 1: return "AMBIGUOUS:" + ", ".join(os.path.relpath(c, mod) for c in pool)
+    return None
+
+
+def scan_dll(path):
+    data = open(path, "rb").read()
+    return [s for s in FORBIDDEN_STRINGS if s.encode() in data or s.encode("utf-16-le") in data]
+
+
+def step_build(mod, a, R):
+    R.group = "build"
+    cs = find_csproj(mod, a.get("--csproj"))
+    if cs is None: R.warn("no csproj under Source/: nothing to build (assemblies used as they are)"); return
+    if cs.startswith("AMBIGUOUS:"): R.err("several csproj files, pass --csproj: " + cs[10:]); return
+    env = dict(os.environ, PATH=os.path.expanduser("~/.dotnet") + os.pathsep + os.environ.get("PATH", ""), DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
+    cmd = ["dotnet", "build", cs, "-c", "Release", "-nologo", "-v", "q", "-clp:ErrorsOnly", "-p:JBTests=false"]
+    print("$", " ".join(cmd))
+    p = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    if p.returncode != 0:
+        for l in (p.stdout + p.stderr).splitlines()[-25:]: print("   ", l)
+        R.err(f"dotnet build failed ({os.path.relpath(cs, mod)})")
+    else:
+        R.ok(f"built {os.path.relpath(cs, mod)}")
+
+
+def step_dll(mod, R, label="dll scan"):
+    R.group = label
+    dlls = []
+    for d in (os.path.join(mod, "1.7", "Assemblies"), os.path.join(mod, "Common", "Assemblies")):
+        if os.path.isdir(d): dlls += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith(".dll")]
+    if not dlls: R.warn("no DLL in 1.7/Assemblies"); return
+    for d in dlls:
+        hits = scan_dll(d)
+        if hits: R.err(f"{os.path.relpath(d, mod)} contains test code: {', '.join(hits)} (built with JBTests=true?)")
+        else: R.ok(f"{os.path.relpath(d, mod)} clean")
+
+
+def step_freeze(mod, about, R):
+    R.group = "freeze"
+    man = os.path.join(mod, "Source", "Frozen16.sha256")
+    if "1.6" in about["versions"] and not os.path.isfile(man):
+        R.err("About lists 1.6 but Source/Frozen16.sha256 is missing (run freeze16.py)"); return
+    if not os.path.isfile(man):
+        R.ok("no frozen 1.6 (About does not list it)"); return
+    p = subprocess.run([sys.executable, "-I", os.path.join(HERE, "freeze16.py"), mod, "--check"], capture_output=True, text=True)
+    out = (p.stdout + p.stderr).strip()
+    (R.ok if p.returncode == 0 else R.err)(out.splitlines()[-1] if out else "freeze16 --check printed nothing")
+    if p.returncode != 0:
+        for l in out.splitlines()[:15]: print("   ", l)
+
+
+def step_layout(mod, about, version, R):
+    R.group = "layout"
+    lf = load_folders(mod)
+    if lf is None: R.err("LoadFolders.xml missing")
+    else:
+        for v in about["versions"]:
+            if v in ("1.6", "1.7") and v not in lf: R.err(f"About lists {v} but LoadFolders.xml has no <v{v}> entry")
+            elif v not in lf: R.warn(f"About lists {v}: no <v{v}> entry in LoadFolders.xml (game falls back to default loading)")
+        if "1.7" in lf and "1.7" not in about["versions"]: R.warn("LoadFolders has <v1.7> but About does not list 1.7")
+        for v, folders in lf.items():
+            for f in folders:
+                if not os.path.isdir(os.path.join(mod, f) if f else mod): R.err(f"LoadFolders <v{v}> lists '{f}' which does not exist")
+    for c in ROOT_FORBIDDEN:
+        d = os.path.join(mod, c)
+        if os.path.isdir(d) and any(files for _, _, files in os.walk(d)):
+            R.err(f"content in the mod root: {c}/ (loaded by no version once LoadFolders.xml exists; move it to Common/)")
+    for n in sorted(os.listdir(mod)):
+        if n in ROOT_ALLOWED or n in ROOT_FORBIDDEN or re.fullmatch(r"\d+\.\d+", n): continue
+        R.warn(f"unexpected entry in the mod root: {n}")
+    a = about
+    if not a["name"]: R.err("About: <name> missing")
+    if not a["author"]: R.err("About: <author> missing")
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+(\.[A-Za-z0-9_\-]+)+", a["packageId"] or ""): R.err(f"About: packageId {a['packageId']!r} missing or malformed")
+    if not a["versions"]: R.err("About: supportedVersions empty")
+    if not a["modVersion"]: (R.err if version else R.warn)("About: <modVersion> missing")
+    elif version and a["modVersion"] != version: R.err(f"About modVersion {a['modVersion']} != release version {version}")
+    if len(a["description"]) > 1500: R.warn(f"About description is {len(a['description'])} characters (keep ~1500)")
+    pid = os.path.join(mod, "About", "PublishedFileId.txt")
+    if not os.path.isfile(pid) or not open(pid).read().strip().isdigit(): R.err("About/PublishedFileId.txt missing or not numeric")
+    pv = os.path.join(mod, "About", "Preview.png")
+    if not os.path.isfile(pv): R.err("About/Preview.png missing")
+    elif os.path.getsize(pv) >= 1_000_000: R.err(f"About/Preview.png is {os.path.getsize(pv)} bytes (< 1,000,000 needed)")
+    if not R.errors or all(not e.startswith("[layout]") for e in R.errors): R.ok("layout")
+
+
+def parse_defs(folder_paths, R, fatal):
+    """-> defs {(tag, defName): [file,...]}, texrefs [(file, tag, value)]"""
+    defs, refs = {}, []
+    for base in folder_paths:
+        dd = os.path.join(base, "Defs")
+        for d, _, fs in os.walk(dd):
+            for f in sorted(fs):
+                if not f.endswith(".xml"): continue
+                p = os.path.join(d, f)
+                try: root = ET.parse(p).getroot()
+                except ET.ParseError as e:
+                    (R.err if fatal else R.warn)(f"{os.path.relpath(p, base)}: XML does not parse: {e}"); continue
+                for dfn in root:
+                    if not isinstance(dfn.tag, str): continue
+                    name = dfn.findtext("defName")
+                    if name and name.strip(): defs.setdefault((dfn.tag.split(".")[-1], name.strip()), []).append(p)
+                    for el in dfn.iter():
+                        if el.tag in TEX_TAGS and el.text and el.text.strip(): refs.append((p, el.tag, el.text.strip()))
+    return defs, refs
+
+
+def tex_index(folder_paths):
+    files = {}
+    for base in folder_paths:
+        t = os.path.join(base, "Textures")
+        for d, _, fs in os.walk(t):
+            for f in fs:
+                if f.lower().endswith(TEX_EXT):
+                    rel = os.path.relpath(os.path.join(d, f), t).replace(os.sep, "/")
+                    files[os.path.splitext(rel)[0]] = rel
+    return files
+
+
+def step_defs(mod, R):
+    R.group = "defs"
+    lf = load_folders(mod)
+    if lf is None: R.warn("no LoadFolders.xml: defs lint skipped"); return
+    for v in sorted(lf):
+        fatal = v != "1.6"          # 1.6 is frozen: nothing can be fixed there, so its findings are warnings
+        L = R.err if fatal else R.warn
+        paths = [os.path.join(mod, f) if f else mod for f in lf[v]]
+        defs, refs = parse_defs(paths, R, fatal)
+        n = 0
+        for (tag, name), files in sorted(defs.items()):
+            if len(files) > 1:
+                n += 1; L(f"view {v}: duplicate {tag} '{name}' in {', '.join(os.path.relpath(f, mod) for f in files)}")
+        tex = tex_index(paths)
+        low = {k.lower(): k for k in tex}
+        dirs = {k.rsplit("/", 1)[0] for k in tex if "/" in k}
+        miss = 0
+        for f, tag, val in refs:
+            if "{" in val or val.startswith("http"): continue
+            norm = val.replace("\\", "/").strip("/")
+            ok = norm in tex or any(k.startswith(norm + "_") or k.startswith(norm + "/") for k in tex)
+            if ok: continue
+            miss += 1
+            where = f"{os.path.relpath(f, mod)} <{tag}>{val}"
+            if norm.lower() in low or any(k.lower().startswith(norm.lower() + "_") or k.lower().startswith(norm.lower() + "/") for k in tex):
+                L(f"view {v}: texture path differs only in case (breaks on Linux): {where}")
+            elif norm.rsplit("/", 1)[0] in dirs if "/" in norm else False:
+                L(f"view {v}: texture missing next to the mod's own textures: {where}")
+            else:
+                R.warn(f"view {v}: texture not in the mod, assumed vanilla/other mod: {where}")
+        R.ok(f"view {v}: {len(defs)} defs, {len(refs)} texture references, {n} duplicate defs, {miss} unresolved textures")
+
+
+def step_notes(mod, about, version, a, R, changelog):
+    R.group = "notes"
+    note = a.get("--changenote")
+    try:
+        entries = changelog.parse(os.path.join(mod, "CHANGELOG.md"))
+        if note is None: note = changelog.note(entries)
+        top = entries[0]["version"]
+        if version and top != version: R.err(f"top CHANGELOG entry {top} != release version {version}")
+        elif not version: version = top
+        if not entries[0]["date"]: R.warn("top CHANGELOG entry has no date")
+    except ValueError as e:
+        if note is None: R.err(f"{e} (or pass --changenote)")
+        else: R.warn(str(e))
+    desc_path = os.path.join(mod, "Workshop", "description.bbcode")
+    if "--desc" in a:
+        if not os.path.isfile(desc_path): R.err("--desc: Workshop/description.bbcode missing")
+        else:
+            dl = load("desc_lint")
+            text = open(desc_path, encoding="utf-8").read()
+            keys = None
+            ex = os.path.join(mod, "Workshop", "job_extra.json")
+            if "--gallery" in a and os.path.isfile(ex): keys = {i["key"] for i in json.load(open(ex)).get("images", [])}
+            elif "--gallery" in a: keys = set()
+            else: keys = {k for k in re.findall(r"\[\[IMG:([A-Za-z0-9_\-]+)\]\]", text)}      # keys unchecked without gallery
+            res = dl.lint(text, set(about["versions"]), keys)
+            for lvl, ln, msg in res: (R.err if lvl == "ERROR" else R.warn)(f"description.bbcode:{ln}: {msg}")
+            if not any(r[0] == "ERROR" for r in res): R.ok(f"description.bbcode {dl.size_of(text)} bytes")
+            try:
+                if entries and changelog.inject(text, changelog.block(entries)) != text:
+                    R.warn("description Changelog block differs from CHANGELOG.md (changelog.py inject)")
+            except ValueError: pass
+    return note, version
+
+
+def step_copy(mod, dest, R, dry):
+    R.group = "copy"
+    if os.path.realpath(dest) == os.path.realpath(mod) or os.path.realpath(dest).startswith(os.path.realpath(mod) + os.sep):
+        R.err("destination is the mod itself or inside it"); return False
+    if dry:
+        R.ok(f"dry: would rsync --delete to {dest}"); return True
+    os.makedirs(dest, exist_ok=True)
+    cmd = ["rsync", "-a", "--delete", "--delete-excluded"] + [f"--exclude={e}" for e in RSYNC_EXCLUDES] + [mod.rstrip("/") + "/", dest.rstrip("/") + "/"]
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    if p.returncode: R.err("rsync failed: " + p.stderr.strip()); return False
+    bad = []
+    n = 0
+    for d, ds, fs in os.walk(dest):
+        rel = os.path.relpath(d, dest)
+        for x in ds + fs:
+            r = os.path.normpath(os.path.join(rel, x))
+            if x in ("obj", "bin", ".git", "_frozen16", ".DS_Store", ".gitignore") or x.endswith((".csproj", ".pre-kit", ".pdb")) or r in ("Source", "Workshop", "tools"): bad.append(r)
+        n += len(fs)
+    if bad: R.err("excluded names in the copy: " + ", ".join(bad[:10]))
+    for d, _, fs in os.walk(os.path.join(mod, "1.6")):
+        for f in fs:
+            if f == ".DS_Store": continue
+            s = os.path.join(d, f); t = os.path.join(dest, os.path.relpath(s, mod))
+            if not os.path.isfile(t) or sha(s) != sha(t): R.err(f"1.6 file differs in the copy: {os.path.relpath(s, mod)}")
+    for d in ("1.7", "Common"):
+        for root, _, fs in os.walk(os.path.join(dest, d)):
+            for f in fs:
+                if f.endswith(".dll"):
+                    hits = scan_dll(os.path.join(root, f))
+                    if hits: R.err(f"copy: {f} contains test code {hits}")
+    if not any(e.startswith("[copy]") for e in R.errors): R.ok(f"{n} files copied to {dest}")
+    return not any(e.startswith("[copy]") for e in R.errors)
+
+
+def make_job(mod, about, dest, note, a):
+    pid = int(open(os.path.join(mod, "About", "PublishedFileId.txt")).read().strip())
+    ex = {}
+    exp = os.path.join(mod, "Workshop", "job_extra.json")
+    if os.path.isfile(exp): ex = json.load(open(exp, encoding="utf-8"))
+    item = {"id": pid, "name": os.path.basename(mod)}
+    if "--title" in a and ex.get("title"): item["title"] = ex["title"]
+    if "--gallery" in a:
+        absf = lambda p: p if os.path.isabs(p) else os.path.normpath(os.path.join(mod, "Workshop", p))
+        if ex.get("preview"): item["preview"] = absf(ex["preview"])
+        if ex.get("images"): item["images"] = [{"key": i["key"], "path": absf(i["path"])} for i in ex["images"]]
+        if ex.get("visibility"): item["visibility"] = ex["visibility"]
+    if "--desc" in a: item["description"] = os.path.join(mod, "Workshop", "description.bbcode")
+    item["changenote"] = note
+    item["content"] = dest
+    item["tags"] = ["Mod"] + sorted(about["versions"], key=lambda v: [int(x) for x in v.split(".")], reverse=True)
+    return {"items": [item]}
+
+
+def main(argv):
+    flags = {"--dry", "--no-build", "--desc", "--gallery", "--title", "--no-wpub-dry", "--strict"}
+    valued = {"--version", "--release-root", "--date", "--changenote", "--csproj"}
+    a, pos, it = {}, [], iter(argv[1:])
+    for x in it:
+        if x in flags: a[x] = True
+        elif x in valued: a[x] = next(it, None)
+        elif x.startswith("--"): print("unknown option", x); return 2
+        else: pos.append(x)
+    if len(pos) != 1: print(__doc__); return 2
+    mod = os.path.abspath(pos[0])
+    if not os.path.isfile(os.path.join(mod, "About", "About.xml")): print("not a mod folder (About/About.xml missing):", mod); return 2
+    name = os.path.basename(mod)
+    rroot = os.path.abspath(a.get("--release-root") or os.path.join(os.path.dirname(mod), "_Release"))
+    dry = "--dry" in a
+    changelog = load("changelog")
+    R = Report()
+    about = read_about(mod)
+    version = a.get("--version") or about["modVersion"] or None
+    print(f"== release {name} {version or '(version from CHANGELOG)'}{' [dry]' if dry else ''}")
+
+    if "--no-build" not in a: step_build(mod, a, R)
+    if R.errors: return summary(R, a)
+    step_dll(mod, R); step_freeze(mod, about, R); step_layout(mod, about, version, R); step_defs(mod, R)
+    note, version = step_notes(mod, about, version, a, R, changelog)
+    if R.errors or ("--strict" in a and R.warns): return summary(R, a)
+
+    dest = os.path.join(rroot, "Upload", name)
+    if not step_copy(mod, dest, R, dry): return summary(R, a)
+    R.group = "job"
+    job = make_job(mod, about, dest, note, a)
+    jdir = os.path.join(rroot, "Jobs", f"{a.get('--date') or datetime.date.today().isoformat()}-{name}")
+    jpath = os.path.join(jdir, "job.json")
+    if dry:
+        print(f"dry: would write {jpath}:\n" + json.dumps(job, indent=1, ensure_ascii=False)); R.ok("dry run complete, nothing written")
+        return summary(R, a)
+    os.makedirs(jdir, exist_ok=True)
+    json.dump(job, open(jpath, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    R.ok(f"wrote {jpath}")
+    R.group = "wpub dry"
+    if "--no-wpub-dry" in a: R.warn("WPub dry run skipped (--no-wpub-dry)")
+    else:
+        sh = os.path.join(WPUB, "run_dryrun.sh")
+        if not os.path.isfile(sh): R.err(f"{sh} not found")
+        else:
+            print("$", sh, jpath, "(waits for a free test slot)")
+            p = subprocess.run(["/bin/bash", sh, jpath], capture_output=True, text=True)
+            for l in (p.stdout + p.stderr).splitlines()[-12:]: print("   ", l)
+            (R.ok if p.returncode == 0 else R.err)(f"WPub dry run exit {p.returncode}")
+    real = os.path.join(WPUB, "run_real.sh")
+    print(f"\nReal upload (ONLY after Julius says go; not run by this tool):\n  /bin/bash {real} {jpath}")
+    return summary(R, a)
+
+
+def summary(R, a):
+    print(f"\n{len(R.errors)} errors, {len(R.warns)} warnings")
+    bad = R.errors or ("--strict" in a and R.warns)
+    print("RELEASE CHECK FAILED" if bad else "RELEASE CHECK PASSED")
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

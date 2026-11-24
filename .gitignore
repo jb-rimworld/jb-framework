@@ -1,6 +1,4 @@
+__pycache__/
 obj/
 bin/
-obj17/
-*.user
 .DS_Store
-sample/*/1.7/Assemblies/

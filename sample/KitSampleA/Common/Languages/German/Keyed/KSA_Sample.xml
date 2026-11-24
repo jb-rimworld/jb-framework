@@ -31,6 +31,7 @@
   <KSA.Preset.calm.Desc>Kleine Zahlen, Beta aus.</KSA.Preset.calm.Desc>
   <KSA.Preset.loud>Laut</KSA.Preset.loud>
   <KSA.Preset.loud.Desc>Große Zahlen, Beta an.</KSA.Preset.loud.Desc>
+  <KSA.Compat.MissingSampleMod.What>Die Patch-Klasse Patch_MissingMod wird nur angewendet, wenn diese Mod aktiv ist.</KSA.Compat.MissingSampleMod.What>
   <KSA.Compat.Biotech.What>Schaltet den Bereich Beta frei.</KSA.Compat.Biotech.What>
   <KSA.Section.gamma>Gamma (Combat Extended)</KSA.Section.gamma>
   <KSA.Section.gamma.Desc>Gibt es nur mit Combat Extended: zeigt die Zeile „braucht X (nicht installiert)“.</KSA.Section.gamma.Desc>

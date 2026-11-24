@@ -31,6 +31,10 @@ namespace JBKit
         static Vector2 scrollSide, scrollMain;
         static float mainViewH = 1000f;
 
+        /// <summary>Where the last frame put the window's parts (read by the kit.window test to check that they fit and do not overlap).</summary>
+        internal struct Layout { public Rect In, Side, Main, Title, Search, Nerd, Content; public float ContentH; public string Page; public int Frame; }
+        internal static Layout Last;
+
         public static string SelectedPage { get => pageId; set => SelectPage(value); }
         public static string Search { get => search; set => search = value ?? ""; }
         public static bool EditTemplate { get => editTemplate; set => editTemplate = value; }
@@ -112,6 +116,7 @@ namespace JBKit
 
             var side = new Rect(inRect.x, inRect.y, SideWidth(inRect.width), inRect.height);
             var main = new Rect(side.xMax + 12f, inRect.y, inRect.width - side.width - 12f, inRect.height);
+            Last.In = inRect; Last.Side = side; Last.Main = main; Last.Page = pageId; Last.Frame = Time.frameCount;
             DrawSidebar(side, pages);
             Widgets.DrawBoxSolid(new Rect(side.xMax + 5f, inRect.y, 1f, inRect.height), KitStyle.Line);
             DrawMain(main, pages, target);
@@ -221,6 +226,7 @@ namespace JBKit
             string headTitle = string.IsNullOrEmpty(search) ? page.Label : KitText.K("Header.SearchResults", "Search results");
             Text.Font = GameFont.Medium;
             float titleW = Mathf.Max(120f, r.width - rightW - (tx - r.x));
+            Last.Title = new Rect(tx, r.y, Mathf.Min(titleW, KitUI.TextW(headTitle, GameFont.Medium)), 34f); Last.Search = sr; Last.Nerd = nr;
             Widgets.Label(new Rect(tx, r.y, titleW, 34f), headTitle.Truncate(titleW));
             Text.Font = GameFont.Small;
             Widgets.DrawBoxSolid(new Rect(r.x, r.y + 35f, Mathf.Min(r.width, 180f), 2f), KitStyle.Accent);
@@ -244,6 +250,8 @@ namespace JBKit
                 top += 26f;
             }
             var outR = new Rect(r.x, top, r.width, r.yMax - top);
+            Last.Content = outR; Last.ContentH = 0f;
+            KitUiProbe.Hit("page:" + pageId + (string.IsNullOrEmpty(search) ? "" : "+search"));
 
             // custom pages draw into the whole area themselves (their own scrolling)
             if (string.IsNullOrEmpty(search) && pageId.StartsWith("page:"))
@@ -281,6 +289,7 @@ namespace JBKit
             }
             catch (Exception e) { KitLog.Once("settingsPage:" + pageId + e.GetType().Name, KitLogLevel.Error, "UI", "Settings page " + pageId + " failed: " + e); }
             mainViewH = Mathf.Max(h + 20f, 40f);
+            Last.ContentH = h;
             Widgets.EndScrollView();
         }
 

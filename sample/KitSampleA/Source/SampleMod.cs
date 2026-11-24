@@ -92,6 +92,14 @@ namespace KitSampleA
         public KitSampleAGame(Game game) : base(game) { }
     }
 
+#if JB_TESTS
+    /// <summary>The test runner (only in test builds).</summary>
+    public sealed class KitSampleATests : JBKit.Testing.KitTestRunnerBase
+    {
+        public KitSampleATests(Game game) : base(game) { }
+    }
+#endif
+
     /// <summary>Soft integration example: skipped silently (not a failure) because the named mod is not active.</summary>
     [HarmonyLib.HarmonyPatch]
     [KitCompat("juliusberger00.jbkit.missing")]

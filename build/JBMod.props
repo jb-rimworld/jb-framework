@@ -19,6 +19,7 @@
       -p:JBRelease=true    release build: fails when JBTests=true (target JBReleaseGuard)
       -p:JBKitGate=true    compiles src/Gate (optional gate, not part of kit 1.0)
       -p:JBModRoot=...     mod folder; detected automatically (see below)
+      -p:JBKitVersion=X    stamp another kit version into KitInfo.KitVersion (tests only: sample B poses as an older kit)
   -->
   <PropertyGroup>
     <JBKitRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBKitRoot>

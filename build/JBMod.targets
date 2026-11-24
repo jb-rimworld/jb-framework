@@ -5,6 +5,8 @@
   <Target Name="JBKitInfo" BeforeTargets="CoreCompile;BeforeBuild" Condition="'$(_JBCore)' == 'true'">
     <PropertyGroup>
       <_JBKitVersion>$([System.IO.File]::ReadAllText('$(JBKitRoot)VERSION').Trim())</_JBKitVersion>
+      <!-- -p:JBKitVersion=X.Y.Z stamps another version (kit.identity: sample B poses as an older kit) -->
+      <_JBKitVersion Condition="'$(JBKitVersion)' != ''">$(JBKitVersion)</_JBKitVersion>
       <_JBKitInfoFile>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)JBKitInfo.g.cs</_JBKitInfoFile>
       <_JBTestsBool>false</_JBTestsBool>
       <_JBTestsBool Condition="'$(JBTests)' == 'true'">true</_JBTestsBool>
