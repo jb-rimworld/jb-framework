@@ -53,7 +53,7 @@ namespace JBFramework
             {
                 if (filePath == null)
                 {
-                    string name = SafeFileName((k?.Info?.ShortId ?? "JBFramework") + ".log");
+                    string name = SafeFileName((k?.Cfg?.ShortId ?? "JBFramework") + ".log");
                     try { filePath = Path.Combine(GenFilePaths.ConfigFolderPath, name); }
                     catch { filePath = Path.Combine(Path.GetTempPath(), name); }
                 }
@@ -68,7 +68,9 @@ namespace JBFramework
         /// <summary>Warning (yellow in the game log).</summary>
         public void Warn(string channel, string message) => Write(KitLogLevel.Warn, channel, message, null);
         /// <summary>Error (red in the game log), with the exception's type, message and stack when given.</summary>
-        public void Error(string channel, string message, Exception e = null) => Write(KitLogLevel.Error, channel, message, e);
+        public void Error(string channel, string message) => Write(KitLogLevel.Error, channel, message, null);
+        /// <summary>An error with the exception (full stack in the log file).</summary>
+        public void Error(string channel, string message, Exception e) => Write(KitLogLevel.Error, channel, message, e);
 
         /// <summary>Logs only the first time <paramref name="key"/> is seen in this session (fallbacks, missing optional mods …).</summary>
         public void Once(string key, KitLogLevel level, string channel, string message)

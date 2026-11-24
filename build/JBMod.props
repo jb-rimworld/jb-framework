@@ -20,7 +20,9 @@
       -p:JBRelease=true        fails when JBTests=true
       -p:JBModRoot=DIR         mod folder (default: the parent of the "Source" folder above the csproj)
       -p:JBFrameworkDll=FILE   reference this JBFramework.dll instead of the one next to this file (<framework>/<RimVersion>/Assemblies)
-      -p:JBMinApiLevel=N       API level stamped into the mod (default: the level of the framework it is built against)
+      -p:JBMinApiLevel=N       API level stamped into the mod (default 1). Raise it (or set <JBMinApiLevel> in the csproj) when the mod
+                               uses a member added in a later level; `tools/public_api.py uses <mod.dll>` and tools/release.py tell you.
+                               Never default to the newest level: every rebuilt mod would then demand the newest framework.
 
     The framework DLL is referenced with Private=false: it is never copied into the mod (the framework mod provides it at runtime).
     Before compile, obj/<RimVersion>/JBModInfo.g.cs stamps [assembly: JBFramework.KitRequires(level, "version")] so an older installed
@@ -31,7 +33,7 @@
   <PropertyGroup>
     <JBFrameworkRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBFrameworkRoot>
     <JBFrameworkDll Condition="'$(JBFrameworkDll)' == ''">$(JBFrameworkRoot)$(RimVersion)/Assemblies/$(JBFrameworkAssemblyName).dll</JBFrameworkDll>
-    <JBMinApiLevel Condition="'$(JBMinApiLevel)' == ''">$(JBFrameworkApiLevel)</JBMinApiLevel>
+    <JBMinApiLevel Condition="'$(JBMinApiLevel)' == ''">1</JBMinApiLevel>
 
     <!-- Mod root: the parent of the "Source" folder. Works for Source/x.csproj and Source/<Sub>/x.csproj. -->
     <_JBProjDirName>$([System.IO.Path]::GetFileName($(MSBuildProjectDirectory.TrimEnd('/').TrimEnd('\'))))</_JBProjDirName>

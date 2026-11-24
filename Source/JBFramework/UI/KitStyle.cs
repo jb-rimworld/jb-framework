@@ -23,7 +23,7 @@ namespace JBFramework
     {
         static readonly Color DefaultAccent = new Color(0.95f, 0.72f, 0.30f);
         /// <summary>The accent of the mod whose settings window is drawing right now, else Hearth &amp; Harbor amber.</summary>
-        public static Color Accent => KitMod.Drawing?.Info?.Theme?.Accent ?? DefaultAccent;
+        public static Color Accent => KitMod.Drawing?.Cfg?.Theme?.Accent ?? DefaultAccent;
         /// <summary>The accent at low alpha: backgrounds of selected rows, chips and banners.</summary>
         public static Color AccentSoft { get { var a = Accent; return new Color(a.r, a.g, a.b, 0.18f); } }
         /// <summary>Secondary text.</summary>
@@ -62,7 +62,13 @@ namespace JBFramework
         }
 
         /// <summary>A label in a colour, anchor and font; restores the GUI state afterwards.</summary>
-        public static void LabelColored(Rect r, string text, Color c, TextAnchor anchor = TextAnchor.UpperLeft, GameFont font = GameFont.Small)
+        public static void LabelColored(Rect r, string text, Color c) => LabelColored(r, text, c, TextAnchor.UpperLeft, GameFont.Small);
+
+        /// <summary>A label in a colour and anchor (small font); restores the GUI state afterwards.</summary>
+        public static void LabelColored(Rect r, string text, Color c, TextAnchor anchor) => LabelColored(r, text, c, anchor, GameFont.Small);
+
+        /// <summary>A label in a colour, anchor and font; restores the GUI state afterwards.</summary>
+        public static void LabelColored(Rect r, string text, Color c, TextAnchor anchor, GameFont font)
         {
             var f = Text.Font; var a = Text.Anchor; Text.Font = font; Text.Anchor = anchor; GUI.color = c;
             Widgets.Label(r, text);
@@ -70,7 +76,10 @@ namespace JBFramework
         }
 
         /// <summary>Wrapped label at (x,y) with width w; returns its height.</summary>
-        public static float Paragraph(float x, float y, float w, string text, Color c, GameFont font = GameFont.Small)
+        public static float Paragraph(float x, float y, float w, string text, Color c) => Paragraph(x, y, w, text, c, GameFont.Small);
+
+        /// <summary>Wrapped label in a font at (x,y) with width w; returns its height.</summary>
+        public static float Paragraph(float x, float y, float w, string text, Color c, GameFont font)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
             float h = CachedHeight(text, w, font);
@@ -96,7 +105,13 @@ namespace JBFramework
         }
 
         /// <summary>A toggle-style button; selected ones get the accent highlight. Returns true when clicked.</summary>
-        public static bool Chip(Rect r, string label, bool selected, string tip = null, bool enabled = true)
+        public static bool Chip(Rect r, string label, bool selected) => Chip(r, label, selected, null, true);
+
+        /// <summary>A chip with a tooltip.</summary>
+        public static bool Chip(Rect r, string label, bool selected, string tip) => Chip(r, label, selected, tip, true);
+
+        /// <summary>A chip with a tooltip that can be disabled (greyed, not clickable).</summary>
+        public static bool Chip(Rect r, string label, bool selected, string tip, bool enabled)
         {
             if (selected) { Widgets.DrawBoxSolid(r, AccentSoft); GUI.color = Accent; Widgets.DrawBox(r); GUI.color = Color.white; }
             else if (Mouse.IsOver(r) && enabled) Widgets.DrawHighlight(r);

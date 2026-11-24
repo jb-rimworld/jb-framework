@@ -320,7 +320,7 @@ namespace JBFramework.Testing
             }
             t.Check(bad == 0, "every registration round-trips (" + reg.All.Count + " settings, " + bad + " bad)");
 
-            var legacy = reg.All.Where(s => s.LegacyScribe != null).Select(s => s.LegacyScribe).Concat(k.Sections.All.Where(s => s.LegacyEnabled != null).Select(s => s.LegacyEnabled)).ToList();
+            var legacy = reg.All.Where(s => s.LegacyScribe != null).Select(s => s.LegacyScribe).Concat(k.Sections.All.Where(s => s.LegacyEnabledField != null).Select(s => s.LegacyEnabledField)).ToList();
             t.Check(legacy.Count == legacy.Distinct().Count() && !legacy.Contains("kit"), "legacy field names unique and not 'kit' (" + legacy.Count + ")");
 
             // section switches
@@ -474,17 +474,18 @@ namespace JBFramework.Testing
             foreach (var s in k.SettingsReg.All.Where(x => x.LegacyScribe != null))
             {
                 if (!old.TryGetValue(s.LegacyScribe, out string raw)) { t.Note(s.Key + ": old field " + s.LegacyScribe + " not in the file (default stays)"); continue; }
-                if (!s.TryParseLegacy(raw, out float want)) { t.Note(s.Key + ": old value '" + raw + "' unreadable (default stays)"); continue; }
+                if (!s.TryParseLegacy(raw, out float want, s.LegacyScribeConvert == null)) { t.Note(s.Key + ": old value '" + raw + "' unreadable (default stays)"); continue; }
+                if (s.LegacyScribeConvert != null) want = s.Clamp(s.LegacyScribeConvert(want));
                 expected++;
                 bool ok = k.Template.Store.TryGet(s.Key, out float got) && KitSuiteUtil.Near(got, want);
                 t.Check(ok, s.Key + " = " + s.Format(want) + " (from " + s.LegacyScribe + " '" + raw + "'), read " + (k.Template.Store.TryGet(s.Key, out float g2) ? s.Format(g2) : "nothing"));
             }
-            foreach (var sec in k.Sections.All.Where(x => x.LegacyEnabled != null))
+            foreach (var sec in k.Sections.All.Where(x => x.LegacyEnabledField != null))
             {
-                if (!old.TryGetValue(sec.LegacyEnabled, out string raw) || !bool.TryParse(raw.Trim(), out bool want)) continue;
+                if (!old.TryGetValue(sec.LegacyEnabledField, out string raw) || !bool.TryParse(raw.Trim(), out bool want)) continue;
                 expected++;
                 bool ok = k.Template.sections.TryGetValue(sec.Id, out bool got) && got == want;
-                t.Check(ok, "section " + sec.Id + " = " + want + " (from " + sec.LegacyEnabled + ")");
+                t.Check(ok, "section " + sec.Id + " = " + want + " (from " + sec.LegacyEnabledField + ")");
             }
             t.Check(expected > 0 || oldHadKit, "the old file had values to migrate (" + expected + ")");
             if (!oldHadKit) t.Check(k.Settings.MigratedThisSession == (expected > 0), "migration ran this session (" + k.Settings.Migrated.Count + " values)");
@@ -498,7 +499,7 @@ namespace JBFramework.Testing
                 t.Check(File.Exists(bak) && File.ReadAllBytes(bak).SequenceEqual(File.ReadAllBytes(orig)), "backup " + Path.GetFileName(bak) + " equals the old file");
                 var now = KitSuiteUtil.SettingsFileFields(file, out bool nowKit) ?? new Dictionary<string, string>();
                 var leftover = k.SettingsReg.All.Where(s => s.LegacyScribe != null && now.ContainsKey(s.LegacyScribe)).Select(s => s.LegacyScribe)
-                    .Concat(k.Sections.All.Where(s => s.LegacyEnabled != null && now.ContainsKey(s.LegacyEnabled)).Select(s => s.LegacyEnabled)).ToList();
+                    .Concat(k.Sections.All.Where(s => s.LegacyEnabledField != null && now.ContainsKey(s.LegacyEnabledField)).Select(s => s.LegacyEnabledField)).ToList();
                 t.Check(nowKit && leftover.Count == 0, "file rewritten in the framework format without legacy nodes" + (leftover.Count > 0 ? " (left: " + string.Join(", ", leftover) + ")" : ""));
             }
             yield return 1;
@@ -537,6 +538,16 @@ namespace JBFramework.Testing
                     t.Check(d.Count == 0 && now.Count == want.Count, "every per-save value and switch came back (" + want.Count + ")");
                 }
             }
+            // random streams: seed and position came back, so the next number equals the one drawn after saving in phase 1
+            var rnd = SaveLoadKit.ReadSide(save, "random");
+            t.Check(rnd != null && rnd.Count == 3, "random stream facts of the save found");
+            if (rnd != null && rnd.Count == 3)
+            {
+                var st = KitRandom.Stream(k, "kit.saveload.probe");
+                t.Check(KitRandom.SaveSeed.ToString() == rnd[0], "the save's random seed came back (" + KitRandom.SaveSeed + ")");
+                t.Check(st.Counter.ToString() == rnd[1], "the stream's position came back (" + st.Counter + ", saved " + rnd[1] + ")");
+                t.Check(st.NextULong().ToString() == rnd[2], "the next number after the load is the one phase 1 drew after saving (no re-roll by reload)");
+            }
             int mark = KitTestLog.Mark();
             yield return 2500;
             KitSuiteUtil.NoRedErrors(t, 0, "load + 2500 ticks: no red error of ours");
@@ -562,9 +573,13 @@ namespace JBFramework.Testing
                     t.Note("changed in this save before saving: " + string.Join(", ", changed));
                 }
                 else t.Note("not per-save: setting values are not part of the save");
+                var rs = KitRandom.Stream(k, "kit.saveload.probe");
+                for (int i = 0; i < 7; i++) rs.NextULong();
                 if (SaveLoadKit.SaveWithFingerprint(name, t))
                 {
                     SaveLoadKit.WriteSide(name, "values", KitSuiteUtil.ValueLines(k, sp));
+                    var probe = rs.Clone();
+                    SaveLoadKit.WriteSide(name, "random", new List<string> { KitRandom.SaveSeed.ToString(), rs.Counter.ToString(), probe.NextULong().ToString() });
                     string text = File.ReadAllText(GenFilePaths.FilePathForSavedGame(name));
                     t.Check(text.Contains("\"" + typeof(FrameworkGame).FullName + "\""), "the save holds the framework's game component " + typeof(FrameworkGame).FullName);
                     if (!k.IsFramework) t.Check(KitSuiteUtil.SaveHasEntry(text, k), "the save holds the mod's entry (" + FrameworkGame.SaveKey(k) + ")");

@@ -109,7 +109,7 @@ namespace JBFramework
         {
             float y = r.y;
             var mark = KitIcons.Mark(k);
-            string name = k.Info?.Name ?? "";
+            string name = k.Cfg?.Name ?? "";
             float mx = r.x;
             if (mark != null) { KitIcons.Draw(new Rect(r.x, y, 32f, 32f), mark); mx = r.x + 38f; }
             KitStyle.LabelColored(new Rect(mx, y, r.xMax - mx, 32f), name.Truncate(r.xMax - mx), KitStyle.Accent, TextAnchor.MiddleLeft);
@@ -127,7 +127,7 @@ namespace JBFramework
             }
             else
             {
-                string note = k.Info != null && k.Info.PerSave
+                string note = k.Cfg != null && k.Cfg.PerSave
                     ? KitText.K("Side.TemplateOnly", "Template for new games. Each new colony gets its own copy.")
                     : KitText.K("Side.Global", "These settings apply to every game.");
                 y += KitStyle.Paragraph(r.x, y, r.width, note, KitStyle.Grey, GameFont.Tiny) + 6f;
@@ -250,7 +250,7 @@ namespace JBFramework
                         y0 += bh + 8f;
                     }
                     var area = new Rect(outR.x, y0, outR.width, outR.yMax - y0);
-                    k.Guard.Run(string.IsNullOrEmpty(cp.Section) ? KitMod.Core : cp.Section, "UI.Page." + cp.Id, () => cp.Draw(area));
+                    KitUiFence.DrawPage(k, cp, area);
                 }
                 return;
             }
@@ -292,7 +292,7 @@ namespace JBFramework
         static float DrawOverview(KitMod k, float w, KitProfile target)
         {
             float y = 0f;
-            string intro = k.Info == null || !k.Info.PerSave ? KitText.K("Overview.IntroGlobal", "These settings apply to every game. Switch whole sections on or off here; the pages on the left hold the details.")
+            string intro = k.Cfg == null || !k.Cfg.PerSave ? KitText.K("Overview.IntroGlobal", "These settings apply to every game. Switch whole sections on or off here; the pages on the left hold the details.")
                 : ReferenceEquals(target, k.Template) ? KitText.K("Overview.IntroTemplate", "The template for new games. Each new colony gets its own copy, and you can change it there later.")
                 : KitText.K("Overview.IntroSave", "The settings of this save. The template for new games stays as it is.");
             y += KitStyle.Paragraph(0f, y, w, intro, KitStyle.Grey) + 10f;
@@ -428,7 +428,7 @@ namespace JBFramework
             }
             else if (!target.SectionOn(id))
             {
-                string off = ReferenceEquals(target, k.Template) && k.Info != null && k.Info.PerSave
+                string off = ReferenceEquals(target, k.Template) && k.Cfg != null && k.Cfg.PerSave
                     ? KitText.K("Section.IsOffTemplate", "This section is off in the template. New games start without it.")
                     : KitText.K("Section.IsOff", "This section is switched off. Its settings have no effect.");
                 if (KitStyle.Banner(0f, y, w, off, KitStyle.Accent, KitText.K("Section.SwitchOn", "Switch on"), out float bh)) { target.SetSection(id, true); k.Window.PresetCacheTime = -1f; }
@@ -600,7 +600,7 @@ namespace JBFramework
         // About ---------------------------------------------------------------------------------------------------------
         static float DrawAbout(KitMod k, float w)
         {
-            var info = k.Info;
+            var info = k.Cfg;
             float y = 0f, ax = 0f;
             var mark = KitIcons.Mark(k);
             if (mark != null) { KitIcons.Draw(new Rect(0f, y, 64f, 64f), mark); ax = 76f; }

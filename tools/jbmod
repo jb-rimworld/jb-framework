@@ -33,7 +33,8 @@
 # Isolation: fake HOME per slot under /private/tmp/claude-501/hh_tests/slotN (Prefs.xml copied read-only from the player's config, autosave
 # off, volume 0, WAYLITH_BACKEND=offscreen: no window). The game's Mods folder only gets the symlinks _jb_slotN (mod), _jb_fwN (framework),
 # _jb_tmN (test mod), _jb_probeN, _jb_xN_i (extra local mods), _jb_cN_i (compat mods from the cache), all removed by trap on exit.
-# Slot locks /private/tmp/claude-501/hh_tests/lockN are shared with H&H and WPub (max 3 games at once, a lock older than 25 min counts as stale).
+# Slot locks /private/tmp/claude-501/hh_tests/lockN are shared with H&H and WPub (max 3 games at once). jbmod's own locks carry its PID
+# and a heartbeat (stale only when the process is gone); locks of other tools count as stale after 25 minutes without a touch.
 # The player's own profile is never written.
 set -u
 KIT="$(cd "$(dirname "$0")/.." && pwd)"          # the framework repo (22_RimWorld/JBFramework)
@@ -132,11 +133,30 @@ ensure_probe() {
 
 # ---------------------------------------------------------------------------------------------------------------- slots
 slot=""
+# Lock = the directory lockN. jbmod writes its PID into lockN/pid and touches the directory every 60 s while it runs (heartbeat), so
+# the 25-minute rule of the other tools (H&H run_test.sh, WPub) never takes a long jbmod run's slot. A lock with a pid file is stale only
+# when that process is gone; a lock without one (another tool) keeps the old rule: stale when not touched for 25 minutes.
+HB=""
+lock_stale() {   # <n>
+  local d="$S/lock$1" p
+  [ -d "$d" ] || return 1
+  if [ -f "$d/pid" ]; then p=$(cat "$d/pid" 2>/dev/null); [ -n "$p" ] && kill -0 "$p" 2>/dev/null && return 1; return 0; fi
+  [ $(( $(date +%s) - $(stat -f %m "$d") )) -gt 1500 ]
+}
 acquire_slot() {
   local i n
   for i in $(seq 1 720); do
-    for n in 1 2 3; do if mkdir "$S/lock$n" 2>/dev/null; then slot=$n; return 0; fi; done
-    for n in 1 2 3; do [ -d "$S/lock$n" ] && [ $(( $(date +%s) - $(stat -f %m "$S/lock$n") )) -gt 1500 ] && rmdir "$S/lock$n" 2>/dev/null; done
+    for n in 1 2 3; do
+      if mkdir "$S/lock$n" 2>/dev/null; then
+        slot=$n; echo $$ > "$S/lock$n/pid"
+        # links a hard-killed earlier run left behind in this slot (we hold its lock now, so nobody else uses them)
+        rm -f "$G/Mods/_jb_slot$n" "$G/Mods/_jb_probe$n" "$G/Mods/_jb_fw$n" "$G/Mods/_jb_tm$n" "$G/Mods/_jb_c${n}_"* "$G/Mods/_jb_x${n}_"* 2>/dev/null
+        ( while [ -f "$S/lock$n/pid" ] && [ "$(cat "$S/lock$n/pid" 2>/dev/null)" = "$$" ] && kill -0 $$ 2>/dev/null; do touch "$S/lock$n"; sleep 60; done ) >/dev/null 2>&1 &
+        HB=$!
+        return 0
+      fi
+    done
+    for n in 1 2 3; do lock_stale $n && { rm -f "$S/lock$n/pid"; rmdir "$S/lock$n" 2>/dev/null; }; done
     sleep 5
   done
   echo "no free test slot"; return 3
@@ -145,6 +165,8 @@ release_slot() {
   [ -z "$slot" ] && return
   rm -f "$G/Mods/_jb_slot$slot" "$G/Mods/_jb_probe$slot" "$G/Mods/_jb_fw$slot" "$G/Mods/_jb_tm$slot" "$G/Mods/_jb_c${slot}_"* "$G/Mods/_jb_x${slot}_"* 2>/dev/null
   [ "${KEEP_SLOT:-0}" = 1 ] || rm -rf "$S/slot$slot/mod" "$S/slot$slot/probe" "$S/slot$slot/fw" "$S/slot$slot/tm" "$S/slot$slot/x_"*
+  [ -n "$HB" ] && { kill "$HB" 2>/dev/null; HB=""; }
+  [ "$(cat "$S/lock$slot/pid" 2>/dev/null)" = "$$" ] && rm -f "$S/lock$slot/pid"
   rmdir "$S/lock$slot" 2>/dev/null
   slot=""
 }
@@ -441,7 +463,8 @@ PY
     A="$KIT/sample/KitSampleA"; B="$KIT/sample/KitSampleB"; sc=${1:?scenario: tenants|removal|apilevel|alone|all}
     case "$sc" in
       tenants)  exec "$0" "$A" _two fw_tenants fw.tenants "$B" -- "$B" ;;
-      removal)  exec "$0" "$A" _two fw_removal fw.removal "$B" -- ;;
+      removal)  "$0" "$A" _two fw_removal fw.removal "$B" -- ; rc=$?; [ $rc = 0 ] || exit $rc
+                echo "== phase 3: load the save made WITHOUT sample B with sample B again"; exec "$0" "$A" _back fw_removal jb_fw_removal_again "$B" ;;
       apilevel) JB_MSBUILD_ARGS="-p:JBMinApiLevel=99" exec "$0" "$A" test fw.apilevel fw_apilevel "$B" ;;
       alone)    exec "$0" "$KIT" test fw.alone fw_alone ;;
       all)
@@ -450,6 +473,10 @@ PY
       *) echo "unknown scenario $sc"; exit 2 ;;
     esac ;;
   _two) two_phase "$@"; exit $? ;;
+  _back)   # <label> <save name in phase 2's saves> <extras…>: load a save of phase 2 again (fw removal phase 3)
+    L=$1; SVN=$2; shift 2; D="$S/jb_saveload_$L"
+    [ -f "$D/load/$SVN.rws" ] || { echo "phase 2 made no save $SVN"; exit 1; }
+    defaults; LABEL="${L}_back"; SUITES=fw.removal; LOAD="$D/load/$SVN.rws"; EXTRA=("$@"); BUILD=0 run_slot; exit $RUN_RC ;;
   freeze16) py freeze16.py "$MOD" "$@" ;;
   release) py release.py "$MOD" "$@" ;;
   desc-lint)

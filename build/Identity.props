@@ -19,7 +19,7 @@
     <JBFrameworkAssemblyName>JBFramework</JBFrameworkAssemblyName>
     <JBFrameworkNamespace>JBFramework</JBFrameworkNamespace>
     <JBFrameworkVersion>1.0.0</JBFrameworkVersion>
-    <JBFrameworkApiLevel>2</JBFrameworkApiLevel>
+    <JBFrameworkApiLevel>1</JBFrameworkApiLevel>
     <JBFrameworkAuthor>Julius Berger</JBFrameworkAuthor>
   </PropertyGroup>
 </Project>

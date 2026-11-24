@@ -15,11 +15,12 @@ namespace JBFramework
     /// public sealed class LOMod : KitModBase
     /// {
     ///     public LOMod(ModContentPack c) : base(c, new KitInfo { Name = "Luciferium Overhaul", ShortId = "LO", Version = "2.0.0", PerSave = true }) { }
-    ///     protected override void Register(KitRegistry r) { r.Section("healing", "Healing"); r.Float("healing", "Regrowth", "lo.regrowDays", 10f, 0.1f, 120f, "Days to regrow a limb"); }
+    ///     protected override void Register(KitRegistry r) { r.Section("healing", "Healing"); r.Float("healing", "lo.regrowDays", 10f, 0.1f, 120f, "Days to regrow a limb").InGroup("Regrowth"); }
     /// }
     /// </code>
     /// The base constructor does everything in this order: context, log header, API-level check, <see cref="Register"/>, settings file
-    /// (with legacy migration), the mod's Harmony patch classes one by one. Fields of the subclass are not set yet while Register runs.
+    /// (with legacy migration), the mod's Harmony patch classes one by one. <see cref="Kit"/> is already set while Register runs, but
+    /// fields of the subclass (and its constructor body) are not: Register runs inside the base constructor.
     /// Every hook below runs inside the mod's error fence; an exception never reaches the game or another mod.
     /// </summary>
     public abstract class KitModBase : Mod
@@ -27,11 +28,14 @@ namespace JBFramework
         /// <summary>Creates the mod's context and runs the boot sequence (see the class summary).</summary>
         protected KitModBase(ModContentPack content, KitInfo info) : base(content)
         {
-            Kit = KitMod.Boot(this, content, info);
+            KitMod.Boot(this, content, info);   // sets Kit before Register runs
         }
 
-        /// <summary>This mod's framework context: settings, sections, log, error fences.</summary>
-        public KitMod Kit { get; }
+        /// <summary>
+        /// This mod's framework context: settings, sections, log, error fences. Set before <see cref="Register"/> runs (inside Register
+        /// <c>r.Kit</c> is the same object). Static code without the mod instance uses <see cref="Framework.Of{TMod}"/>.
+        /// </summary>
+        public KitMod Kit { get; internal set; }
 
         /// <summary>Registers sections, settings, presets, compatibility entries, pages, caretaker checks and per-save data. Called once.</summary>
         protected abstract void Register(KitRegistry r);
@@ -49,7 +53,7 @@ namespace JBFramework
         protected virtual IEnumerable<string> Diagnosis() { yield break; }
 
         /// <summary>The name in the mod settings list: <see cref="KitInfo.Name"/>.</summary>
-        public override string SettingsCategory() => Kit?.Info?.Name ?? Content?.Name ?? "";
+        public override string SettingsCategory() => Kit?.Cfg?.Name ?? Content?.Name ?? "";
 
         /// <summary>Draws the framework's settings window for this mod (sidebar, pages, search). Fenced.</summary>
         public sealed override void DoSettingsWindowContents(Rect inRect)
@@ -105,16 +109,16 @@ namespace JBFramework
         /// <summary>The global preferences and the Mods page.</summary>
         protected override void Register(KitRegistry r)
         {
-            r.Page("mods", "Mods", order: -10, draw: FrameworkPages.DrawMods);
-            r.Percent(KitMod.Core, Framework.PrefsCategory, Framework.WindowScaleKey, 1f, 0.8f, 1.5f, "Window size",
-                "Every window of every JB mod grows or shrinks by this factor (on top of the automatic size for large screens). Applies the next time a window opens.",
-                hardMin: 0.6f, hardMax: 2f).AsGlobal();
-            r.Bool(KitMod.Core, Framework.PrefsCategory, Framework.VerboseLogKey, false, "Detailed log",
-                "Writes info and debug lines to the game log too (they always go to each mod's own log file). Only for hunting problems.").AsGlobal();
-            r.Bool(KitMod.Core, Framework.PrefsCategory, Framework.ShowNerdKey, false, "Show nerd settings",
-                "Shows the technical settings that most players never need, in every JB settings window.").AsGlobal();
-            r.Bool(KitMod.Core, Framework.PrefsCategory, Framework.WelcomeCardsKey, true, "Show welcome cards",
-                "A small card with presets and a link to the settings, once per new colony (and once when a mod joins a save), for every JB mod that has one.").AsGlobal();
+            r.Page("mods", "Mods", FrameworkPages.DrawMods).WithOrder(-10);
+            r.Percent(KitMod.Core, Framework.WindowScaleKey, 1f, 0.8f, 1.5f, "Window size",
+                "Every window of every JB mod grows or shrinks by this factor (on top of the automatic size for large screens). Applies the next time a window opens.")
+                .InGroup(Framework.PrefsCategory).HardLimits(0.6f, 2f).AsGlobal();
+            r.Bool(KitMod.Core, Framework.VerboseLogKey, false, "Detailed log",
+                "Writes info and debug lines to the game log too (they always go to each mod's own log file). Only for hunting problems.").InGroup(Framework.PrefsCategory).AsGlobal();
+            r.Bool(KitMod.Core, Framework.ShowNerdKey, false, "Show nerd settings",
+                "Shows the technical settings that most players never need, in every JB settings window.").InGroup(Framework.PrefsCategory).AsGlobal();
+            r.Bool(KitMod.Core, Framework.WelcomeCardsKey, true, "Show welcome cards",
+                "A small card with presets and a link to the settings, once per new colony (and once when a mod joins a save), for every JB mod that has one.").InGroup(Framework.PrefsCategory).AsGlobal();
         }
 
         /// <summary>One line per mod that uses the framework.</summary>
@@ -147,8 +151,50 @@ namespace JBFramework
             }, "Startup");
             KitHooks.Each(KitHooks.DefsLoaded, null, "DefsLoaded", h => h());
             ScanForTooNew();
+            ScanForCopies();
             ShowTooOld();
         }
+
+        /// <summary>
+        /// Other mods that ship their own JBFramework.dll. RimWorld loads every mod's DLLs with Assembly.LoadFrom: a copy in a mod that
+        /// loads before the framework would replace the real framework for everyone. Each finding is one plain-words error.
+        /// </summary>
+        static void ScanForCopies()
+        {
+            try
+            {
+                var fwAsm = typeof(Framework).Assembly;
+                string fwName = fwAsm.GetName().Name;
+                foreach (var mcp in LoadedModManager.RunningMods)
+                {
+                    if (mcp == null) continue;
+                    bool isFramework = System.Text.RegularExpressions.Regex.Replace(KitCompat.Strip(mcp.PackageId ?? ""), @"\.slot\d+$", "")
+                        .Equals(Framework.PackageId, StringComparison.OrdinalIgnoreCase);
+                    var asms = mcp.assemblies?.loadedAssemblies;
+                    if (isFramework)
+                    {
+                        if (asms != null && !asms.Contains(fwAsm))
+                            Framework.Self?.Log.Error("Core", "The running " + Framework.Name + " code was not loaded from the " + Framework.Name + " mod itself: another mod that loads earlier ships a copy of " + fwName + ".dll. Check the Mods page; move " + Framework.Name + " to the top of the mod list.");
+                        continue;
+                    }
+                    bool ships = asms != null && asms.Any(a => a == fwAsm || SafeName(a) == fwName);
+                    if (!ships)
+                    {
+                        try
+                        {
+                            foreach (var f in ModContentPack.GetAllFilesForModPreserveOrder(mcp, "Assemblies/", e => e.ToLower() == ".dll"))
+                                if (string.Equals(System.IO.Path.GetFileNameWithoutExtension(f.Item2.Name), fwName, StringComparison.OrdinalIgnoreCase)) { ships = true; break; }
+                        }
+                        catch { }
+                    }
+                    if (ships)
+                        Framework.Self?.Log.Error("Core", mcp.Name + " ships its own copy of " + fwName + ".dll. Tell its author to remove it (reference the framework with Private=false). If that mod loads before " + Framework.Name + ", every mod that uses the framework runs on that copy.");
+                }
+            }
+            catch (Exception e) { Framework.Self?.Log.Warn("Core", "Scan for framework copies failed: " + e.Message); }
+        }
+
+        static string SafeName(System.Reflection.Assembly a) { try { return a.GetName().Name; } catch { return ""; } }
 
         /// <summary>Mods whose Mod class never reached the framework (constructor failed) but that need a newer API level.</summary>
         static void ScanForTooNew()

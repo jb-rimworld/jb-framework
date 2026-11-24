@@ -6,6 +6,7 @@
     <dailyBonus>7</dailyBonus>
     <growth>2.5</growth>
     <loud>True</loud>
+    <sharePercent>30</sharePercent>
     <Gamma_enabled>False</Gamma_enabled>
     <someRemovedField>42</someRemovedField>
   </ModSettings>

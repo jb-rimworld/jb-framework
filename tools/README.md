@@ -10,7 +10,8 @@ Run every tool as `python3 -I tools/<tool>.py ...` (`-I`: no stray modules from 
 | `changelog.py <Mod> note\|block\|inject\|check` | CHANGELOG.md -> change note / description block | 4.2 |
 | `desc_lint.py <file>... [--mod M]` | description vs `_Planung_Marketing_2026-11-24/desc/STYLE.md` | 4.2 |
 | `kit_lang.py <Mod> [--check]` | `<Prefix>_Settings.xml` from the settings dump, missing-key check | 1.5.12, 4.3 |
-| `public_api.py generate\|check\|show` | public API snapshot `api/PublicApi.txt` of the framework (additive-only check) | FRAMEWORK.md 2.2 |
+| `public_api.py generate\|check\|show\|uses <dll>` | public API snapshot `api/PublicApi.txt` (additive-only check, no optional parameters, `api/Since.txt` levels); `uses` = what a dependent DLL binds to and the API level that needs | FRAMEWORK.md 2.2 |
+| `jbmod <Mod> …` | build / in-game tests / release per mod (bash; usage at the top of the file) | SharedKit 3.2 |
 | `api_scan.sh [1.6\|1.7] [dlls]` | every Harmony target of the framework (and given DLLs) exists in that RimWorld version | FRAMEWORK.md 5 |
 | `i18n_delta.py <Mod> extract\|plan\|apply` | incremental translation, deletes only known keys | 1.5.12 |
 
@@ -23,7 +24,7 @@ Each tool prints its full usage with no arguments (module docstring). Exit 0 = p
 - **`--dry`** runs the build (unless `--no-build`) and all checks, but writes nothing under the release root and starts no WPub dry run.
   A real run (no `--dry`) also runs `_Tools/WPub/run_dryrun.sh` (needs one of the 3 shared test slots; `--no-wpub-dry` skips it). The real
   upload (`run_real.sh`) is only printed, never run. The `_Tools/WPub` folder is found relative to the framework (`22_RimWorld/_Tools/WPub`).
-- **csproj discovery** (until `jbmod` exists): `--csproj`, else under `Source/` the one importing `JBMod.props`, else the `*.rw17.csproj`,
+- **csproj discovery**: `--csproj`, else under `Source/` the one importing `JBMod.props`, else the `*.rw17.csproj`,
   else the only csproj; several candidates = error. Build = `dotnet build <csproj> -c Release -p:JBTests=false`, `~/.dotnet` on PATH.
 - **Version**: `--version`, else About `modVersion`, else the top CHANGELOG entry. About `modVersion` must equal it (missing = error with
   `--version`, warning without); the top CHANGELOG entry must equal it. CHANGELOG.md is required (change note = top entry) unless
@@ -35,7 +36,7 @@ Each tool prints its full usage with no arguments (module docstring). Exit 0 = p
   (relative paths resolve against `Workshop/`).
 - **Copy excludes**: `/Source /Workshop /tools`, `obj/ bin/ .git/ _frozen16/`, `*.csproj *.pre-kit *.pdb .DS_Store .gitignore .gitattributes`. The
   copy is verified (no excluded names, every `1.6/` file hash-identical, DLL scan again).
-- **DLL scan strings** (ASCII and UTF-16): KitTestRunnerBase, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST, JB_UI_SHOTS, JB_PROBE, HearthTestRunner.
+- **DLL scan** of `1.7/`, `1.6/` and `Common/Assemblies`; strings (ASCII and UTF-16): JBFramework.Testing, KitTestRunner, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST, JB_UI_SHOTS, JB_PROBE, HearthTestRunner.
 - **Defs lint**: duplicates are keyed by (def tag, defName) per version view from LoadFolders.xml. The 1.7 view fails the release; the frozen 1.6
   view only warns (nothing there can be fixed). Textures are checked for `texPath`, `uiIconPath`, `iconPath`: a missing file next to existing
   mod textures, or a case-only mismatch (breaks on Linux), is an error; a path with no mod textures nearby is a warning ("assumed vanilla"),
@@ -55,3 +56,6 @@ Each tool prints its full usage with no arguments (module docstring). Exit 0 = p
   the English Keyed files plus def fields of `Common/Defs` and `1.7/Defs`. A key is deleted from a language only if it is in `known.json`
   (everything the previous successful `apply` saw) and gone from the English source; hand-written keys are never touched. Default languages:
   German plus whatever language folders the mod already has.
+- **Dependents** (release.py): no `JBFramework.dll` shipped, no `JBFramework.*` type defined, stamped API level ≥ the level of every framework
+  member the DLL binds to (`public_api.py uses`), About.xml lists `juliusberger.jbframework` in modDependencies (with `steamWorkshopUrl`;
+  placeholder `JBFRAMEWORK_WORKSHOP_ID` until the framework is uploaded, then it must equal `JBFramework/About/PublishedFileId.txt`) and loadAfter.

@@ -155,4 +155,7 @@
   <JBF.Setting.jbf.welcomeCards.Desc>Eine kleine Karte mit Voreinstellungen und einem Link zu den Einstellungen, einmal je neuer Kolonie (und einmal, wenn eine Mod zu einem Spielstand dazukommt), für jede JB-Mod, die eine hat.</JBF.Setting.jbf.welcomeCards.Desc>
   <JBF.SettingCat.Interface>Oberfläche</JBF.SettingCat.Interface>
   <JBF.Page.mods>Mods</JBF.Page.mods>
+  <JBF.Section.NeedsMod>Braucht {0}.</JBF.Section.NeedsMod>
+  <JBF.Page.Failed>Diese Seite ist auf einen Fehler gestoßen und wird nicht gezeichnet: {0}\n\nDetails stehen in {1}. Der Rest von {2} arbeitet weiter.</JBF.Page.Failed>
+  <JBF.Page.Retry>Erneut versuchen</JBF.Page.Retry>
 </LanguageData>

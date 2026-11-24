@@ -13,7 +13,7 @@ namespace JBFramework
     /// <summary>
     /// Building blocks for a section's removal preparation (the "Prepare removal" button of the Diagnosis page). Each step works on the
     /// running game, writes one report line and never throws (errors become report lines). Use them in the
-    /// <c>prepareRemoval</c> callback of <see cref="KitRegistry.Section"/>, or add them to a section with <see cref="AddStep"/>.
+    /// <c>prepareRemoval</c> callback of <see cref="KitSection.WithRemoval"/>, or add them to a section with <see cref="AddStep"/>.
     /// </summary>
     public static class KitRemoval
     {
@@ -32,9 +32,12 @@ namespace JBFramework
 
         /// <summary>
         /// Removes every thing of the matching defs from all maps: spawned things, minified ones, blueprints and frames of them, and
-        /// items in pawn inventories and equipment. <paramref name="refund"/>: buildings drop their cost like a deconstruction.
+        /// items in pawn inventories and equipment. Buildings drop their cost like a deconstruction (the overload with refund = false does not).
         /// </summary>
-        public static void RemoveThings(Func<ThingDef, bool> which, List<string> report, bool refund = true)
+        public static void RemoveThings(Func<ThingDef, bool> which, List<string> report) => RemoveThings(which, report, true);
+
+        /// <summary>Like <see cref="RemoveThings(Func{ThingDef, bool}, List{string})"/>; <paramref name="refund"/> false = no deconstruction refund.</summary>
+        public static void RemoveThings(Func<ThingDef, bool> which, List<string> report, bool refund)
         {
             if (which == null) return;
             Step(report, "things", () =>

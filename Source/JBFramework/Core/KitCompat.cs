@@ -38,6 +38,9 @@ namespace JBFramework
         /// <summary>The other mod's packageId (or a DLC's).</summary>
         public string PackageId { get; internal set; }
 
+        /// <summary>A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced.</summary>
+        public KitCompatEntry HealthyWhen(Func<bool> healthy) { Healthy = healthy; return this; }
+
         internal string What => Owner.Key("Compat." + KitSetting.CatKey(Name) + (Incompatible ? ".Why" : ".What")).TranslateOr(WhatEn ?? "");
 
         internal KitCompatState State

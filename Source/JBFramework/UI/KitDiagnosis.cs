@@ -119,7 +119,7 @@ namespace JBFramework
         {
             KitUiProbe.Hit("diagnosis");
             float y = 0f;
-            var info = k.Info;
+            var info = k.Cfg;
             string rw; try { rw = VersionControl.CurrentVersionStringWithRev; } catch { rw = "?"; }
             KitStyle.LabelColored(new Rect(0, y, w, 24f), $"{info?.Name} {info?.Version}  ·  {Framework.Name} {Framework.Version} (API {Framework.ApiLevel})  ·  RimWorld {rw}", KitStyle.Grey);
             y += 26f;
@@ -162,7 +162,7 @@ namespace JBFramework
                     }
                     y += 26f;
                     if (s.DiagnosisFunc != null)
-                        foreach (var line in k.Guard.Run(s.Id, "Diagnosis." + s.Id, () => s.DiagnosisFunc().ToList(), new List<string>()))
+                        foreach (var line in KitReport.SafeLines(k, "Diagnosis." + s.Id, s.DiagnosisFunc))
                             y += KitStyle.Paragraph(14f, y, w - 18f, line, KitStyle.Grey, GameFont.Tiny) + 1f;
                 }
                 y += 8f;
@@ -189,7 +189,7 @@ namespace JBFramework
 
             if (k.Mod != null)
             {
-                var lines = k.Guard.Run(KitMod.Core, "Mod.Diagnosis", () => (k.Mod.CallDiagnosis() ?? Enumerable.Empty<string>()).ToList(), new List<string>());
+                var lines = KitReport.SafeLines(k, "Mod.Diagnosis", k.Mod.CallDiagnosis);
                 if (lines.Count > 0)
                 {
                     y += KitStyle.Section(0, y, w, info?.Name ?? "");

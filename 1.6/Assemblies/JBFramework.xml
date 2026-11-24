@@ -1,0 +1,2239 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>JBFramework</name>
+    </assembly>
+    <members>
+        <member name="T:JBFramework.KitAdapterLog">
+            <summary>Shared failure reporting of the adapters: one warning per key in the framework's log, then silence.</summary>
+        </member>
+        <member name="T:JBFramework.KitCE">
+            <summary>
+            Combat Extended (CETeam.CombatExtended). Ammo lookup without a hard reference: weapon comp properties → <c>ammoSet</c>
+            (AmmoSetDef) → <c>ammoTypes</c> (AmmoLink list) → <c>ammo</c>. Checked against CE's CombatExtended.dll for RimWorld 1.6.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitCE.PackageIds">
+            <summary>packageIds Combat Extended is published under.</summary>
+        </member>
+        <member name="P:JBFramework.KitCE.Active">
+            <summary>Combat Extended is active.</summary>
+        </member>
+        <member name="M:JBFramework.KitCE.AmmoSetOf(Verse.ThingDef)">
+            <summary>The weapon's CE ammo set def (an AmmoSetDef), or null (no CE, melee weapon, not a CE gun).</summary>
+        </member>
+        <member name="M:JBFramework.KitCE.AmmoTypesFor(Verse.ThingDef)">
+            <summary>Every ammo of the weapon's ammo set in CE's order (empty without CE or for weapons without ammo).</summary>
+        </member>
+        <member name="M:JBFramework.KitCE.DefaultAmmoFor(Verse.ThingDef)">
+            <summary>The weapon's first (default) ammo, or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitCE.IsAmmo(Verse.ThingDef)">
+            <summary>Is the def one of CE's ammo items (it is listed in some weapon's ammo set)?</summary>
+        </member>
+        <member name="T:JBFramework.KitHAR">
+            <summary>
+            Humanoid Alien Races (erdelf.HumanoidAlienRaces) and custom races in general. Race checks that need no HAR reference: a HAR race
+            is a ThingDef of class <c>AlienRace.ThingDef_AlienRace</c> (checked against HAR's AlienRace.dll for 1.6); "custom-bodied" means a
+            humanlike race whose body is not the human body (true for most HAR races, false for xenotypes, which are all human-bodied).
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitHAR.PackageIds">
+            <summary>packageIds Humanoid Alien Races is published under.</summary>
+        </member>
+        <member name="P:JBFramework.KitHAR.Active">
+            <summary>Humanoid Alien Races is active.</summary>
+        </member>
+        <member name="M:JBFramework.KitHAR.IsAlienRace(Verse.ThingDef)">
+            <summary>Is the race def a HAR alien race (its class is AlienRace.ThingDef_AlienRace or derives from it)?</summary>
+        </member>
+        <member name="M:JBFramework.KitHAR.IsAlien(Verse.Pawn)">
+            <summary>Is the pawn of a HAR alien race?</summary>
+        </member>
+        <member name="M:JBFramework.KitHAR.IsCustomBodied(Verse.ThingDef)">
+            <summary>
+            A humanlike race with its own body (not BodyDefOf.Human). Code that walks body parts by human part defs (limbs, organs)
+            should treat such races carefully (Luciferium Overhaul's default: vanilla healing for them).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitHAR.IsCustomBodied(Verse.Pawn)">
+            <summary>The pawn's race is custom-bodied.</summary>
+        </member>
+        <member name="M:JBFramework.KitHAR.HumanlikeRaces">
+            <summary>Every humanlike race def, humans first, then by label.</summary>
+        </member>
+        <member name="T:JBFramework.KitNiceBillTab">
+            <summary>
+            Nice Bill Tab (Andromeda.NiceBillTab; also bundled inside Nice Inventory Tab when Nice Bill Tab itself is not active). It caches
+            the filtered bill list of the open Bills tab and rebuilds it only on its own actions, so bills added or removed from code stay
+            invisible until the tab is reopened. <see cref="M:JBFramework.KitNiceBillTab.RequestRefresh"/> raises its static <c>NiceBillTab.TabBillsDrawer.shouldRefreshFilter</c>
+            flag (it rebuilds on the next frame and clears the flag itself). From Set my Defaults (BetterWorkbenchDefaults) NiceBillTabCompat.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitNiceBillTab.PackageIds">
+            <summary>packageIds that bring Nice Bill Tab's code.</summary>
+        </member>
+        <member name="P:JBFramework.KitNiceBillTab.Active">
+            <summary>Nice Bill Tab's drawer is loaded (by itself or bundled).</summary>
+        </member>
+        <member name="M:JBFramework.KitNiceBillTab.RequestRefresh">
+            <summary>Asks Nice Bill Tab to rebuild its bill list on the next frame. No-op without it. Never throws.</summary>
+        </member>
+        <member name="T:JBFramework.KitHearth">
+            <summary>Hearth &amp; Harbor and Silverline (JB mods with their own core): presence only.</summary>
+        </member>
+        <member name="F:JBFramework.KitHearth.HearthHarborId">
+            <summary>packageId of Hearth &amp; Harbor.</summary>
+        </member>
+        <member name="F:JBFramework.KitHearth.SilverlineId">
+            <summary>packageId of Silverline (the bank).</summary>
+        </member>
+        <member name="P:JBFramework.KitHearth.HearthHarbor">
+            <summary>Hearth &amp; Harbor is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitHearth.Silverline">
+            <summary>Silverline is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitHearth.Any">
+            <summary>Either of the two is active (guests and money may come from them).</summary>
+        </member>
+        <member name="T:JBFramework.KitVEPipes">
+            <summary>
+            Vanilla Expanded Framework's PipeSystem (OskarPotocki.VanillaFactionsExpanded.Core): which defs and things belong to a pipe network
+            (gas, chemfuel, nutrient paste, hemogen …). Read-only and by reflection: a thing is on a network when one of its comps derives from
+            <c>PipeSystem.CompResource</c>; the network def is <c>CompProperties_Resource.pipeNet</c>. Checked against VEF's PipeSystem.dll for 1.7.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitVEPipes.PackageId">
+            <summary>packageId of Vanilla Expanded Framework.</summary>
+        </member>
+        <member name="P:JBFramework.KitVEPipes.Active">
+            <summary>VEF is active and its PipeSystem types were found.</summary>
+        </member>
+        <member name="M:JBFramework.KitVEPipes.NetworksOf(Verse.ThingDef)">
+            <summary>defNames of the pipe networks the def connects to (empty when none or without VEF).</summary>
+        </member>
+        <member name="M:JBFramework.KitVEPipes.IsPipeDef(Verse.ThingDef)">
+            <summary>Does the def connect to any VE pipe network?</summary>
+        </member>
+        <member name="M:JBFramework.KitVEPipes.IsOnPipeNet(Verse.Thing)">
+            <summary>Does the thing have a VE pipe network comp?</summary>
+        </member>
+        <member name="T:JBFramework.KitDetect">
+            <summary>
+            Which DLCs and mods are active. Every check accepts a packageId in any case, with or without the Workshop "_steam" postfix, and
+            never throws (false when the game is not ready). The active-mod list cannot change while the game runs, so results are cached
+            after the first call; <see cref="M:JBFramework.KitDetect.Refresh"/> clears the cache (only tests need it).
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitDetect.RoyaltyId">
+            <summary>packageId of the Royalty DLC.</summary>
+        </member>
+        <member name="F:JBFramework.KitDetect.IdeologyId">
+            <summary>packageId of the Ideology DLC.</summary>
+        </member>
+        <member name="F:JBFramework.KitDetect.BiotechId">
+            <summary>packageId of the Biotech DLC.</summary>
+        </member>
+        <member name="F:JBFramework.KitDetect.AnomalyId">
+            <summary>packageId of the Anomaly DLC.</summary>
+        </member>
+        <member name="F:JBFramework.KitDetect.OdysseyId">
+            <summary>packageId of the Odyssey DLC.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.Royalty">
+            <summary>Royalty is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.Ideology">
+            <summary>Ideology is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.Biotech">
+            <summary>Biotech is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.Anomaly">
+            <summary>Anomaly is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.Odyssey">
+            <summary>Odyssey is active.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.ActiveDlcNames">
+            <summary>English names of the active DLCs, in release order.</summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.IsActive(System.String)">
+            <summary>Is the mod or DLC active? Cached per packageId.</summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.AnyActive(System.String[])">
+            <summary>True when at least one of the packageIds is active (for mods that were re-uploaded under new ids).</summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.FirstActive(System.String[])">
+            <summary>The first active packageId of the list (as written in the list), or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.ActiveName(System.String)">
+            <summary>The display name of an active mod (as in its About.xml), or null when it is not active.</summary>
+        </member>
+        <member name="P:JBFramework.KitDetect.ActivePackageIds">
+            <summary>
+            packageIds of all active mods and DLCs, lower case, without the "_steam" postfix, in load order. Empty before the game read
+            the mod list.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.Refresh">
+            <summary>Clears the cached answers.</summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.Normalize(System.String)">
+            <summary>packageId without the Workshop "_steam" postfix, trimmed, lower case ("" for null).</summary>
+        </member>
+        <member name="M:JBFramework.KitDetect.Same(System.String,System.String)">
+            <summary>The two ids name the same mod (case and "_steam" ignored).</summary>
+        </member>
+        <member name="T:JBFramework.KitKnown">
+            <summary>
+            Queries over the compatibility knowledge base (<see cref="T:JBFramework.ModNoteDef"/>, shipped with the framework, extendable by any mod's
+            XML). Available once defs are loaded (from <see cref="M:JBFramework.KitModBase.OnDefsLoaded"/> on; earlier calls return empty results).
+            A mod states the tags it cares about with <see cref="M:JBFramework.KitKnown.Declare(JBFramework.KitMod,System.String[])"/>; its Compatibility page then lists the active mods with those
+            tags, their known pitfalls and advice, and the other Harmony owners of the methods it patches.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitKnown.All">
+            <summary>Every note (empty before defs are loaded).</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.Note(System.String)">
+            <summary>The note for a packageId (any case, with or without "_steam"), or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.WithTag(System.String)">
+            <summary>Notes with the tag (active or not).</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.Active">
+            <summary>Notes of the mods active in this game.</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.ActiveWithTag(System.String)">
+            <summary>Notes of active mods with the tag ("Is any bills UI mod active?").</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.AnyActiveWithTag(System.String)">
+            <summary>Is any active mod known to have the tag?</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.Declare(JBFramework.KitMod,System.String[])">
+            <summary>
+            Mod <paramref name="k"/> cares about these tags (call in Register or OnDefsLoaded; repeated calls add). Its Compatibility
+            page and diagnosis report then list the active known mods with any of them.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.DeclaredTags(JBFramework.KitMod)">
+            <summary>The tags mod <paramref name="k"/> declared.</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.RelevantFor(JBFramework.KitMod)">
+            <summary>Active known mods relevant for <paramref name="k"/>: any declared tag matches (the mod itself excluded).</summary>
+        </member>
+        <member name="M:JBFramework.KitKnown.OwnerName(System.String)">
+            <summary>
+            A readable name for a Harmony owner id: the active mod whose packageId or noted Harmony id it is, else the id itself.
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitKnownPage">
+            <summary>
+            The knowledge base on the Compatibility pages (through <see cref="F:JBFramework.KitHooks.CompatPage"/>) and in the diagnosis reports (through
+            <see cref="F:JBFramework.KitHooks.ReportLines"/>): known mods relevant for the mod, their pitfalls and advice, and the Harmony co-owners of the
+            methods the mod patches, by name. On the framework's own page: every active known mod.
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitKnownPage.CoOwner">
+            <summary>One patched method and the other Harmony owners on it.</summary>
+        </member>
+        <member name="M:JBFramework.KitKnownPage.CoOwners(JBFramework.KitMod)">
+            <summary>Methods mod <paramref name="k"/> patches that other Harmony ids patch too, with readable owner names. Never throws.</summary>
+        </member>
+        <member name="T:JBFramework.ModNoteDef">
+            <summary>
+            One entry of the framework's compatibility knowledge base: what JB mods (and anyone else) should know about another mod. Data
+            only, in <c>Common/Defs/ModNotes/*.xml</c>; translations through DefInjected (<c>JBFramework.ModNoteDef</c>). Updating the
+            framework updates the knowledge for every mod that queries it (<see cref="T:JBFramework.KitKnown"/>).
+            <code>
+            &lt;JBFramework.ModNoteDef&gt;
+              &lt;defName&gt;JBF_Note_NiceBillTab&lt;/defName&gt;
+              &lt;label&gt;Nice Bill Tab&lt;/label&gt;
+              &lt;description&gt;What the mod does, one or two sentences.&lt;/description&gt;
+              &lt;packageIds&gt;&lt;li&gt;Andromeda.NiceBillTab&lt;/li&gt;&lt;/packageIds&gt;
+              &lt;tags&gt;&lt;li&gt;changes-bills-ui&lt;/li&gt;&lt;/tags&gt;
+              &lt;pitfall&gt;What tends to break.&lt;/pitfall&gt;
+              &lt;advice&gt;What a mod (or the player) should do.&lt;/advice&gt;
+            &lt;/JBFramework.ModNoteDef&gt;
+            </code>
+            The type's full name is fixed forever (it is in XML files of other mods that may add notes).
+            </summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.packageIds">
+            <summary>Every packageId the mod was published under (forks, re-uploads, "Continued" versions), as in their About.xml.</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.tags">
+            <summary>Tags (lower case, dash-separated; see <see cref="T:JBFramework.KitTags"/>) that mods query by.</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.versions">
+            <summary>RimWorld versions listed in the About.xml files the note was made from (information only).</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.workshopIds">
+            <summary>Steam Workshop ids of the uploads the note was made from (information only).</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.harmonyIds">
+            <summary>Harmony ids the mod patches under, when they differ from its packageId (for the "who else patches this" report).</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.pitfall">
+            <summary>Known pitfalls with other mods or with JB mods (player-facing, translated). Empty when none are known.</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.advice">
+            <summary>What to do about it (player-facing, translated). Empty when nothing needs doing.</summary>
+        </member>
+        <member name="F:JBFramework.ModNoteDef.source">
+            <summary>Where the facts come from (not shown to players): About.xml paths, knowledge files, own tests.</summary>
+        </member>
+        <member name="P:JBFramework.ModNoteDef.Active">
+            <summary>True when one of <see cref="F:JBFramework.ModNoteDef.packageIds"/> is active.</summary>
+        </member>
+        <member name="P:JBFramework.ModNoteDef.ActivePackageId">
+            <summary>The active packageId, or null.</summary>
+        </member>
+        <member name="M:JBFramework.ModNoteDef.HasTag(System.String)">
+            <summary>Has the note the tag (case-insensitive)?</summary>
+        </member>
+        <member name="M:JBFramework.ModNoteDef.ConfigErrors">
+            <summary>Checks the note (missing packageIds, duplicate tags).</summary>
+        </member>
+        <member name="T:JBFramework.KitTags">
+            <summary>
+            Tags used in the knowledge base. Plain strings: a mod may use its own tags too; these are the ones the framework's notes use and
+            that the framework's adapters care about.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitTags.AlienRaces">
+            <summary>Custom humanoid races (Humanoid Alien Races and race mods built on it, Vanilla Races Expanded).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesBillsUi">
+            <summary>Changes the bills tab or the bill list UI.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesBills">
+            <summary>Changes how bills, workbenches or crafting jobs behave.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.AddsPipeNetworks">
+            <summary>Adds pipe networks (VE PipeSystem, plumbing).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.CombatOverhaul">
+            <summary>Replaces combat (ammo, armour, cover).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ReplacesConstruction">
+            <summary>Replaces or extends construction (replace in place, blueprints over things).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesQuality">
+            <summary>Changes item or construction quality.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesStorage">
+            <summary>Changes storage, stack sizes or hauling.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesMedical">
+            <summary>Changes medicine, beds, surgery or healing.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Guests">
+            <summary>Adds or changes visitors and guests.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Robots">
+            <summary>Adds robots or mechanoid workers.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Editor">
+            <summary>Edits pawns or items directly (character editors).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Performance">
+            <summary>Changes performance (optimisers, profilers).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.EarlyPatcher">
+            <summary>Patches assemblies very early (before Harmony).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Multiplayer">
+            <summary>Multiplayer: needs deterministic code.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Ai">
+            <summary>Calls an AI language model.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Library">
+            <summary>A code library other mods depend on.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesArchitect">
+            <summary>Changes the architect menu or building lists.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesWork">
+            <summary>Changes the work tab or work priorities.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.AddsBuildings">
+            <summary>Adds furniture, buildings or floors.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Economy">
+            <summary>Changes the economy: trade, prices, silver.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Psycasts">
+            <summary>Changes psycasts or abilities.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.Genes">
+            <summary>Changes genes or xenotypes.</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.ChangesPawnUi">
+            <summary>Changes the pawn inspect UI (HUDs, tabs).</summary>
+        </member>
+        <member name="F:JBFramework.KitTags.JbMod">
+            <summary>A JB mod (Julius Berger).</summary>
+        </member>
+        <member name="T:JBFramework.Framework">
+            <summary>
+            The framework as a whole: its identity and version, the list of mods that use it (tenants) and the combined report.
+            Every dependent mod owns one <see cref="T:JBFramework.KitMod"/> (its <see cref="P:JBFramework.KitModBase.Kit"/>); this class only keeps the list.
+            Nothing here depends on the order in which RimWorld creates mod classes.
+            </summary>
+        </member>
+        <member name="P:JBFramework.Framework.ApiLevel">
+            <summary>
+            API level of the installed framework. It rises by one with every release that adds public API. A dependent mod states the
+            level it needs (stamped automatically by build/JBMod.props as <see cref="T:JBFramework.KitRequiresAttribute"/>); when the installed level is
+            lower, that mod's framework features stay off and the player is told in plain words to update the framework.
+            </summary>
+        </member>
+        <member name="P:JBFramework.Framework.Version">
+            <summary>Version of the installed framework ("1.0.0"), the same as its About.xml modVersion.</summary>
+        </member>
+        <member name="P:JBFramework.Framework.Name">
+            <summary>Player-facing name of the framework ("JB Framework").</summary>
+        </member>
+        <member name="P:JBFramework.Framework.PackageId">
+            <summary>packageId of the framework mod as published (without test-slot or Workshop suffixes).</summary>
+        </member>
+        <member name="P:JBFramework.Framework.Mods">
+            <summary>The mods that use the framework, in the order they were created. The framework itself is not in this list.</summary>
+        </member>
+        <member name="M:JBFramework.Framework.Find(System.String)">
+            <summary>
+            The context of a dependent mod by packageId (any case, with or without the Workshop "_steam" postfix), or null.
+            </summary>
+        </member>
+        <member name="M:JBFramework.Framework.Of``1">
+            <summary>
+            The context of the mod whose <see cref="T:JBFramework.KitModBase"/> subclass is <typeparamref name="TMod"/>, or null before RimWorld created
+            that mod class (static constructors of [StaticConstructorOnStartup] classes, defs and patches all run later, so from there it
+            is safe; inside Register use <c>r.Kit</c>). Handy for patches: <c>var k = Framework.Of&lt;LOMod&gt;(); if (k?.On("walls") != true) return;</c>
+            </summary>
+        </member>
+        <member name="M:JBFramework.Framework.IsModActive(System.String)">
+            <summary>Is a mod or DLC active? packageId with or without the Workshop "_steam" postfix, any case. Never throws.</summary>
+        </member>
+        <member name="M:JBFramework.Framework.DiagnosisReport">
+            <summary>
+            The combined diagnosis report of the framework and every dependent mod, as plain text for bug reports. Never contains
+            personal paths. Never throws: a mod whose report fails shows the error line instead.
+            </summary>
+        </member>
+        <member name="P:JBFramework.Framework.Self">
+            <summary>The framework's own context (its settings hold the global preferences). Null until the framework mod was created.</summary>
+        </member>
+        <member name="M:JBFramework.Framework.AllContexts">
+            <summary>Every context, the framework's own included (snapshot).</summary>
+        </member>
+        <member name="M:JBFramework.Framework.ForAssembly(System.Reflection.Assembly)">
+            <summary>The context whose mod assembly is <paramref name="a"/> (settings objects find their mod this way), or null.</summary>
+        </member>
+        <member name="M:JBFramework.Framework.ForEach(System.Action{JBFramework.KitMod},System.String)">
+            <summary>Runs <paramref name="a"/> once per context, each in its own fence: one mod's exception never reaches another.</summary>
+        </member>
+        <member name="P:JBFramework.Framework.WindowScale">
+            <summary>Window size factor chosen by the player (all JB windows).</summary>
+        </member>
+        <member name="F:JBFramework.Framework.VerboseLog">
+            <summary>Info and debug lines also in the game log (they always go to each mod's own log file).</summary>
+        </member>
+        <member name="P:JBFramework.Framework.ShowNerd">
+            <summary>Show nerd settings in every JB settings window.</summary>
+        </member>
+        <member name="P:JBFramework.Framework.WelcomeCards">
+            <summary>Show the welcome card when a mod meets a new colony.</summary>
+        </member>
+        <member name="F:JBFramework.Framework.TooOldMessages">
+            <summary>Mods whose installed framework is too old (filled by the contexts and by the startup scan).</summary>
+        </member>
+        <member name="M:JBFramework.Framework.RequiredLevel(System.Reflection.Assembly,System.String@)">
+            <summary>
+            API level a mod assembly needs: the <see cref="T:JBFramework.KitRequiresAttribute"/> stamped by build/JBMod.props, read without running
+            any of the mod's code (0 = not stamped).
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitRequiresAttribute">
+            <summary>
+            Stamped on a dependent mod's assembly by build/JBMod.props: the API level the mod needs and the framework version it was built
+            with. The framework reads it without running the mod's code, so a too-old framework can say so before anything breaks.
+            Write it by hand only when a mod is built without JBMod.props.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRequiresAttribute.#ctor(System.Int32,System.String)">
+            <summary>Needs at least <paramref name="apiLevel"/>; <paramref name="frameworkVersion"/> is the version the mod was built with.</summary>
+        </member>
+        <member name="P:JBFramework.KitRequiresAttribute.ApiLevel">
+            <summary>Lowest framework API level the mod works with.</summary>
+        </member>
+        <member name="P:JBFramework.KitRequiresAttribute.FrameworkVersion">
+            <summary>Framework version the mod was built with (shown to the player when the installed one is too old).</summary>
+        </member>
+        <member name="T:JBFramework.FrameworkGame">
+            <summary>
+            The framework's one GameComponent. It stores every dependent mod's per-save profile (plain values, keyed by packageId) and the
+            data of mods that registered <see cref="M:JBFramework.KitRegistry.SaveData(System.Action)"/>, drives ticks, caretaker checks, deferred change delivery and
+            welcome cards. A removed mod's profile is kept silently (plain values need none of its types); its own SaveData node is
+            kept as raw XML (written back unchanged) without touching its types. Created by RimWorld; mods never use it directly.
+            </summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.#ctor(Verse.Game)">
+            <summary>Created by RimWorld for every game (new or loaded).</summary>
+        </member>
+        <member name="P:JBFramework.FrameworkGame.Instance">
+            <summary>The component of the running game, or null (main menu, other game).</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.SaveKey(JBFramework.KitMod)">
+            <summary>Save key of a mod: packageId without the Workshop "_steam" postfix and without a test-slot suffix (".slotN").</summary>
+        </member>
+        <member name="P:JBFramework.FrameworkGame.AbsentMods">
+            <summary>Profiles of mods that are not loaded right now (kept for when they come back).</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.StartedNewGame">
+            <summary>A new game: every per-save mod gets a copy of its template.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.LoadedGame">
+            <summary>A loaded game: profiles from the save; mods without one get a copy of their template ("joined").</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.FinalizeInit">
+            <summary>Remembers the running game.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.GameComponentTick">
+            <summary>Caretaker checks and each mod's OnTick, every mod in its own fence.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.GameComponentUpdate">
+            <summary>Delivers pending setting changes of every mod.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.GameComponentOnGUI">
+            <summary>Welcome cards.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkGame.ExposeData">
+            <summary>Saves and loads every mod's entry (plain values; each mod's SaveData in its own node).</summary>
+        </member>
+        <member name="T:JBFramework.KitSaveEntry">
+            <summary>
+            One mod's part of a save: its profile and, inside &lt;data&gt;, what its SaveData callback writes. When the mod is absent or
+            blocked (framework too old), its &lt;data&gt; node is kept as raw XML and written back unchanged on the next save, so the mod finds
+            its values again when it returns; none of its types are touched.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitSaveEntry.rawData">
+            <summary>The &lt;data&gt; node of an absent or blocked mod, as loaded (outer XML), or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitSaveEntry.KeepRaw">
+            <summary>Absent mod: remember its &lt;data&gt; node on load, write it back verbatim on save. Never throws.</summary>
+        </member>
+        <member name="T:JBFramework.KitCompatAttribute">
+            <summary>
+            Marks a [HarmonyPatch] class as part of a soft integration. When the named mod or DLC is not active the class is not applied
+            (no error); when it is active and the class fails, the mod's matching compatibility entry shows "failed: reason".
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitCompatAttribute.#ctor(System.String)">
+            <summary>The other mod's packageId (or a DLC's, "ludeon.rimworld.biotech").</summary>
+        </member>
+        <member name="P:JBFramework.KitCompatAttribute.PackageId">
+            <summary>The other mod's packageId.</summary>
+        </member>
+        <member name="T:JBFramework.KitCompatEntry">
+            <summary>One line of a mod's Compatibility page: an integration or a known incompatibility.</summary>
+        </member>
+        <member name="F:JBFramework.KitCompatEntry.Failures">
+            <summary>Reasons collected from failed [KitCompat] patch classes.</summary>
+        </member>
+        <member name="P:JBFramework.KitCompatEntry.Name">
+            <summary>The other mod's name as shown.</summary>
+        </member>
+        <member name="P:JBFramework.KitCompatEntry.PackageId">
+            <summary>The other mod's packageId (or a DLC's).</summary>
+        </member>
+        <member name="M:JBFramework.KitCompatEntry.HealthyWhen(System.Func{System.Boolean})">
+            <summary>A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced.</summary>
+        </member>
+        <member name="T:JBFramework.KitCompatRegistry">
+            <summary>One mod's compatibility entries.</summary>
+        </member>
+        <member name="M:JBFramework.KitCompatRegistry.ReportFailure(System.String,System.String)">
+            <summary>Called by the patch applier for a failed [KitCompat] patch class.</summary>
+        </member>
+        <member name="T:JBFramework.KitCompat">
+            <summary>DLC list and the mod-active helper used everywhere in the framework (shared, stateless).</summary>
+        </member>
+        <member name="F:JBFramework.KitCompat.Dlcs">
+            <summary>The five DLCs (packageId → English name).</summary>
+        </member>
+        <member name="M:JBFramework.KitCompat.Strip(System.String)">
+            <summary>packageId without the Workshop "_steam" postfix, trimmed.</summary>
+        </member>
+        <member name="M:JBFramework.KitCompat.IsModActive(System.String)">
+            <summary>Is a mod or DLC active? Accepts packageIds with or without the "_steam" postfix, any case. Never throws.</summary>
+        </member>
+        <member name="M:JBFramework.KitCompat.ActiveDlcNames">
+            <summary>English names of the active DLCs.</summary>
+        </member>
+        <member name="T:JBFramework.KitGuard">
+            <summary>
+            One mod's error barrier (public face: <see cref="M:JBFramework.KitMod.Run(System.String,System.String,System.Action)"/>). An exception is logged once per site
+            with full stack, counted and swallowed. Three failures in a row at one site pause the section for this session: the section
+            reads as off, a letter tells the player, the window offers Resume. <see cref="F:JBFramework.KitMod.Core"/> is never paused.
+            A successful run resets that site's counter. Pauses of one mod never touch another mod.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitGuard.TotalFailures">
+            <summary>Total exceptions caught since start (all sections of this mod).</summary>
+        </member>
+        <member name="M:JBFramework.KitGuard.ResetAll">
+            <summary>Tests: forget all pauses and counters.</summary>
+        </member>
+        <member name="T:JBFramework.KitCaretaker">
+            <summary>
+            One mod's self-repair checks (<see cref="M:JBFramework.KitRegistry.Caretaker(System.String,System.String,System.Func{System.Int32})"/>): one check every 250 ticks (round robin) and all checks once
+            after loading a save, driven by the framework's game component.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitCaretaker.RunAll(System.Boolean)">
+            <summary>Runs every check whose section is on. force = also checks of switched-off sections (still not paused or unavailable ones).</summary>
+        </member>
+        <member name="T:JBFramework.KitHooks">
+            <summary>
+            Internal extension points, so new framework parts (compatibility knowledge base, shared functions, the test harness assembly
+            JBFramework.Testing via InternalsVisibleTo) plug in from their own files without editing Core or UI. Every hook is called inside
+            a fence: an exception is booked on the mod concerned (or on the framework) and never stops the other hooks. Add with +=/Add at
+            static-constructor time or from a [StaticConstructorOnStartup] class; hooks added after an event fired do not see it again.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitHooks.ModBooted">
+            <summary>After a mod's boot sequence (registration, settings, patches) finished. Not called for blocked mods.</summary>
+        </member>
+        <member name="F:JBFramework.KitHooks.DefsLoaded">
+            <summary>Once, after every mod's OnDefsLoaded ran (StaticConstructorOnStartup of the framework).</summary>
+        </member>
+        <member name="F:JBFramework.KitHooks.ReportLines">
+            <summary>Extra lines for a mod's diagnosis report (appended after the mod's own Diagnosis()).</summary>
+        </member>
+        <member name="F:JBFramework.KitHooks.CompatPage">
+            <summary>
+            Extra parts of a mod's Compatibility page, drawn after the integrations and known conflicts: (mod, width, y) → new y.
+            Drawn inside the page's scroll view and error fence.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitHooks.GameExpose">
+            <summary>Framework-wide per-save data (not owned by one mod), inside FrameworkGame's node "framework". Called in every Scribe pass.</summary>
+        </member>
+        <member name="F:JBFramework.KitHooks.GameReset">
+            <summary>A new Game object was created (new game, or right before a save is loaded): reset framework-wide per-save state.</summary>
+        </member>
+        <member name="T:JBFramework.KitInfo">
+            <summary>
+            What the framework needs to know about a mod. Passed once to the <see cref="T:JBFramework.KitModBase"/> constructor; the framework keeps its
+            own copy, so changing this object later has no effect. Every property is optional: missing ones are filled from the mod's
+            About.xml (name) or derived (ShortId from the name, KeyPrefix = ShortId). ShortId and KeyPrefix should be unique among all mods
+            that use the framework (the log file and the translation keys depend on them): a clash is reported in the log.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.Name">
+            <summary>Player-facing mod name ("Luciferium Overhaul"). Used in the log prefix, letters and the window title.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.ShortId">
+            <summary>Short id for files and log channels ("LO"): the mod's log file is &lt;ShortId&gt;.log in the game's config folder.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.KeyPrefix">
+            <summary>Prefix of the translation keys of the mod's own registrations ("LO" → "LO.Setting.*", "LO.Section.*", "LO.Preset.*").</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.Version">
+            <summary>Mod version shown on the About page and in the diagnosis report ("2.0.0").</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.PerSave">
+            <summary>True: setting values and section switches live in each save; the settings file holds the template for new games.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.WorkshopId">
+            <summary>Steam Workshop id (About/PublishedFileId.txt), shown on the About page. Optional.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.Url">
+            <summary>Project or source link for the About page. Optional.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.LicenseLine">
+            <summary>Licence line for the About page ("MIT"). Optional.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.HarmonyId">
+            <summary>Harmony id for the mod's patch classes. Default (null): the mod's packageId as loaded.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.FirstStartPitch">
+            <summary>Two-line pitch for the welcome card (needs <see cref="P:JBFramework.KitInfo.PerSave"/>). Null = no card.</summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.MinApiLevel">
+            <summary>
+            Lowest framework API level the mod's code needs. 0 (default) = the level stamped by build/JBMod.props
+            (<see cref="T:JBFramework.KitRequiresAttribute"/>; default 1, raise it with -p:JBMinApiLevel=N or &lt;JBMinApiLevel&gt; in the csproj when the
+            mod uses members added in a later level: tools/release.py checks it).
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitInfo.Theme">
+            <summary>Look of the mod's settings window (accent colour, mark, icons).</summary>
+        </member>
+        <member name="M:JBFramework.KitInfo.Clone">
+            <summary>A copy (the framework keeps its own).</summary>
+        </member>
+        <member name="T:JBFramework.KitTheme">
+            <summary>Per-mod look. Textures are loaded lazily; a missing texture draws nothing (never a pink square).</summary>
+        </member>
+        <member name="P:JBFramework.KitTheme.Accent">
+            <summary>Accent colour (headings, changed-row edge, selected chips). Default: Hearth &amp; Harbor amber.</summary>
+        </member>
+        <member name="P:JBFramework.KitTheme.MarkTex">
+            <summary>The mod's mark (a 128 px texture path such as "UI/LO/Mark"). Null = no mark.</summary>
+        </member>
+        <member name="M:JBFramework.KitTheme.Clone">
+            <summary>A copy (the framework keeps its own).</summary>
+        </member>
+        <member name="P:JBFramework.KitTheme.Icons">
+            <summary>Optional icon per page id ("overview", "general", "compat", "diagnosis", "about", "section:&lt;id&gt;", "page:&lt;id&gt;").</summary>
+        </member>
+        <member name="T:JBFramework.KitLogLevel">
+            <summary>Severity of a log line.</summary>
+        </member>
+        <member name="F:JBFramework.KitLogLevel.Debug">
+            <summary>Only with the "Detailed log" preference.</summary>
+        </member>
+        <member name="F:JBFramework.KitLogLevel.Info">
+            <summary>Normal events (own file always; game log with dev mode or "Detailed log").</summary>
+        </member>
+        <member name="F:JBFramework.KitLogLevel.Warn">
+            <summary>Something unexpected that the mod handled (yellow in the game log).</summary>
+        </member>
+        <member name="F:JBFramework.KitLogLevel.Error">
+            <summary>A real error (red in the game log).</summary>
+        </member>
+        <member name="T:JBFramework.KitLog">
+            <summary>
+            A mod's log (<see cref="P:JBFramework.KitMod.Log"/>). Warn and Error always go to the game log; Info only in dev mode or with the global
+            "Detailed log" preference; Debug only with "Detailed log". Every line also goes to the mod's own file next to the game config,
+            &lt;ShortId&gt;.log (rotated at 1 MB, previous kept as .old). Game log lines start with "[&lt;Name&gt;] [&lt;channel&gt;] ".
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitLog.ErrorCount">
+            <summary>Errors written through this log since start.</summary>
+        </member>
+        <member name="P:JBFramework.KitLog.WarnCount">
+            <summary>Warnings written through this log since start.</summary>
+        </member>
+        <member name="P:JBFramework.KitLog.FileName">
+            <summary>Name of the mod's log file (never the full path: reports must not contain personal paths).</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.Debug(System.String,System.String)">
+            <summary>Debug line (only with the "Detailed log" preference).</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.Info(System.String,System.String)">
+            <summary>Info line.</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.Warn(System.String,System.String)">
+            <summary>Warning (yellow in the game log).</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.Error(System.String,System.String)">
+            <summary>Error (red in the game log), with the exception's type, message and stack when given.</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.Error(System.String,System.String,System.Exception)">
+            <summary>An error with the exception (full stack in the log file).</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.Once(System.String,JBFramework.KitLogLevel,System.String,System.String)">
+            <summary>Logs only the first time <paramref name="key"/> is seen in this session (fallbacks, missing optional mods …).</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.RecentSnapshot">
+            <summary>Copy of the last (up to 300) lines, for the diagnosis page and bug reports.</summary>
+        </member>
+        <member name="M:JBFramework.KitLog.SessionStart">
+            <summary>Session header so each start is easy to find in the file.</summary>
+        </member>
+        <member name="T:JBFramework.KitMod">
+            <summary>
+            One dependent mod's context: its settings, sections, presets, compatibility entries, log, error fences and patch report.
+            Created by the <see cref="T:JBFramework.KitModBase"/> constructor and reachable as <see cref="P:JBFramework.KitModBase.Kit"/> (or
+            <see cref="M:JBFramework.Framework.Of``1"/> / <see cref="M:JBFramework.Framework.Find(System.String)"/> from patches). Nothing in it is shared with other mods.
+            Reads go against <see cref="P:JBFramework.KitMod.Current"/>: the save's profile when the mod is per-save and a game runs, else the template.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitMod.Core">
+            <summary>The always-on pseudo section for general settings and framework code. Never paused, never switched off.</summary>
+        </member>
+        <member name="F:JBFramework.KitMod.Window">
+            <summary>UI state of this mod's settings window (src UI; one window state per mod).</summary>
+        </member>
+        <member name="F:JBFramework.KitMod.SaveExpose">
+            <summary>Per-save expose callback (<see cref="M:JBFramework.KitRegistry.SaveData(System.Action,System.Action)"/>) and its reset.</summary>
+        </member>
+        <member name="F:JBFramework.KitMod.SaveReset">
+            <summary>Per-save expose callback (<see cref="M:JBFramework.KitRegistry.SaveData(System.Action,System.Action)"/>) and its reset.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.PackageId">
+            <summary>The mod's packageId as loaded, lower case (a test slot or the Workshop may add a suffix).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Name">
+            <summary>The mod's name (<see cref="P:JBFramework.KitInfo.Name"/>).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Version">
+            <summary>The mod's version (<see cref="P:JBFramework.KitInfo.Version"/>).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Info">
+            <summary>What the mod told the framework, filled with defaults. A copy: changing it has no effect.</summary>
+        </member>
+        <member name="F:JBFramework.KitMod.Cfg">
+            <summary>The framework's own copy of the mod's info (fixed after the constructor).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Mod">
+            <summary>The mod's <see cref="T:Verse.Mod"/> class instance.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Content">
+            <summary>The mod's content pack (folders, packageId, assemblies).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Log">
+            <summary>The mod's log (own file &lt;ShortId&gt;.log, game log prefix "[&lt;Name&gt;]").</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Settings">
+            <summary>The mod's settings object, or null when the mod declares no <see cref="T:JBFramework.KitSettingsBase"/> subclass (nothing is saved).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Blocked">
+            <summary>True when the installed framework is too old for this mod: its framework features stay off (see <see cref="P:JBFramework.KitMod.BlockedReason"/>).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.BlockedReason">
+            <summary>Plain-words reason when <see cref="P:JBFramework.KitMod.Blocked"/>, else null.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.RequiredApiLevel">
+            <summary>API level the mod needs (from <see cref="T:JBFramework.KitRequiresAttribute"/> or <see cref="P:JBFramework.KitInfo.MinApiLevel"/>; 0 = not stated).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.BuiltWithFramework">
+            <summary>Framework version the mod was built with (from <see cref="T:JBFramework.KitRequiresAttribute"/>), or null.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Template">
+            <summary>The template profile (settings file). Global settings always live in its store.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.SaveProfile">
+            <summary>The running save's profile, or null (no game, or the mod is not per-save).</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Current">
+            <summary>The profile all reads and <see cref="M:JBFramework.KitMod.Set(System.String,System.Single)"/> go against right now: <see cref="P:JBFramework.KitMod.SaveProfile"/> ?? <see cref="P:JBFramework.KitMod.Template"/>.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.HasSaveProfile">
+            <summary>True while a game with a per-save profile runs (the settings window then offers "This save" and "Template").</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.On(System.String)">
+            <summary>
+            True if the section is active right now: available (its DLC or mod is present), not paused by the error fence, and switched on
+            in <see cref="P:JBFramework.KitMod.Current"/>. Every patch of a section returns early when this is false. <see cref="F:JBFramework.KitMod.Core"/> is always on.
+            Always false while <see cref="P:JBFramework.KitMod.Blocked"/>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMod.WhyOff(System.String)">
+            <summary>Why a section is off (plain words, translated), or null when it is on.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Get(System.String)">
+            <summary>Current value of a setting (0 for unknown keys, logged once).</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.GetBool(System.String)">
+            <summary>Current value of a Bool setting.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.GetInt(System.String)">
+            <summary>Current value of an Int, Enum or Silver setting, rounded.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.GetEnum``1(System.String)">
+            <summary>Current value of an Enum setting.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Set(System.String,System.Single)">
+            <summary>Sets a setting in <see cref="P:JBFramework.KitMod.Current"/> (clamped to its hard limits). Change callbacks follow, debounced.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Set(System.String,System.Boolean)">
+            <summary>Sets a Bool setting in <see cref="P:JBFramework.KitMod.Current"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Reset(System.String)">
+            <summary>Resets a setting in <see cref="P:JBFramework.KitMod.Current"/> to its default.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.SaveAsTemplate">
+            <summary>Copies the save's switches and values into the template (global values stay) and writes the settings file.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.ApplyTemplateToSave">
+            <summary>Copies the template's switches and values into the running save.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.WriteSettings">
+            <summary>Writes the mod's settings file now. Never throws.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.OpenSettings">
+            <summary>
+            Opens the mod's settings window, optionally on a page ("overview", "general", "section:&lt;id&gt;", "page:&lt;id&gt;",
+            "compat", "diagnosis", "about"). Never throws.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMod.OpenSettings(System.String)">
+            <summary>Opens the mod's settings window on a page ("overview", "general", "section:&lt;id&gt;", "page:&lt;id&gt;", "compat", "diagnosis", "about"). Never throws.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Run(System.String,System.String,System.Action)">
+            <summary>
+            Runs <paramref name="action"/> inside the mod's error fence: an exception is logged once per site (full stack), counted and
+            swallowed. Three failures in a row at one site pause the section for this session (<see cref="M:JBFramework.KitMod.On(System.String)"/> turns false, the player
+            gets a letter and a Resume button). Does nothing while the section is paused. <see cref="F:JBFramework.KitMod.Core"/> is never paused.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Run``1(System.String,System.String,System.Func{``0},``0)">
+            <summary>Like <see cref="M:JBFramework.KitMod.Run(System.String,System.String,System.Action)"/> for a function; returns <paramref name="fallback"/> on error or while paused.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Fail(System.String,System.String,System.Exception)">
+            <summary>Books a failure without running anything (for catch blocks with their own fallback logic).</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.IsPaused(System.String)">
+            <summary>True when the section paused itself after repeated errors.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Resume(System.String)">
+            <summary>Un-pauses a section and forgets its failure counters.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.CaretakerFixed(System.String,System.String)">
+            <summary>Call from a caretaker check (<see cref="M:JBFramework.KitRegistry.Caretaker(System.String,System.String,System.Func{System.Int32})"/>) for every repair: counted and logged as a warning.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.PatchFailures">
+            <summary>"Type: reason" for every Harmony patch class of the mod that could not be applied.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.DiagnosisReport">
+            <summary>The mod's diagnosis report (versions, load folders, sections, patches, compatibility, errors), no personal paths.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.ToString">
+            <summary>The mod's name.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Key(System.String)">
+            <summary>Translation key of the mod's own registrations: Key("Setting.x") → "LO.Setting.x".</summary>
+        </member>
+        <member name="F:JBFramework.KitMod.Drawing">
+            <summary>The context that is drawing a window right now (KitStyle.Accent and icons use it), or null.</summary>
+        </member>
+        <member name="P:JBFramework.KitMod.Comparing">
+            <summary>True while presets are compared on a scratch profile: no notifications, no writes to global values.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.MarkChanged(System.String)">
+            <summary>Remembers that a key ("lo.regrowDays", "section:&lt;id&gt;", "profile:loaded") changed. Delivered by <see cref="M:JBFramework.KitMod.FlushChanges"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitMod.FlushChanges">
+            <summary>
+            Delivers pending changes: the setting's OnChanged, then the mod's OnSettingsChanged(key), each fenced. Called once per frame
+            by this mod's settings window, on window close and by the framework's game component.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMod.Boot(JBFramework.KitModBase,Verse.ModContentPack,JBFramework.KitInfo)">
+            <summary>
+            Order: context → log header → API check → Register(r) → settings file (incl. legacy migration) → Harmony patch classes one by one.
+            A blocked mod (framework too old) stops after the API check: nothing registered, no settings written, no patches.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMod.SelfCheck">
+            <summary>Set-up mistakes a developer can make, each reported once in plain words (never blocks the mod).</summary>
+        </member>
+        <member name="T:JBFramework.KitModBase">
+            <summary>
+            Base of a dependent mod's <see cref="T:Verse.Mod"/> class. RimWorld finds the subclass by Type; its name decides the settings file
+            name (Mod_&lt;folder&gt;_&lt;TypeName&gt;.xml), so an existing mod keeps its old class name.
+            <code>
+            public sealed class LOMod : KitModBase
+            {
+                public LOMod(ModContentPack c) : base(c, new KitInfo { Name = "Luciferium Overhaul", ShortId = "LO", Version = "2.0.0", PerSave = true }) { }
+                protected override void Register(KitRegistry r) { r.Section("healing", "Healing"); r.Float("healing", "lo.regrowDays", 10f, 0.1f, 120f, "Days to regrow a limb").InGroup("Regrowth"); }
+            }
+            </code>
+            The base constructor does everything in this order: context, log header, API-level check, <see cref="M:JBFramework.KitModBase.Register(JBFramework.KitRegistry)"/>, settings file
+            (with legacy migration), the mod's Harmony patch classes one by one. <see cref="P:JBFramework.KitModBase.Kit"/> is already set while Register runs, but
+            fields of the subclass (and its constructor body) are not: Register runs inside the base constructor.
+            Every hook below runs inside the mod's error fence; an exception never reaches the game or another mod.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.#ctor(Verse.ModContentPack,JBFramework.KitInfo)">
+            <summary>Creates the mod's context and runs the boot sequence (see the class summary).</summary>
+        </member>
+        <member name="P:JBFramework.KitModBase.Kit">
+            <summary>
+            This mod's framework context: settings, sections, log, error fences. Set before <see cref="M:JBFramework.KitModBase.Register(JBFramework.KitRegistry)"/> runs (inside Register
+            <c>r.Kit</c> is the same object). Static code without the mod instance uses <see cref="M:JBFramework.Framework.Of``1"/>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.Register(JBFramework.KitRegistry)">
+            <summary>Registers sections, settings, presets, compatibility entries, pages, caretaker checks and per-save data. Called once.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.OnDefsLoaded">
+            <summary>After all defs are loaded (StaticConstructorOnStartup).</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.OnSettingsChanged(System.String)">
+            <summary>A setting ("lo.regrowDays"), section ("section:walls") or the whole profile ("profile:loaded") changed. Debounced: once per key per frame.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.OnGameStarted">
+            <summary>A new game started (per-save profile copied from the template).</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.OnGameLoaded(System.Boolean)">
+            <summary>A save was loaded; <paramref name="joinedExistingSave"/> = the mod was not in that save before.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.OnTick(System.Int32)">
+            <summary>Every game tick while a game runs. Keep it cheap; check your own intervals.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.Diagnosis">
+            <summary>Extra lines for the mod's diagnosis page and report.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.SettingsCategory">
+            <summary>The name in the mod settings list: <see cref="P:JBFramework.KitInfo.Name"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.DoSettingsWindowContents(UnityEngine.Rect)">
+            <summary>Draws the framework's settings window for this mod (sidebar, pages, search). Fenced.</summary>
+        </member>
+        <member name="M:JBFramework.KitModBase.WriteSettings">
+            <summary>Called by the game when the settings window closes: delivers pending changes and writes the settings file.</summary>
+        </member>
+        <member name="T:JBFramework.FrameworkMod">
+            <summary>
+            The framework's own mod class (one entry "JB Framework" in Mod settings): the mods found, their versions and areas, patch
+            failures, the combined report and the global preferences (window size, detailed log, welcome cards, nerd settings).
+            Created by RimWorld; mods never use it.
+            </summary>
+        </member>
+        <member name="M:JBFramework.FrameworkMod.#ctor(Verse.ModContentPack)">
+            <summary>Created by RimWorld.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkMod.Register(JBFramework.KitRegistry)">
+            <summary>The global preferences and the Mods page.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkMod.Diagnosis">
+            <summary>One line per mod that uses the framework.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkMod.OnSettingsChanged(System.String)">
+            <summary>Global preferences changed.</summary>
+        </member>
+        <member name="T:JBFramework.FrameworkSettings">
+            <summary>The framework's own settings file (global preferences). Created by RimWorld.</summary>
+        </member>
+        <member name="T:JBFramework.KitStartup">
+            <summary>Runs every mod's OnDefsLoaded once all defs exist, rewrites migrated settings files, tells the player about a too-old framework.</summary>
+        </member>
+        <member name="M:JBFramework.KitStartup.ScanForCopies">
+            <summary>
+            Other mods that ship their own JBFramework.dll. RimWorld loads every mod's DLLs with Assembly.LoadFrom: a copy in a mod that
+            loads before the framework would replace the real framework for everyone. Each finding is one plain-words error.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitStartup.ScanForTooNew">
+            <summary>Mods whose Mod class never reached the framework (constructor failed) but that need a newer API level.</summary>
+        </member>
+        <member name="T:JBFramework.KitPatches">
+            <summary>
+            Applies every [HarmonyPatch] class of one mod's assemblies one by one, with the mod's own Harmony id. A class that fails (target
+            missing, conflicting mod …) is logged and listed in <see cref="F:JBFramework.KitPatches.Failures"/>; everything else keeps working. Classes with
+            [KitCompat(id)] are skipped silently when that mod is not active.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitPatches.Failures">
+            <summary>"Type.FullName: reason" per skipped class.</summary>
+        </member>
+        <member name="F:JBFramework.KitPatches.SkippedInactive">
+            <summary>Patch classes skipped because their [KitCompat] mod is not active.</summary>
+        </member>
+        <member name="F:JBFramework.KitPatches.HarmonyInstance">
+            <summary>The mod's Harmony instance (as object). Null before patching or without patch classes.</summary>
+        </member>
+        <member name="F:JBFramework.KitPatches.Done">
+            <summary>True once ApplyAll ran.</summary>
+        </member>
+        <member name="M:JBFramework.KitPatches.SharedTargets">
+            <summary>
+            Methods this mod patches that other Harmony owners patch too ("Type.Method: owner, owner"). For the diagnosis page. Never throws.
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitPreset">
+            <summary>
+            A named set of values ("Subtle", "Generous", "Absurd"). Applying it changes only what the preset sets (via
+            <see cref="M:JBFramework.KitProfile.Set(System.String,System.Single)"/> / <see cref="M:JBFramework.KitProfile.SetSection(System.String,System.Boolean)"/>); everything else stays.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitPreset.Id">
+            <summary>The preset id.</summary>
+        </member>
+        <member name="P:JBFramework.KitPreset.Label">
+            <summary>Translated label (key &lt;Prefix&gt;.Preset.&lt;Id&gt;), English fallback.</summary>
+        </member>
+        <member name="P:JBFramework.KitPreset.Desc">
+            <summary>Translated description (key &lt;Prefix&gt;.Preset.&lt;Id&gt;.Desc), English fallback.</summary>
+        </member>
+        <member name="M:JBFramework.KitPreset.HighlightWhen(System.Func{JBFramework.KitProfile,System.Boolean})">
+            <summary>Decides when the chip is highlighted (default: applying the preset would change nothing).</summary>
+        </member>
+        <member name="M:JBFramework.KitPresetRegistry.Changes(JBFramework.KitPreset,JBFramework.KitProfile)">
+            <summary>
+            Keys (settings and "section:&lt;id&gt;") whose effective value the preset would change in <paramref name="target"/>.
+            Runs the preset against a scratch copy; callbacks do not fire. Global settings are not compared.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitPresetRegistry.IsMatch(JBFramework.KitPreset,JBFramework.KitProfile)">
+            <summary>True when applying the preset would change nothing (or the custom matcher says so).</summary>
+        </member>
+        <member name="M:JBFramework.KitPresetRegistry.Matching(JBFramework.KitProfile)">
+            <summary>The first preset that matches, or null ("Custom").</summary>
+        </member>
+        <member name="M:JBFramework.KitPresetRegistry.WouldOverwrite(JBFramework.KitPreset,JBFramework.KitProfile)">
+            <summary>Keys the preset would overwrite that the player had changed from their defaults (ask before applying when non-empty).</summary>
+        </member>
+        <member name="M:JBFramework.KitPresetRegistry.Apply(JBFramework.KitPreset,JBFramework.KitProfile)">
+            <summary>Applies the preset to <paramref name="target"/> (fenced). Callbacks and OnSettingsChanged follow as for manual edits.</summary>
+        </member>
+        <member name="T:JBFramework.KitProfile">
+            <summary>
+            One mod's values for one save: section switches and setting values, plus the welcome-card state. The template (in the mod's
+            settings file, <see cref="P:JBFramework.KitMod.Template"/>) has the same shape and is copied into every new game (and into an existing save
+            the mod joins). Global settings always live in the template's store. Presets get a profile to change.
+            Plain values only: a save keeps a removed mod's profile without needing any of its types.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.#ctor">
+            <summary>For the save system. Mods get profiles from <see cref="T:JBFramework.KitMod"/> and presets, never by creating one.</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.SectionOn(System.String)">
+            <summary>The section switch stored in this profile, or the section's default. Does not look at availability or pauses (see <see cref="M:JBFramework.KitMod.On(System.String)"/>).</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.SectionStored(System.String)">
+            <summary>True when the switch is stored here (changed from the default at some point).</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.SetSection(System.String,System.Boolean)">
+            <summary>
+            Switches a section. Only writes when the effective value changes; returns true if it did. When this is the running game's
+            profile (or the template while it is current), the section's onSwitched callback runs and the mod gets OnSettingsChanged("section:&lt;id&gt;").
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.ResetSection(System.String)">
+            <summary>Forgets a stored switch (back to the section default).</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.Get(System.String)">
+            <summary>Value of a setting in this profile (global settings: the template's value; 0 for unknown keys).</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.GetBool(System.String)">
+            <summary>Value of a Bool setting in this profile.</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.GetInt(System.String)">
+            <summary>Value of an Int, Enum or Silver setting in this profile, rounded.</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.Set(System.String,System.Single)">
+            <summary>Sets a setting in this profile (clamped).</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.Set(System.String,System.Boolean)">
+            <summary>Sets a Bool setting in this profile.</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.Reset(System.String)">
+            <summary>Resets a setting in this profile to its default.</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.CloneForNewGame">
+            <summary>Copy for a new game (or a save the mod joins): switches and values; the card is shown again.</summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.CopySettingsFrom(JBFramework.KitProfile)">
+            <summary>
+            Replaces switches and non-global values with those of <paramref name="src"/> ("save as template", "apply template to this save").
+            Global values of this profile are kept. Switch callbacks run for sections that change while this profile is current.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitProfile.ExposeData">
+            <summary>Saves and loads the profile (plain values only).</summary>
+        </member>
+        <member name="T:JBFramework.KitPage">
+            <summary>A custom page of a mod's settings window, drawn by the mod (listed in the sidebar after the section pages).</summary>
+        </member>
+        <member name="P:JBFramework.KitPage.Id">
+            <summary>The page id (page id in the window: "page:&lt;Id&gt;").</summary>
+        </member>
+        <member name="P:JBFramework.KitPage.Label">
+            <summary>Translated label (key &lt;Prefix&gt;.Page.&lt;Id&gt;), English fallback.</summary>
+        </member>
+        <member name="M:JBFramework.KitPage.WithIcon(System.String)">
+            <summary>Sidebar icon (texture path such as "UI/MyMod/Notes"). A missing texture draws nothing.</summary>
+        </member>
+        <member name="M:JBFramework.KitPage.WithOrder(System.Int32)">
+            <summary>Position in the sidebar: below 0 before General, otherwise after the section pages (default: registration order).</summary>
+        </member>
+        <member name="M:JBFramework.KitPage.InSection(System.String)">
+            <summary>The page belongs to a section: it is hidden while the section is not available and dimmed (with a switch-on banner) while it is off.</summary>
+        </member>
+        <member name="T:JBFramework.KitRegistry">
+            <summary>
+            What a mod writes in <see cref="M:JBFramework.KitModBase.Register(JBFramework.KitRegistry)"/>: sections, settings, presets, compatibility entries, pages, caretaker
+            checks and per-save data. Every method takes only the essentials; everything optional is a chained modifier on the returned
+            object (<c>r.Float("haul", "mm.speed", 1.5f, 1f, 5f, "Hauling speed").InGroup("Speed").AsNerd()</c>), so new options can be
+            added later without breaking any call. All texts are English fallbacks; translations go into the mod's Keyed files under
+            &lt;KeyPrefix&gt;.Section.*, .Setting.*, .SettingCat.*, .Preset.*, .Compat.*, .Page.*, .Enum.* (see API.md).
+            <para>Conventions: section and page ids are short lower-case words ("walls"); setting keys are "&lt;shortid&gt;.&lt;camelCase&gt;"
+            ("mm.haulSpeed"), unique within the mod and never renamed (they are the storage keys). The section id <see cref="F:JBFramework.KitMod.Core"/>
+            ("core") holds the general, always-on settings. Registering the same id or key twice returns the first registration.</para>
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitRegistry.Kit">
+            <summary>The mod's context. Use this inside Register (the mod's own <see cref="P:JBFramework.KitModBase.Kit"/> is set too, but this is always safe).</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Section(System.String,System.String)">
+            <summary>
+            A switchable feature area (on by default; per save when the mod is <see cref="P:JBFramework.KitInfo.PerSave"/>). Patches of the area ask
+            <see cref="M:JBFramework.KitMod.On(System.String)"/>. Modifiers: <see cref="M:JBFramework.KitSection.Describe(System.String)"/>, <see cref="M:JBFramework.KitSection.OffByDefault"/>,
+            <see cref="M:JBFramework.KitSection.OnlyWith(System.String)"/>, <see cref="M:JBFramework.KitSection.WhenSwitched(System.Action{System.Boolean})"/>, <see cref="M:JBFramework.KitSection.WithRemoval(System.Action{System.Collections.Generic.List{System.String}})"/> and more.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Section(System.String,System.String,System.String)">
+            <summary>A switchable feature area with a description (see <see cref="M:JBFramework.KitRegistry.Section(System.String,System.String)"/>).</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Bool(System.String,System.String,System.Boolean,System.String)">
+            <summary>On/off value in <paramref name="section"/> (<see cref="F:JBFramework.KitMod.Core"/> for general settings). Read with <see cref="M:JBFramework.KitMod.GetBool(System.String)"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Bool(System.String,System.String,System.Boolean,System.String,System.String)">
+            <summary>On/off value with a description (tooltip and search text).</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Int(System.String,System.String,System.Int32,System.Int32,System.Int32,System.String)">
+            <summary>
+            Whole number: slider <paramref name="min"/>..<paramref name="max"/>; typed values may go from min(0, min) to max(1,000,000, max)
+            (change with <see cref="M:JBFramework.KitSetting.HardLimits(System.Single,System.Single)"/>). Read with <see cref="M:JBFramework.KitMod.GetInt(System.String)"/>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Int(System.String,System.String,System.Int32,System.Int32,System.Int32,System.String,System.String)">
+            <summary>Whole number with a description.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Float(System.String,System.String,System.Single,System.Single,System.Single,System.String)">
+            <summary>Decimal number: slider <paramref name="min"/>..<paramref name="max"/>; typed values from min(0, min) to max(1,000,000, max). Read with <see cref="M:JBFramework.KitMod.Get(System.String)"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Float(System.String,System.String,System.Single,System.Single,System.Single,System.String,System.String)">
+            <summary>Decimal number with a description.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Percent(System.String,System.String,System.Single,System.Single,System.Single,System.String)">
+            <summary>Fraction stored as 0..1 (0.25 = 25 %), shown and typed as percent. Typed values from min(0, min) to max(1, max).</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Percent(System.String,System.String,System.Single,System.Single,System.Single,System.String,System.String)">
+            <summary>Percent value with a description.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.LogFloat(System.String,System.String,System.Single,System.Single,System.Single,System.String)">
+            <summary>Positive number on a log-scale slider (multipliers 0.1 … 100).</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.LogFloat(System.String,System.String,System.Single,System.Single,System.Single,System.String,System.String)">
+            <summary>Log-scale number with a description.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Enum``1(System.String,System.String,``0,System.String)">
+            <summary>
+            One value of an enum, shown as a dropdown. Labels: &lt;KeyPrefix&gt;.Enum.&lt;EnumTypeName&gt;.&lt;ValueName&gt;, fallback the
+            value name split at capitals. Stored as the number: never renumber the enum. Read with <see cref="M:JBFramework.KitMod.GetEnum``1(System.String)"/>;
+            in a preset use <c>p.Set(key, (float)(int)MyEnum.X)</c>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Enum``1(System.String,System.String,``0,System.String,System.String)">
+            <summary>Enum dropdown with a description.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Silver(System.String,System.String,System.Int32,System.Int32,System.Int32,System.String)">
+            <summary>Whole silver. Typed values stop at 10 × the silver stack limit of the game (keeps the game stable).</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Silver(System.String,System.String,System.Int32,System.Int32,System.Int32,System.String,System.String)">
+            <summary>Silver value with a description.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Preset(System.String,System.String,System.String,System.Action{JBFramework.KitProfile})">
+            <summary>
+            A named set of values shown as a chip on the Overview page and the welcome card. <paramref name="apply"/> changes only what it
+            names (<see cref="M:JBFramework.KitProfile.Set(System.String,System.Single)"/>, <see cref="M:JBFramework.KitProfile.SetSection(System.String,System.Boolean)"/>; an Int or Enum is set as a float).
+            The chip is highlighted while applying it would change nothing (<see cref="M:JBFramework.KitPreset.HighlightWhen(System.Func{JBFramework.KitProfile,System.Boolean})"/> overrides that).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Compat(System.String,System.String,System.String)">
+            <summary>
+            A soft integration shown on the Compatibility page ("active" / "not installed" / "failed: reason").
+            <paramref name="packageIdOrDlc"/>: the other mod's packageId (DLCs: "ludeon.rimworld.biotech"). Put
+            [<see cref="T:JBFramework.KitCompatAttribute"/>(packageId)] on the Harmony patch classes of the integration: they are applied only while that mod
+            is active (no error otherwise), and a failed one shows up in this entry. <see cref="M:JBFramework.KitCompatEntry.HealthyWhen(System.Func{System.Boolean})"/> adds a self-check.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Incompatible(System.String,System.String,System.String)">
+            <summary>A known incompatibility: the Compatibility page shows it with the reason and what to do.</summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Page(System.String,System.String,System.Action{UnityEngine.Rect})">
+            <summary>
+            A custom page drawn by the mod, listed after the section pages (<see cref="M:JBFramework.KitPage.WithOrder(System.Int32)"/> below 0: before General).
+            <paramref name="draw"/> gets the page area and does its own scrolling. It runs inside a UI fence: an exception shows an error
+            box on that page (with a retry button) and never pauses a section or reaches another mod.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.Caretaker(System.String,System.String,System.Func{System.Int32})">
+            <summary>
+            A self-repair check: runs once after every load and then one check every 250 ticks (round robin), only while its section is on.
+            Returns how many problems it fixed; report each fix with <see cref="M:JBFramework.KitMod.CaretakerFixed(System.String,System.String)"/>. Repair only what is clearly broken.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.SaveData(System.Action)">
+            <summary>
+            The mod's own per-save data, stored inside the framework's game component under the mod's packageId (so removing the mod
+            leaves no missing-class error, and its data comes back when the mod returns). <paramref name="exposeData"/> runs in every Scribe
+            pass inside the mod's own node: use Scribe_Values/Collections/Deep as usual and fix nulls on PostLoadInit.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRegistry.SaveData(System.Action,System.Action)">
+            <summary>
+            Per-save data with a reset: <paramref name="reset"/> runs when a new game object is created (new game or before a load) so
+            values of the previous game never leak into the next one (static fields!).
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitReport">
+            <summary>
+            Plain-text facts for the diagnosis pages, bug reports and test logs. Never contains personal paths: load folders are printed
+            relative to the mod folder, log files by name only. Every mod's part is fenced: a failing mod shows one error line.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitReport.LoadFolders(JBFramework.KitMod)">
+            <summary>The folders a mod loaded, relative to its root, highest priority first (proves the 1.6/1.7 layout).</summary>
+        </member>
+        <member name="M:JBFramework.KitReport.SafeLines(JBFramework.KitMod,System.String,System.Func{System.Collections.Generic.IEnumerable{System.String}})">
+            <summary>
+            Runs a mod's report function. A throwing one gives an error line instead; it is logged once and never pauses a section
+            (a broken report must not switch off gameplay).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitReport.Text(JBFramework.KitMod)">
+            <summary>One mod's report as text, never throws.</summary>
+        </member>
+        <member name="M:JBFramework.KitReport.EnvLines">
+            <summary>Environment lines shared by every report: framework, RimWorld, mods and DLCs.</summary>
+        </member>
+        <member name="M:JBFramework.KitReport.TenantSummary">
+            <summary>One line per dependent mod: name, version, areas on/total, patch failures, errors, blocked.</summary>
+        </member>
+        <member name="M:JBFramework.KitReport.Combined">
+            <summary>The combined report: environment, the framework's own part, then every dependent mod, each fenced.</summary>
+        </member>
+        <member name="T:JBFramework.KitSection">
+            <summary>A switchable feature area of a mod ("Bereich"): label, description, icon, default, availability and callbacks.</summary>
+        </member>
+        <member name="P:JBFramework.KitSection.Id">
+            <summary>The section id ("walls"). Settings, pages and caretaker checks refer to it.</summary>
+        </member>
+        <member name="P:JBFramework.KitSection.Label">
+            <summary>Translated label (key &lt;Prefix&gt;.Section.&lt;Id&gt;), English fallback.</summary>
+        </member>
+        <member name="P:JBFramework.KitSection.Desc">
+            <summary>Translated description (key &lt;Prefix&gt;.Section.&lt;Id&gt;.Desc), English fallback.</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.Describe(System.String)">
+            <summary>The description (shown on the Overview page and the section page; key &lt;Prefix&gt;.Section.&lt;Id&gt;.Desc).</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.WithIcon(System.String)">
+            <summary>Icon of the section page (texture path such as "UI/MyMod/Walls"). A missing texture draws nothing.</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.OffByDefault">
+            <summary>The section starts switched off (new games and the template).</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.OnlyWith(System.String)">
+            <summary>
+            The section exists only while the mod or DLC <paramref name="packageIdOrDlc"/> is active; otherwise it is greyed with "Needs &lt;name&gt;."
+            (name of the active mod, of the known-mods list, of the DLC, else the packageId).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitSection.OnlyWith(System.String,System.String)">
+            <summary>Like <see cref="M:JBFramework.KitSection.OnlyWith(System.String)"/> with the name shown in "Needs &lt;modName&gt;.".</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.AvailableWhen(System.Func{System.Boolean},System.String)">
+            <summary>The section exists only while <paramref name="available"/> is true; <paramref name="whyNot"/> says why not ("Needs a map with water.").</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.WithOrder(System.Int32)">
+            <summary>Position among the sections (default: registration order).</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.WhenSwitched(System.Action{System.Boolean})">
+            <summary>Called when the section is switched in the current profile (true = on). Runs even while the section is paused, so it can settle what it holds.</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.WithDiagnosis(System.Func{System.Collections.Generic.IEnumerable{System.String}})">
+            <summary>Extra lines for the section on the Diagnosis page and in the report. Fenced: a throwing function shows an error line.</summary>
+        </member>
+        <member name="M:JBFramework.KitSection.WithRemoval(System.Action{System.Collections.Generic.List{System.String}})">
+            <summary>
+            "Prepare for removal": undoes what the section put into the running save (things, bills, hediffs; see <see cref="T:JBFramework.KitRemoval"/>)
+            and appends one report line per action. Offered on the section page and the Diagnosis page while a game runs.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitSection.LegacyEnabled(System.String)">
+            <summary>The mod's OLD settings field (a bool Scribe_Values name) that held this switch: migrated once.</summary>
+        </member>
+        <member name="T:JBFramework.KitSectionRegistry">
+            <summary>All sections of one mod and the one question every patch asks (<see cref="M:JBFramework.KitMod.On(System.String)"/>).</summary>
+        </member>
+        <member name="F:JBFramework.KitSectionRegistry.All">
+            <summary>Registered sections, sorted by Order then registration.</summary>
+        </member>
+        <member name="M:JBFramework.KitSectionRegistry.Resort">
+            <summary>Stable sort by Order (equal orders keep registration order).</summary>
+        </member>
+        <member name="M:JBFramework.KitSectionRegistry.Available(System.String)">
+            <summary>Is the section's code possible here (DLC/mod present)? Core: true; unknown ids: false.</summary>
+        </member>
+        <member name="M:JBFramework.KitSectionRegistry.On(System.String)">
+            <summary>Available, not paused, switched on in the current profile. Unknown ids are a programming error: logged once, off.</summary>
+        </member>
+        <member name="M:JBFramework.KitSectionRegistry.WhyOff(System.String)">
+            <summary>Why a section is not on (null when it is): not available, paused, or switched off.</summary>
+        </member>
+        <member name="M:JBFramework.KitSectionRegistry.PrepareRemoval(System.String)">
+            <summary>Runs the section's PrepareRemoval (if any) and switches it off in the current profile. Returns the report lines.</summary>
+        </member>
+        <member name="T:JBFramework.KitSettingKind">
+            <summary>LogFloat: a positive number on a log-scale slider (stored as the plain number). Silver: whole silver, hard max 10 × silver stack limit.</summary>
+        </member>
+        <member name="T:JBFramework.KitSetting">
+            <summary>
+            One tunable value, registered once from code (<see cref="T:JBFramework.KitRegistry"/>). Values are floats, stored per save (the
+            <see cref="T:JBFramework.KitProfile"/> of the game) or, for global settings and mods without per-save, in the template (settings file).
+            Translation keys: &lt;Prefix&gt;.Setting.&lt;Key&gt; and &lt;Prefix&gt;.Setting.&lt;Key&gt;.Desc, categories &lt;Prefix&gt;.SettingCat.&lt;Cat&gt;,
+            enum values &lt;Prefix&gt;.Enum.&lt;EnumType&gt;.&lt;Name&gt;. English text in code is the fallback.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitSetting.LegacyKey">
+            <summary>Older store key this setting replaces: if only the old key is stored, its value is converted with LegacyToValue.</summary>
+        </member>
+        <member name="F:JBFramework.KitSetting.LegacyScribe">
+            <summary>Name of the mod's OLD Scribe_Values field in the settings file. Read once (as string) when the store has no value yet. See KitSettingsBase.</summary>
+        </member>
+        <member name="F:JBFramework.KitSetting.OnChanged">
+            <summary>Called (deferred, once per flush) after the value changed. Gets the new value.</summary>
+        </member>
+        <member name="F:JBFramework.KitSetting.Restart">
+            <summary>The change only takes effect after a restart (the row shows a small tag).</summary>
+        </member>
+        <member name="F:JBFramework.KitSetting.Requires">
+            <summary>Section id or mod packageId that must be active, else the row is greyed with RequiresText.</summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.Key">
+            <summary>The setting's key ("lo.regrowDays"): lower-case mod or area prefix, a dot, camelCase.</summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.SectionId">
+            <summary>The section the setting belongs to (<see cref="F:JBFramework.KitMod.Core"/> for general settings).</summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.Label">
+            <summary>Translated label (key &lt;Prefix&gt;.Setting.&lt;Key&gt;), English fallback.</summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.Desc">
+            <summary>Translated description (key &lt;Prefix&gt;.Setting.&lt;Key&gt;.Desc), English fallback.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.StoredIn(JBFramework.KitStore)">
+            <summary>Value stored in <paramref name="st"/> (also through the legacy key), clamped; null if none.</summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.RequiresMet">
+            <summary>True when <see cref="F:JBFramework.KitSetting.Requires"/> is met (or not set).</summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.RequiresReason">
+            <summary>Why the row is greyed (null when <see cref="P:JBFramework.KitSetting.RequiresMet"/>).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.Format(System.Single)">
+            <summary>Player-facing value text (invariant culture numbers, translated On/Off and enum names).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.TryParseLegacy(System.String,System.Single@,System.Boolean)">
+            <summary>Parses an old settings-file value (True/False, int, float in invariant culture, enum name). False if it cannot.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.AsGlobal">
+            <summary>A preference of the installation: the same in every save, stored in the settings file (UI preferences).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.AsNerd">
+            <summary>Only shown with "Show nerd settings".</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.NeedsRestart">
+            <summary>The change takes effect only after a restart (the row shows a small tag).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.WithStep(System.Single)">
+            <summary>Slider rounding step (0 = automatic).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.WithLimit(System.String)">
+            <summary>Why the hard limit exists (shown when the player hits it).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.WithLimit(System.String,System.Func{System.Single})">
+            <summary>Why the hard limit exists and a maximum computed at runtime (the lower of it and the hard maximum wins).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.HardLimits(System.Single,System.Single)">
+            <summary>The range a typed value may have (the slider range stays). Values outside are clamped on read and write.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.Describe(System.String)">
+            <summary>Description (tooltip and search text; key &lt;Prefix&gt;.Setting.&lt;Key&gt;.Desc).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.InGroup(System.String)">
+            <summary>A group header on the section page ("Speed", "Costs"); rows of one group are drawn together under it. Key &lt;Prefix&gt;.SettingCat.&lt;Group&gt;.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.Legacy(System.String)">
+            <summary>The mod's old Scribe_Values field name in the settings file: read once, when the store has no value yet.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.Legacy(System.String,System.Func{System.Single,System.Single})">
+            <summary>Like <see cref="M:JBFramework.KitSetting.Legacy(System.String)"/>, with a conversion of the old number (old percent 25 → fraction: <c>v =&gt; v / 100f</c>).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.LegacyStoreKey(System.String,System.Func{System.Single,System.Single})">
+            <summary>An older store key this setting replaces, with a conversion of its value.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.OnChange(System.Action{System.Single})">
+            <summary>Called (deferred, once per frame) after the value changed; gets the new value. Fenced.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.RequiresOn(System.String)">
+            <summary>Greys the row unless a section of this mod is on or a mod/DLC is active.</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.RequiresOn(System.String,System.String)">
+            <summary>Greys the row unless a section of this mod is on or a mod/DLC is active; <paramref name="reasonEn"/> says why.</summary>
+        </member>
+        <member name="T:JBFramework.KitSettingRegistry">
+            <summary>Registry and value access of all settings of one mod.</summary>
+        </member>
+        <member name="F:JBFramework.KitSettingRegistry.All">
+            <summary>All registrations in registration order.</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingRegistry.StoreFor(JBFramework.KitSetting,JBFramework.KitProfile)">
+            <summary>The store a setting lives in for <paramref name="target"/>: the template for global settings, else the target profile.</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingRegistry.Value(JBFramework.KitSetting,JBFramework.KitProfile)">
+            <summary>Effective value against an explicit profile (the window edits the save or the template).</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingRegistry.ResetSection(System.String,JBFramework.KitProfile)">
+            <summary>Resets every non-global setting of a section in <paramref name="target"/>.</summary>
+        </member>
+        <member name="T:JBFramework.KitStore">
+            <summary>Key → value store, saved as two parallel lists (stable across versions; unknown keys are kept).</summary>
+        </member>
+        <member name="F:JBFramework.KitStore.freeText">
+            <summary>Rows switched to free number entry (UI state, saved with the store).</summary>
+        </member>
+        <member name="T:JBFramework.KitSettingsBase">
+            <summary>
+            Base of a mod's ModSettings class. RimWorld finds the settings file by the Mod class name and the settings object by this class's
+            full name, so an existing mod KEEPS both names and only changes the base class: <c>public sealed class LOSettings : KitSettingsBase { }</c>.
+            Settings files stay per mod. File layout: one &lt;kit&gt; node (the template profile: values and section switches), then whatever
+            <see cref="M:JBFramework.KitSettingsBase.ExposeExtra"/> writes. Legacy migration (one-way): on load, every registration with a legacy field name that the
+            template does not hold yet is read from the old flat node as a string, parsed, clamped and stored; the first time, the old file
+            is copied once to *.xml.pre-kit and every migrated key is logged. Legacy nodes are never written again.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitSettingsBase.Migrated">
+            <summary>Keys migrated from legacy fields during this session's load ("key=value (from old)").</summary>
+        </member>
+        <member name="P:JBFramework.KitSettingsBase.Kit">
+            <summary>The mod's context (null only before the mod was created).</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsBase.ExposeExtra">
+            <summary>Hook for the mod's remaining own fields (bill templates, lists …). Use Scribe_* as usual; do not use the node name "kit".</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsBase.ExposeData">
+            <summary>Reads and writes the &lt;kit&gt; node, migrates legacy fields once, then calls <see cref="M:JBFramework.KitSettingsBase.ExposeExtra"/>. Fenced.</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsBase.BackupOnce(JBFramework.KitMod)">
+            <summary>Copies the current settings file to *.pre-kit once (never overwrites an existing backup).</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsBase.SettingsFilePath(JBFramework.KitMod)">
+            <summary>Path of a mod's settings file (vanilla rule: Config/Mod_&lt;folder&gt;_&lt;Mod class name&gt;.xml). Never print it.</summary>
+        </member>
+        <member name="T:JBFramework.KitText">
+            <summary>
+            Translation helper. The framework's own texts exist once (Common/Languages/&lt;Lang&gt;/Keyed/JBFramework.xml, keys
+            <c>JBF.&lt;Area&gt;.&lt;Key&gt;</c>), with the English fallback in code so a missing language file never shows a raw key.
+            A mod's own registration labels use the mod's prefix (<see cref="M:JBFramework.KitMod.Key(System.String)"/>).
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitText.Prefix">
+            <summary>Prefix of the framework's own keys.</summary>
+        </member>
+        <member name="M:JBFramework.KitText.TranslateOr(System.String,System.String)">
+            <summary>Translate if the key exists, otherwise return the English fallback.</summary>
+        </member>
+        <member name="M:JBFramework.KitText.K(System.String,System.String)">
+            <summary>Framework string: key JBF.&lt;sub&gt;, English fallback.</summary>
+        </member>
+        <member name="M:JBFramework.KitText.K(System.String,System.String,System.Object[])">
+            <summary>Framework string with {0}, {1} … placeholders filled (string.Format on the translated text, never throws).</summary>
+        </member>
+        <member name="T:JBFramework.KitRandom">
+            <summary>
+            Deterministic, save-stable random numbers for mods. <see cref="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)"/> returns a named stream of the running save: the same
+            name gives the same sequence after a reload (no "save scumming" a roll) and on every machine (multiplayer-safe), and streams are
+            independent of each other (drawing from "casino.slots" never shifts "events.weather"). The seed comes from the world seed, so
+            two colonies on the same seed see the same rolls; the position of every stream is stored in the save.
+            <para>Without a running game (main menu, tests) <see cref="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)"/> returns a non-persistent stream seeded from the clock.</para>
+            <para><see cref="M:JBFramework.KitRandom.Vanilla"/> is the opposite: a throw-away stream fed from Verse.Rand, which re-rolls on reload exactly like
+            vanilla randomness. Use it for things that should feel like vanilla (and must follow Verse.Rand's push/pop seeding).</para>
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)">
+            <summary>
+            The named per-save stream of mod <paramref name="owner"/> (any short name, e.g. "lottery.draw"). Valid everywhere a game exists:
+            world and map generation, OnGameStarted/OnGameLoaded, ticks, UI. Fetch it where you draw (it is a dictionary lookup) instead of
+            caching it in a field: after a load or a new game the framework hands out new instances, and an old one would no longer be saved.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String,JBFramework.KitRandomAlgorithm)">
+            <summary>Like <see cref="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)"/> with another generator (the stream's numbers depend on it).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandom.Stream(System.String)">
+            <summary>
+            A per-save stream of the framework itself, for code that has no <see cref="T:JBFramework.KitMod"/> (another developer's mod that does not use
+            the settings part). Prefix the name with your packageId ("my.mod/loot") so it never collides with another mod's stream.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRandom.Stream(System.String,JBFramework.KitRandomAlgorithm)">
+            <summary>Like <see cref="M:JBFramework.KitRandom.Stream(System.String)"/> with another generator.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandom.Vanilla">
+            <summary>
+            A stream fed from Verse.Rand (re-rolls on reload like vanilla). One shared instance, re-seeded on every call without allocation:
+            do not keep the reference across calls.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRandom.Vanilla(JBFramework.KitRandomAlgorithm)">
+            <summary>Like <see cref="M:JBFramework.KitRandom.Vanilla"/> with another generator.</summary>
+        </member>
+        <member name="P:JBFramework.KitRandom.SaveSeed">
+            <summary>The seed of the running save's streams (0 without a game).</summary>
+        </member>
+        <member name="P:JBFramework.KitRandom.Persistent">
+            <summary>True while a game runs, i.e. <see cref="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)"/> returns persistent streams.</summary>
+        </member>
+        <member name="T:JBFramework.KitRandomState">
+            <summary>The per-save state: seed and the position of every stream that was used (hooked into FrameworkGame).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomState.Install">
+            <summary>Forces the static constructor (hook registration) once at startup.</summary>
+        </member>
+        <member name="P:JBFramework.KitRandomState.Live">
+            <summary>The state of the running game, or null (no game).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomState.EnsureSeed">
+            <summary>The seed, set from the world on first use.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomState.SeedFromWorld">
+            <summary>
+            The save's seed: from the world seed (also while the world is being generated), so two colonies on the same world seed see
+            the same rolls. Without any world seed yet, a random seed from the clock (stored in the save, so stable from then on): never a
+            constant, which would give every colony the same rolls.
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitShuffleBag">
+            <summary>
+            A fair "deck" of <see cref="P:JBFramework.KitShuffleBag.Count"/> indices: every index comes up exactly once per round, in a shuffled order, then the deck is
+            reshuffled (no long droughts, no streaks). Save it inside your own data (<c>Scribe_Deep.Look(ref bag, "bag")</c>); give it the
+            stream to draw with, usually <see cref="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)"/>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitShuffleBag.#ctor">
+            <summary>For the save loader.</summary>
+        </member>
+        <member name="M:JBFramework.KitShuffleBag.#ctor(System.Int32)">
+            <summary>A bag of the indices 0 … <paramref name="count"/>-1.</summary>
+        </member>
+        <member name="P:JBFramework.KitShuffleBag.Count">
+            <summary>Number of indices in a full round.</summary>
+        </member>
+        <member name="P:JBFramework.KitShuffleBag.Remaining">
+            <summary>Indices still to come in this round.</summary>
+        </member>
+        <member name="M:JBFramework.KitShuffleBag.Next(JBFramework.KitRandomStream)">
+            <summary>
+            The next index (0 … Count-1), or -1 when Count is 0. Changing the size with <see cref="M:JBFramework.KitShuffleBag.Resize(System.Int32)"/> starts a new round.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitShuffleBag.Resize(System.Int32)">
+            <summary>Changes the number of indices and starts a new round.</summary>
+        </member>
+        <member name="M:JBFramework.KitShuffleBag.ExposeData">
+            <summary>Saves and loads the round.</summary>
+        </member>
+        <member name="T:JBFramework.KitRandomAlgorithm">
+            <summary>The generator a <see cref="T:JBFramework.KitRandomStream"/> uses. The numeric values are stored in saves: never renumber.</summary>
+        </member>
+        <member name="F:JBFramework.KitRandomAlgorithm.SplitMix64">
+            <summary>SplitMix64 finaliser over (seed, stream, counter). Fast, the default.</summary>
+        </member>
+        <member name="F:JBFramework.KitRandomAlgorithm.Pcg32">
+            <summary>Two PCG32 outputs per value.</summary>
+        </member>
+        <member name="F:JBFramework.KitRandomAlgorithm.Xoshiro256">
+            <summary>Xoshiro-style mix of four SplitMix64 words.</summary>
+        </member>
+        <member name="F:JBFramework.KitRandomAlgorithm.ChaCha8">
+            <summary>ChaCha with 8 rounds over (seed, stream, counter): slowest, strongest mixing.</summary>
+        </member>
+        <member name="T:JBFramework.KitRandomStream">
+            <summary>
+            A counter-based deterministic random stream: value number n is a pure function of (<see cref="P:JBFramework.KitRandomStream.Seed"/>, <see cref="P:JBFramework.KitRandomStream.StreamId"/>, n).
+            Two streams with the same seed, id and counter produce the same numbers on every machine and after every reload, which makes
+            results reproducible and multiplayer-safe. Get per-save named streams from <see cref="M:JBFramework.KitRandom.Stream(JBFramework.KitMod,System.String)"/>; create your own with
+            the constructor (tests, previews, world generation).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.#ctor(System.UInt64,System.UInt64)">
+            <summary>A stream from its start (SplitMix64).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.#ctor(System.UInt64,System.UInt64,System.UInt64,JBFramework.KitRandomAlgorithm)">
+            <summary>A stream. <paramref name="counter"/> is the number of values already drawn (0 = from the start).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.#ctor(System.UInt64,System.String)">
+            <summary>A stream whose id is the stable hash of <paramref name="name"/> (<see cref="M:JBFramework.KitRandomStream.HashString(System.String)"/>).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.#ctor(System.UInt64,System.String,System.UInt64,JBFramework.KitRandomAlgorithm)">
+            <summary>A named stream at a position, with a generator.</summary>
+        </member>
+        <member name="P:JBFramework.KitRandomStream.Seed">
+            <summary>The seed (per save for <see cref="T:JBFramework.KitRandom"/> streams).</summary>
+        </member>
+        <member name="P:JBFramework.KitRandomStream.StreamId">
+            <summary>The stream id (hash of the stream name for named streams).</summary>
+        </member>
+        <member name="P:JBFramework.KitRandomStream.Counter">
+            <summary>How many values were drawn so far; the next value is number <see cref="P:JBFramework.KitRandomStream.Counter"/>. Settable to rewind or skip.</summary>
+        </member>
+        <member name="P:JBFramework.KitRandomStream.Algorithm">
+            <summary>The generator.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Reseed(System.UInt64,System.UInt64,System.UInt64,JBFramework.KitRandomAlgorithm)">
+            <summary>Re-points this instance at another stream (avoids allocations for throw-away streams).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Clone">
+            <summary>A copy at the same position (drawing from the copy does not move this stream).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Mix(System.UInt64)">
+            <summary>SplitMix64 finaliser: a strong 64-bit mix of <paramref name="z"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.HashString(System.String)">
+            <summary>FNV-1a 64 of the UTF-16 code units: stable across platforms, runtimes and runs (string.GetHashCode is not).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.NextULong">
+            <summary>The next 64 random bits.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.NextDouble">
+            <summary>Uniform in [0, 1) with 53 random bits.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.NextFloat">
+            <summary>Uniform in [0, 1).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Chance(System.Double)">
+            <summary>True with probability <paramref name="p"/> (≤ 0 never, ≥ 1 always; still draws one value for 0 &lt; p &lt; 1 only).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Range(System.Int32,System.Int32)">
+            <summary>Uniform whole number in [<paramref name="min"/>, <paramref name="maxExclusive"/>); <paramref name="min"/> when the range is empty.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.RangeInclusive(System.Int32,System.Int32)">
+            <summary>Uniform whole number in [<paramref name="min"/>, <paramref name="max"/>] (both ends included).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Range(System.Double,System.Double)">
+            <summary>Uniform in [<paramref name="min"/>, <paramref name="max"/>).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Gaussian">
+            <summary>Standard normal distribution (mean 0, standard deviation 1; Box-Muller, draws two values).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Gaussian(System.Double,System.Double)">
+            <summary>Normal distribution (Box-Muller; draws two values).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Poisson(System.Double)">
+            <summary>Poisson distribution with mean <paramref name="lambda"/> (normal approximation above 30).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Shuffle``1(System.Collections.Generic.IList{``0})">
+            <summary>Fair in-place shuffle (Fisher-Yates): every order is equally likely. Draws Count-1 values.</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.Pick``1(System.Collections.Generic.IReadOnlyList{``0})">
+            <summary>One element, uniformly; default(T) for an empty or null list (then nothing is drawn).</summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.WeightedIndex(System.Collections.Generic.IReadOnlyList{System.Double})">
+            <summary>
+            Index picked with probability weight/sum (negative, NaN and infinite weights count as 0). -1 when no weight is positive
+            (then nothing is drawn). Draws exactly one value otherwise.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRandomStream.PickWeighted``1(System.Collections.Generic.IReadOnlyList{``0},System.Func{``0,System.Double})">
+            <summary>Element picked with probability weight/sum; default(T) when no weight is positive. Draws exactly one value otherwise.</summary>
+        </member>
+        <member name="T:JBFramework.KitArchitect">
+            <summary>Architect menu helpers.</summary>
+        </member>
+        <member name="M:JBFramework.KitArchitect.OneEntryPerFamily(JBFramework.KitMod,System.Func{Verse.BuildableDef,System.String})">
+            <summary>
+            The buildables for which <paramref name="family"/> returns the same non-empty key become one dropdown in their architect tab
+            (keys are per mod: two mods never merge each other's families). Buildables already in a vanilla dropdown group of the same
+            family are merged too. Register in Register (the regrouping then happens while the game loads) or later (it happens at once).
+            Combine with <see cref="M:JBFramework.KitMaterialMenu.AfterDropdownPick(JBFramework.KitMod,System.Func{Verse.ThingDef,System.Boolean})"/> for stuffed families.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitArchitect.RegroupAll">
+            <summary>Regroups every architect tab now (after defs changed at runtime). Idempotent.</summary>
+        </member>
+        <member name="M:JBFramework.KitArchitect.Regroup(Verse.DesignationCategoryDef)">
+            <summary>Regroups one tab in place. Returns the number of entries removed.</summary>
+        </member>
+        <member name="T:JBFramework.Patch_KitArchitectFamilies">
+            <summary>Regroups each architect tab right after RimWorld built its designators. Early-out unless a mod registered.</summary>
+        </member>
+        <member name="T:JBFramework.KitDefEdits">
+            <summary>
+            One mod's reversible def edits. Get it with <see cref="M:JBFramework.KitDefEdits.For(JBFramework.KitMod)"/>; group edits by section id (or any name) so switching a section off
+            can restore exactly its edits: <c>edits.Restore("walls")</c>. Never throws: a bad field name or type is logged once on the owner.
+            <para>Several mods may edit the same field: the framework keeps one shared ledger per field with the original value and every
+            mod's edit in order. The live value is the latest edit; when a mod restores, its edit leaves the ledger and the field falls back
+            to the next most recent edit of another mod, or to the original when no edit is left. A stat a mod added is removed again only
+            when no other mod still sets it.</para>
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.For(JBFramework.KitMod)">
+            <summary>The edit book of mod <paramref name="owner"/> (one per mod).</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.Set(Verse.Def,System.String,System.Object)">
+            <summary>
+            Sets a field of a def (dotted path for nested objects: "building.bed_defaultMedical", "race.baseBodySize"). The original is
+            recorded on the first edit of that field by any mod. Returns false when the path does not exist or the value does not fit.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.Set(Verse.Def,System.String,System.Object,System.String)">
+            <summary>Like <see cref="M:JBFramework.KitDefEdits.Set(Verse.Def,System.String,System.Object)"/>, in a named group (restore it with <see cref="M:JBFramework.KitDefEdits.Restore(System.String)"/>).</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.SetStat(Verse.BuildableDef,RimWorld.StatDef,System.Single)">
+            <summary>Sets a stat base value (adds the stat when the def lacks it; Restore removes it again).</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.SetStat(Verse.BuildableDef,RimWorld.StatDef,System.Single,System.String)">
+            <summary>Like <see cref="M:JBFramework.KitDefEdits.SetStat(Verse.BuildableDef,RimWorld.StatDef,System.Single)"/>, in a named group.</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.SetConstructionSkill(Verse.ThingDef,System.Int32)">
+            <summary>
+            Sets a building's construction skill requirement AND the copies RimWorld made into its blueprint and frame defs at load
+            (the skill check reads the frame's copy, so changing only the building does nothing; found in Hospital Beds Gen 2).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.SetConstructionSkill(Verse.ThingDef,System.Int32,System.String)">
+            <summary>Like <see cref="M:JBFramework.KitDefEdits.SetConstructionSkill(Verse.ThingDef,System.Int32)"/>, in a named group.</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.IsEdited(Verse.Def,System.String)">
+            <summary>Did this mod edit the field of the def (and not restore it yet)?</summary>
+        </member>
+        <member name="P:JBFramework.KitDefEdits.Count">
+            <summary>Number of this mod's edits that are not restored (fields and stats).</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.Restore">
+            <summary>Undoes all of this mod's edits. Returns how many of its edits were removed.</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.Restore(System.String)">
+            <summary>Undoes this mod's edits of one group. Returns how many were removed.</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.RestoreDef(Verse.Def)">
+            <summary>Undoes this mod's edits of one def. Returns how many were removed.</summary>
+        </member>
+        <member name="F:JBFramework.KitDefEdits.Slot.Edits">
+            <summary>Edits in the order they were made; the last one is live.</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.Slot.ApplyTop">
+            <summary>Puts the live value (latest remaining edit, else the original) back into the def.</summary>
+        </member>
+        <member name="M:JBFramework.KitDefEdits.CopyIfList(System.Object)">
+            <summary>Lists are copied (shallow) so in-place changes of the live list cannot change the recorded original.</summary>
+        </member>
+        <member name="T:JBFramework.KitMaterialMenu">
+            <summary>
+            The material menu for stuffed buildings, and "open it after a pick from a dropdown" for the defs a mod registers.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMaterialMenu.AfterDropdownPick(JBFramework.KitMod,System.Func{Verse.ThingDef,System.Boolean})">
+            <summary>
+            After a pick from any architect dropdown, open the material menu for the stuffed buildings <paramref name="applies"/> accepts.
+            Opens vanilla's own menu (only materials on the map); the overload with offerAllMaterials = true opens <see cref="M:JBFramework.KitMaterialMenu.Open(RimWorld.Designator_Build)"/>
+            (materials on the map first, the rest marked "none on the map"). Register in Register or OnDefsLoaded; defs are checked lazily.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMaterialMenu.AfterDropdownPick(JBFramework.KitMod,System.Func{Verse.ThingDef,System.Boolean},System.Boolean)">
+            <summary>Like <see cref="M:JBFramework.KitMaterialMenu.AfterDropdownPick(JBFramework.KitMod,System.Func{Verse.ThingDef,System.Boolean})"/>; <paramref name="offerAllMaterials"/> true = the framework's menu with every material.</summary>
+        </member>
+        <member name="M:JBFramework.KitMaterialMenu.Open(RimWorld.Designator_Build)">
+            <summary>
+            Opens the material menu for <paramref name="des"/> and selects it. Materials on the map come first (most common first); when
+            the map has none, or under "Other materials", every other allowed material, marked "none on the map" (the blueprint then waits
+            for it). Never silently falls back to a default. Not stuffed: just selects the designator.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitMaterialMenu.IsStuffed(Verse.Designator)">
+            <summary>Is the designator a stuffed building (it needs a material)?</summary>
+        </member>
+        <member name="M:JBFramework.KitMaterialMenu.Wrap(UnityEngine.Event,Verse.Designator,System.Action)">
+            <summary>The wrapped select action for a dropdown pick, or null to keep vanilla's.</summary>
+        </member>
+        <member name="M:JBFramework.KitMaterialMenu.MarkChosen(RimWorld.Designator_Build)">
+            <summary>Vanilla shows "(material)" in the label only after a choice (private writeStuff); set it like vanilla does.</summary>
+        </member>
+        <member name="T:JBFramework.Patch_KitDropdownMaterialMenu">
+            <summary>The one patch behind <see cref="M:JBFramework.KitMaterialMenu.AfterDropdownPick(JBFramework.KitMod,System.Func{Verse.ThingDef,System.Boolean})"/>. Early-out unless a mod registered.</summary>
+        </member>
+        <member name="T:JBFramework.KitPartsStartup">
+            <summary>
+            Startup of the knowledge base, the shared functions and the random streams (after all defs exist). Its order relative to the
+            core's own startup class is not defined, so every registration made later than this pass is applied at once instead.
+            </summary>
+        </member>
+        <member name="T:JBFramework.KitRemoval">
+            <summary>
+            Building blocks for a section's removal preparation (the "Prepare removal" button of the Diagnosis page). Each step works on the
+            running game, writes one report line and never throws (errors become report lines). Use them in the
+            <c>prepareRemoval</c> callback of <see cref="M:JBFramework.KitSection.WithRemoval(System.Action{System.Collections.Generic.List{System.String}})"/>, or add them to a section with <see cref="M:JBFramework.KitRemoval.AddStep(JBFramework.KitMod,System.String,System.Action{System.Collections.Generic.List{System.String}})"/>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.AddStep(JBFramework.KitMod,System.String,System.Action{System.Collections.Generic.List{System.String}})">
+            <summary>
+            Adds a step to section <paramref name="sectionId"/>'s removal preparation (after the steps registered before). Returns false
+            when the mod has no such section.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveThings(System.Func{Verse.ThingDef,System.Boolean},System.Collections.Generic.List{System.String})">
+            <summary>
+            Removes every thing of the matching defs from all maps: spawned things, minified ones, blueprints and frames of them, and
+            items in pawn inventories and equipment. Buildings drop their cost like a deconstruction (the overload with refund = false does not).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveThings(System.Func{Verse.ThingDef,System.Boolean},System.Collections.Generic.List{System.String},System.Boolean)">
+            <summary>Like <see cref="M:JBFramework.KitRemoval.RemoveThings(System.Func{Verse.ThingDef,System.Boolean},System.Collections.Generic.List{System.String})"/>; <paramref name="refund"/> false = no deconstruction refund.</summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveHediffs(System.Func{Verse.HediffDef,System.Boolean},System.Collections.Generic.List{System.String})">
+            <summary>Removes the matching hediffs from every pawn (maps, caravans, world pawns).</summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveBills(System.Func{Verse.RecipeDef,System.Boolean},System.Collections.Generic.List{System.String})">
+            <summary>Deletes the bills of the matching recipes from every workbench on every map.</summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveDesignations(System.Func{Verse.DesignationDef,System.Boolean},System.Collections.Generic.List{System.String})">
+            <summary>Removes the matching designations from every map.</summary>
+        </member>
+        <member name="T:JBFramework.IKitTierState">
+            <summary>A comp that carries state worth keeping when its building changes tier (timers, modes, counters).</summary>
+        </member>
+        <member name="M:JBFramework.IKitTierState.CopyTierStateFrom(Verse.ThingComp)">
+            <summary>Copy the state from the comp of the same type on the old building.</summary>
+        </member>
+        <member name="T:JBFramework.KitTiers">
+            <summary>
+            Tier families of buildings and the in-place tier change. Register families in Register or OnDefsLoaded; at startup (or at once,
+            when registered later) every member def gets the "Change tier" gizmo comp (<see cref="T:JBFramework.CompProperties_KitTierSwap"/>, saves nothing).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.Families(JBFramework.KitMod,System.Func{Verse.ThingDef,System.String},System.Func{Verse.ThingDef,System.Int32})">
+            <summary>
+            Families by rule: every building def for which <paramref name="family"/> returns a non-empty key and <paramref name="tier"/>
+            a tier ≥ 1 belongs to that family. A family needs at least two members with distinct tiers and one size; others are ignored.
+            The five-argument overload adds allowed (hides the gizmo for a thing) and afterSwap (runs after a change: old thing, already
+            destroyed; new thing, spawned).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.Families(JBFramework.KitMod,System.Func{Verse.ThingDef,System.String},System.Func{Verse.ThingDef,System.Int32},System.Func{Verse.Thing,System.Boolean},System.Action{Verse.Thing,Verse.Thing})">
+            <summary>Like <see cref="M:JBFramework.KitTiers.Families(JBFramework.KitMod,System.Func{Verse.ThingDef,System.String},System.Func{Verse.ThingDef,System.Int32})"/> with the two optional callbacks (each may be null).</summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.Family(JBFramework.KitMod,System.String,System.String[])">
+            <summary>A family given by defNames in tier order (tier 1 first). Names without a def are ignored.</summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.SiblingsOf(Verse.ThingDef)">
+            <summary>The def's family members in tier order (including itself), or null when it is in no family.</summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.TierOf(Verse.ThingDef)">
+            <summary>The def's tier (1 = lowest), or 0 when it is in no family.</summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.SiblingAt(Verse.ThingDef,System.Int32)">
+            <summary>The family member at <paramref name="tier"/>, or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.Roman(System.Int32)">
+            <summary>Roman numeral for tiers 1 … 10 ("I", "II", …), the number otherwise.</summary>
+        </member>
+        <member name="M:JBFramework.KitTiers.Swap(Verse.Thing,Verse.ThingDef)">
+            <summary>
+            Replaces <paramref name="old"/> with def <paramref name="to"/> at the same cell and rotation, free and instant. Keeps faction,
+            material, hit point ratio, paint, forbidden state, storage settings (items stay on their cells), bills, stored battery energy
+            (up to the new capacity), selection and the state of <see cref="T:JBFramework.IKitTierState"/> comps. Returns the new thing, or null
+            (nothing changed) when the swap is not possible or failed (logged on the owning mod).
+            </summary>
+        </member>
+        <member name="T:JBFramework.CompProperties_KitTierSwap">
+            <summary>Added in code to every tier family member (<see cref="T:JBFramework.KitTiers"/>). Saves nothing.</summary>
+        </member>
+        <member name="M:JBFramework.CompProperties_KitTierSwap.#ctor">
+            <summary>Uses <see cref="T:JBFramework.CompKitTierSwap"/>.</summary>
+        </member>
+        <member name="T:JBFramework.CompKitTierSwap">
+            <summary>Gives a tier family member the "Change tier" gizmo (player buildings only).</summary>
+        </member>
+        <member name="M:JBFramework.CompKitTierSwap.CompGetGizmosExtra">
+            <summary>The gizmo.</summary>
+        </member>
+        <member name="T:JBFramework.Command_KitTierSwap">
+            <summary>One gizmo for every selected tier building: a menu "Make it …" per reachable tier.</summary>
+        </member>
+        <member name="F:JBFramework.Command_KitTierSwap.thing">
+            <summary>The building this gizmo belongs to.</summary>
+        </member>
+        <member name="M:JBFramework.Command_KitTierSwap.#ctor(Verse.Thing)">
+            <summary>The gizmo of <paramref name="t"/>.</summary>
+        </member>
+        <member name="M:JBFramework.Command_KitTierSwap.GroupsWith(Verse.Gizmo)">
+            <summary>All tier gizmos group into one.</summary>
+        </member>
+        <member name="M:JBFramework.Command_KitTierSwap.ProcessGroupInput(UnityEngine.Event,System.Collections.Generic.List{Verse.Gizmo})">
+            <summary>Opens the tier menu for every selected building.</summary>
+        </member>
+        <member name="T:JBFramework.FrameworkPages">
+            <summary>The framework's own "Mods" page: every mod that uses it, versions, areas, patch failures, errors, a link to its settings.</summary>
+        </member>
+        <member name="T:JBFramework.Dialog_KitReport">
+            <summary>Plain text window with a Copy button (diagnosis report, removal report).</summary>
+        </member>
+        <member name="T:JBFramework.KitDiagnosis">
+            <summary>Diagnosis page: versions, load folders, sections with Resume / Prepare removal, caretaker, patches, recent log, report.</summary>
+        </member>
+        <member name="F:JBFramework.KitDiagnosis.LastRemovalReport">
+            <summary>Text of the last "Prepare for removal" run (tests read it).</summary>
+        </member>
+        <member name="M:JBFramework.KitDiagnosis.RecentLog(JBFramework.KitMod,System.Int32)">
+            <summary>The newest log lines of this mod (first line of each entry), oldest first.</summary>
+        </member>
+        <member name="M:JBFramework.KitDiagnosis.BuildText(JBFramework.KitMod,System.Int32)">
+            <summary>The full report: KitReport (versions, folders, sections, Harmony, compat, guard, caretaker, mod lines) plus the newest log lines.</summary>
+        </member>
+        <member name="M:JBFramework.KitDiagnosis.RunPrepareRemoval(JBFramework.KitMod,System.String)">
+            <summary>Runs a section's PrepareRemoval (switches it off) and shows the report.</summary>
+        </member>
+        <member name="T:JBFramework.Dialog_KitFirstStartCard">
+            <summary>
+            The welcome card of one mod: once per new colony, and once when the mod joins an existing save. Shows the mod mark, the pitch
+            (KitInfo.FirstStartPitch), the presets and the section switches; choices apply live to the save's profile, so closing the card in
+            any way keeps them. Needs PerSave (the "done" flag lives in the save's profile). The framework's global "Show welcome cards"
+            preference switches all cards off ("Don't show welcome cards again").
+            </summary>
+        </member>
+        <member name="M:JBFramework.Dialog_KitFirstStartCard.ApplyPreset(JBFramework.KitPreset)">
+            <summary>Applies a preset to the save's profile (changes only what it names).</summary>
+        </member>
+        <member name="M:JBFramework.Dialog_KitFirstStartCard.Finish">
+            <summary>Done flag, template copy, "never again", optional jump to the settings. Runs once, on close.</summary>
+        </member>
+        <member name="T:JBFramework.KitFirstStartCard">
+            <summary>Decides when a card opens: from the framework's game component, once the map is shown and nothing else is loading. One card at a time.</summary>
+        </member>
+        <member name="F:JBFramework.KitFirstStartCard.Suppressed">
+            <summary>Tests (or a mod) set this to keep every card from opening.</summary>
+        </member>
+        <member name="F:JBFramework.KitFirstStartCard.Delay">
+            <summary>Seconds the map must be on screen before a card opens.</summary>
+        </member>
+        <member name="M:JBFramework.KitFirstStartCard.Due">
+            <summary>The first mod whose card would open now if the delay had passed, or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitFirstStartCard.OpenNow(JBFramework.KitMod)">
+            <summary>Tests: open a mod's card now for the running game (ignores the delay and the "done" flag).</summary>
+        </member>
+        <member name="T:JBFramework.KitIcons">
+            <summary>
+            Icons of the settings windows, loaded lazily on the main thread and cached (shared cache: paths are global in RimWorld). A missing
+            texture is null and draws nothing (never a pink square). Lookup for a page id: the mod's <c>Theme.Icons[pageId]</c>, then the
+            section's / custom page's own Icon, then the framework's icon (Common/Textures/UI/JBFramework), then a vanilla fallback.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.Get(System.String)">
+            <summary>Texture at a path, or null (missing, empty path, or not on the main thread yet).</summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.Mark(JBFramework.KitMod)">
+            <summary>The mod's mark (Theme.MarkTex), or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.Own(System.String)">
+            <summary>Framework icon of a standard page (Common/Textures/UI/JBFramework/&lt;Name&gt;), or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.Page(JBFramework.KitMod,System.String)">
+            <summary>Icon of a settings page ("overview", "general", "section:&lt;id&gt;", "page:&lt;id&gt;", "compat", "diagnosis", "about").</summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.Section(JBFramework.KitMod,System.String)">
+            <summary>Icon of a section (theme entry "section:&lt;id&gt;" or the section's Icon), or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.Draw(UnityEngine.Rect,UnityEngine.Texture2D,System.Boolean)">
+            <summary>Draws an icon fitted into <paramref name="r"/>, dimmed when <paramref name="dim"/>. Nothing when the texture is missing.</summary>
+        </member>
+        <member name="M:JBFramework.KitIcons.AllPaths(JBFramework.KitMod)">
+            <summary>Tests: every texture path the theme, sections and pages name (each should resolve).</summary>
+        </member>
+        <member name="T:JBFramework.KitRow">
+            <summary>
+            Row drawer for one <see cref="T:JBFramework.KitSetting"/> against an explicit profile (so the window can edit the save or the template).
+            Left: label and grey description. Right: checkbox, dropdown or slider with value, "free" entry switch, reset. A changed row has an
+            accent edge. Heights are cached; rows outside the visible part of a scroll view are not drawn at all.
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitRow.ForceDrawAll">
+            <summary>Tests set this to draw every row even outside the viewport.</summary>
+        </member>
+        <member name="M:JBFramework.KitRow.Draw(System.Single,System.Single,System.Single,JBFramework.KitSetting,JBFramework.KitProfile,UnityEngine.Rect)">
+            <summary>Draws the row at (x,y) if it intersects <paramref name="visible"/>; always returns its height.</summary>
+        </member>
+        <member name="M:JBFramework.KitRow.Reset(JBFramework.KitSetting,JBFramework.KitProfile)">
+            <summary>Resets the row's value (and its free-entry text) in <paramref name="target"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitRow.ClearBuffers">
+            <summary>Forget typed text (after a preset, template copy or section reset changed values from outside).</summary>
+        </member>
+        <member name="M:JBFramework.KitRow.MatchesSearch(JBFramework.KitSetting,System.String)">
+            <summary>True when the setting matches a search text (label, description, key, category, section name).</summary>
+        </member>
+        <member name="T:JBFramework.KitSettingsWindow">
+            <summary>
+            The mod settings window (spec 1.6). Sidebar: mark, "This save / Template" chips (per-save mods in a game), page list with icons
+            (dimmed while a section is off), "Save as template" / "Apply template". Main: header with icon, title, nerd switch and search;
+            pages Overview (presets, section switches), General, one per section with settings, custom pages, Compatibility, Diagnosis, About.
+            Everything is drawn against an explicit profile, so the template can be edited while a game runs. Each page draws inside its own
+            exception fence, so a bad row never breaks the window.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.Target(JBFramework.KitMod)">
+            <summary>The profile the window edits: the template, or the running save's profile ("This save").</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.Draw(JBFramework.KitMod,UnityEngine.Rect)">
+            <summary>Draws mod <paramref name="k"/>'s settings window (called from KitModBase.DoSettingsWindowContents). Fenced per mod.</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.SideWidth(System.Single)">
+            <summary>Width of the page list: a fifth of the window, 200 to 260 px.</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.SetGlobalPref(System.String,System.Boolean)">
+            <summary>Writes one of the framework's global preferences (they live in the framework's own settings file).</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.DrawSectionRow(JBFramework.KitMod,System.Single,System.Single,System.Single,JBFramework.KitSection,JBFramework.KitProfile)">
+            <summary>One section switch row: checkbox, icon, label, description or why it is not available, paused state, page link.</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.DrawRows(JBFramework.KitMod,System.Collections.Generic.IEnumerable{JBFramework.KitSetting},System.Single,JBFramework.KitProfile,UnityEngine.Rect,System.Single)">
+            <summary>Rows grouped by category (a header per category), nerd filter applied.</summary>
+        </member>
+        <member name="T:JBFramework.KitUiProbe">
+            <summary>Counts how often each kit screen was drawn (tests use it to prove that real OnGUI frames reached the code).</summary>
+        </member>
+        <member name="T:JBFramework.KitStyle">
+            <summary>
+            Colours and small drawing helpers of the JB settings windows, so a mod's own windows can look the same. The accent colour is
+            only an accent (Hearth &amp; Harbor style rule). Inside a JB settings window <see cref="P:JBFramework.KitStyle.Accent"/> is the drawing mod's accent.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitStyle.Accent">
+            <summary>The accent of the mod whose settings window is drawing right now, else Hearth &amp; Harbor amber.</summary>
+        </member>
+        <member name="P:JBFramework.KitStyle.AccentSoft">
+            <summary>The accent at low alpha: backgrounds of selected rows, chips and banners.</summary>
+        </member>
+        <member name="F:JBFramework.KitStyle.Grey">
+            <summary>Secondary text.</summary>
+        </member>
+        <member name="F:JBFramework.KitStyle.DimGrey">
+            <summary>Descriptions and disabled text.</summary>
+        </member>
+        <member name="F:JBFramework.KitStyle.Good">
+            <summary>"Works" / "on".</summary>
+        </member>
+        <member name="F:JBFramework.KitStyle.Bad">
+            <summary>"Failed" / "paused".</summary>
+        </member>
+        <member name="F:JBFramework.KitStyle.Line">
+            <summary>Thin separators and box outlines.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Heading(UnityEngine.Rect,System.String)">
+            <summary>A heading in the medium font.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Section(System.Single,System.Single,System.Single,System.String)">
+            <summary>Section header in the accent colour with a thin rule beneath. Returns the height used.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.LabelColored(UnityEngine.Rect,System.String,UnityEngine.Color)">
+            <summary>A label in a colour, anchor and font; restores the GUI state afterwards.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.LabelColored(UnityEngine.Rect,System.String,UnityEngine.Color,UnityEngine.TextAnchor)">
+            <summary>A label in a colour and anchor (small font); restores the GUI state afterwards.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.LabelColored(UnityEngine.Rect,System.String,UnityEngine.Color,UnityEngine.TextAnchor,Verse.GameFont)">
+            <summary>A label in a colour, anchor and font; restores the GUI state afterwards.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Paragraph(System.Single,System.Single,System.Single,System.String,UnityEngine.Color)">
+            <summary>Wrapped label at (x,y) with width w; returns its height.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Paragraph(System.Single,System.Single,System.Single,System.String,UnityEngine.Color,Verse.GameFont)">
+            <summary>Wrapped label in a font at (x,y) with width w; returns its height.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Bar(UnityEngine.Rect,System.Single,UnityEngine.Color)">
+            <summary>A progress bar filled to <paramref name="fill01"/> in <paramref name="c"/>.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Heat(System.Single)">
+            <summary>Red → amber → green for 0..1.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Chip(UnityEngine.Rect,System.String,System.Boolean)">
+            <summary>A toggle-style button; selected ones get the accent highlight. Returns true when clicked.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Chip(UnityEngine.Rect,System.String,System.Boolean,System.String)">
+            <summary>A chip with a tooltip.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Chip(UnityEngine.Rect,System.String,System.Boolean,System.String,System.Boolean)">
+            <summary>A chip with a tooltip that can be disabled (greyed, not clickable).</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.Banner(System.Single,System.Single,System.Single,System.String,UnityEngine.Color,System.String,System.Single@)">
+            <summary>A coloured band with a message and an optional button on the right. Returns true when the button was clicked.</summary>
+        </member>
+        <member name="M:JBFramework.KitStyle.CachedHeight(System.String,System.Single,Verse.GameFont)">
+            <summary>Text height with a cache keyed by text + width + font (CalcHeight is slow and rows draw every frame).</summary>
+        </member>
+        <member name="T:JBFramework.KitUI">
+            <summary>
+            Window sizing for every window of a mod. Windows declare the size they were designed for at a 900 px tall screen;
+            <see cref="M:JBFramework.KitUI.Size(System.Single,System.Single)"/> scales it up for larger screens and by the player's global "Window size" preference (Mod settings,
+            JB Framework), and never lets it leave the screen. Usage: <c>public override Vector2 InitialSize =&gt; KitUI.Size(900f, 640f);</c>
+            </summary>
+        </member>
+        <member name="F:JBFramework.KitUI.SettingsW">
+            <summary>Design size of the mod settings window (the vanilla one is 900x700).</summary>
+        </member>
+        <member name="F:JBFramework.KitUI.SettingsH">
+            <summary>Design size of the mod settings window (the vanilla one is 900x700).</summary>
+        </member>
+        <member name="F:JBFramework.KitUI.SettingsMinW">
+            <summary>Smallest settings window (also on small screens, as far as the screen allows).</summary>
+        </member>
+        <member name="F:JBFramework.KitUI.SettingsMinH">
+            <summary>Smallest settings window (also on small screens, as far as the screen allows).</summary>
+        </member>
+        <member name="F:JBFramework.KitUI.TestScreen">
+            <summary>Tests only: pretend the screen has this size (Size and the clamps read it). Null = the real screen.</summary>
+        </member>
+        <member name="P:JBFramework.KitUI.Scale">
+            <summary>Automatic factor for the current screen (1.0 at 900 px height, up to 1.35) times the player's "Window size" preference.</summary>
+        </member>
+        <member name="M:JBFramework.KitUI.Size(System.Single,System.Single)">
+            <summary>
+            Scaled window size for a window designed at <paramref name="w"/> × <paramref name="h"/>, clamped to 92 % of the screen.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitUI.Size(System.Single,System.Single,System.Single,System.Single,System.Single,System.Single)">
+            <summary>Like <see cref="M:JBFramework.KitUI.Size(System.Single,System.Single)"/> with a minimum size and the largest share of the screen (0.92 by default).</summary>
+        </member>
+        <member name="M:JBFramework.KitUI.SettingsSize">
+            <summary>Size of this mod's settings window (Dialog_ModSettings, patched by KitWindowPatches).</summary>
+        </member>
+        <member name="M:JBFramework.KitUI.Cols(UnityEngine.Rect,System.Single,System.Single[])">
+            <summary>Splits a rect horizontally by fractions (e.g. 0.3f, 0.7f); a gap sits between columns.</summary>
+        </member>
+        <member name="M:JBFramework.KitUI.TextH(System.String,System.Single,Verse.GameFont)">
+            <summary>Height of a wrapped text at the given font and width (cached; 0 for empty text).</summary>
+        </member>
+        <member name="M:JBFramework.KitUI.TextW(System.String,Verse.GameFont)">
+            <summary>Width of one line of text at the given font.</summary>
+        </member>
+        <member name="M:JBFramework.KitUI.FitsScreen(UnityEngine.Vector2)">
+            <summary>True when a window of the given size, centered on the (test) screen, lies completely inside it.</summary>
+        </member>
+        <member name="T:JBFramework.KitUiFence">
+            <summary>
+            The fence around code a mod draws itself (custom pages). An exception never pauses a gameplay section and never reaches another
+            mod: the page shows an error box with a Retry button instead (one frame of the broken drawing at most), the GUI state (font,
+            anchor, colour, word wrap) is reset and the GUI groups and scroll views the page left open are closed again.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitUiFence.ClipDepth">
+            <summary>Depth of Unity's GUI clip stack (BeginGroup/BeginScrollView), or -1 when the engine does not expose it.</summary>
+        </member>
+        <member name="T:JBFramework.KitPatch_ModSettings_InitialSize">
+            <summary>
+            The settings window of every mod built on the framework is bigger and resizable (vanilla fixes Dialog_ModSettings at 900x700).
+            Applied once, by the framework itself; other mods' windows stay untouched.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitPatch_ModSettings_InitialSize.IsOurs(RimWorld.Dialog_ModSettings)">
+            <summary>True when the dialog shows the settings of a mod built on the framework (or the framework's own).</summary>
+        </member>
+        <member name="T:JBFramework.KitWindowState">
+            <summary>One mod's settings window state (page, search, scroll positions, preset cache): every mod keeps its own.</summary>
+        </member>
+        <member name="F:JBFramework.KitWindowState.JoinedExistingSave">
+            <summary>The mod was added to the running save (welcome card variant).</summary>
+        </member>
+        <member name="F:JBFramework.KitWindowState.PageErrors">
+            <summary>Custom pages that threw while drawing (page id → message); shown as an error box until Retry or the window closes.</summary>
+        </member>
+        <member name="T:JBFramework.KitWindowState.Layout">
+            <summary>Where the last frame put the window's parts (read by the window test to check that they fit and do not overlap).</summary>
+        </member>
+    </members>
+</doc>

@@ -53,8 +53,9 @@ namespace JBFramework
         }
 
         /// <summary>
-        /// The context of the mod whose <see cref="KitModBase"/> subclass is <typeparamref name="TMod"/>, or null before that mod was
-        /// created. Handy for patches and static helpers: <c>static KitMod Kit =&gt; Framework.Of&lt;LOMod&gt;();</c>
+        /// The context of the mod whose <see cref="KitModBase"/> subclass is <typeparamref name="TMod"/>, or null before RimWorld created
+        /// that mod class (static constructors of [StaticConstructorOnStartup] classes, defs and patches all run later, so from there it
+        /// is safe; inside Register use <c>r.Kit</c>). Handy for patches: <c>var k = Framework.Of&lt;LOMod&gt;(); if (k?.On("walls") != true) return;</c>
         /// </summary>
         public static KitMod Of<TMod>() where TMod : KitModBase
         {

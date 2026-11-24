@@ -17,6 +17,7 @@
     <li>
       <packageId>juliusberger.jbframework</packageId>
       <displayName>JB Framework</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/JBFRAMEWORK_WORKSHOP_ID</steamWorkshopUrl>
     </li>
   </modDependencies>
   <loadAfter>

@@ -22,6 +22,13 @@ namespace JBFramework
         public string Id { get; internal set; }
         /// <summary>Translated label (key &lt;Prefix&gt;.Page.&lt;Id&gt;), English fallback.</summary>
         public string Label => Owner.Key("Page." + Id).TranslateOr(LabelEn ?? Id);
+
+        /// <summary>Sidebar icon (texture path such as "UI/MyMod/Notes"). A missing texture draws nothing.</summary>
+        public KitPage WithIcon(string texPath) { Icon = texPath; return this; }
+        /// <summary>Position in the sidebar: below 0 before General, otherwise after the section pages (default: registration order).</summary>
+        public KitPage WithOrder(int order) { Order = order; Owner?.Pages.Resort(); return this; }
+        /// <summary>The page belongs to a section: it is hidden while the section is not available and dimmed (with a switch-on banner) while it is off.</summary>
+        public KitPage InSection(string sectionId) { Section = sectionId; return this; }
     }
 
     internal sealed class KitPageRegistry
@@ -38,109 +45,135 @@ namespace JBFramework
             p.Owner = owner;
             if (p.Order == 0) p.Order = (All.Count + 1) * 10;
             All.Add(p);
-            All.Sort((a, b) => a.Order.CompareTo(b.Order));
+            Resort();
             return p;
         }
+        public void Resort() { var o = All.ToList(); All.Sort((a, b) => a.Order != b.Order ? a.Order.CompareTo(b.Order) : o.IndexOf(a).CompareTo(o.IndexOf(b))); }
     }
 
     /// <summary>
-    /// What a mod writes in <see cref="KitModBase.Register"/>. All texts are English fallbacks; translations go into the mod's Keyed
-    /// files under &lt;Prefix&gt;.Section.*, &lt;Prefix&gt;.Setting.*, &lt;Prefix&gt;.SettingCat.*, &lt;Prefix&gt;.Preset.*,
-    /// &lt;Prefix&gt;.Compat.*, &lt;Prefix&gt;.Page.*, &lt;Prefix&gt;.Enum.* (see API.md). Setting methods take the section id first
-    /// (<see cref="KitMod.Core"/> = "core" for general settings) and a category (a group header on the page).
-    /// Registering the same id or key twice returns the first registration.
+    /// What a mod writes in <see cref="KitModBase.Register"/>: sections, settings, presets, compatibility entries, pages, caretaker
+    /// checks and per-save data. Every method takes only the essentials; everything optional is a chained modifier on the returned
+    /// object (<c>r.Float("haul", "mm.speed", 1.5f, 1f, 5f, "Hauling speed").InGroup("Speed").AsNerd()</c>), so new options can be
+    /// added later without breaking any call. All texts are English fallbacks; translations go into the mod's Keyed files under
+    /// &lt;KeyPrefix&gt;.Section.*, .Setting.*, .SettingCat.*, .Preset.*, .Compat.*, .Page.*, .Enum.* (see API.md).
+    /// <para>Conventions: section and page ids are short lower-case words ("walls"); setting keys are "&lt;shortid&gt;.&lt;camelCase&gt;"
+    /// ("mm.haulSpeed"), unique within the mod and never renamed (they are the storage keys). The section id <see cref="KitMod.Core"/>
+    /// ("core") holds the general, always-on settings. Registering the same id or key twice returns the first registration.</para>
     /// </summary>
     public sealed class KitRegistry
     {
         readonly KitMod k;
         internal KitRegistry(KitMod owner) { k = owner; }
 
-        /// <summary>The mod's context (for callbacks that need it).</summary>
+        /// <summary>The mod's context. Use this inside Register (the mod's own <see cref="KitModBase.Kit"/> is set too, but this is always safe).</summary>
         public KitMod Kit => k;
 
         // Sections ---------------------------------------------------------------------------------------------------------
         /// <summary>
-        /// A switchable feature area. <paramref name="available"/>: is it possible at all (DLC or mod present; null = always);
-        /// <paramref name="requires"/>: player text when it is not ("Needs Biotech"); <paramref name="onSwitched"/>: called when the
-        /// section of the current profile is switched; <paramref name="diagnosis"/>: extra report lines; <paramref name="prepareRemoval"/>:
-        /// undo what the section put into the save (report lines appended); <paramref name="legacyEnabled"/>: old settings field with the switch.
+        /// A switchable feature area (on by default; per save when the mod is <see cref="KitInfo.PerSave"/>). Patches of the area ask
+        /// <see cref="KitMod.On"/>. Modifiers: <see cref="KitSection.Describe"/>, <see cref="KitSection.OffByDefault"/>,
+        /// <see cref="KitSection.OnlyWith(string)"/>, <see cref="KitSection.WhenSwitched"/>, <see cref="KitSection.WithRemoval"/> and more.
         /// </summary>
-        public KitSection Section(string id, string label, string desc = null, string icon = null, bool defaultOn = true,
-            Func<bool> available = null, string requires = null, int order = 0, Action<bool> onSwitched = null,
-            Func<IEnumerable<string>> diagnosis = null, Action<List<string>> prepareRemoval = null, string legacyEnabled = null)
-            => k.Sections.Add(new KitSection
-            {
-                Id = id, LabelEn = label, DescEn = desc, Icon = icon, DefaultOn = defaultOn, AvailableFunc = available, RequiresText = requires,
-                Order = order, OnSwitched = onSwitched, DiagnosisFunc = diagnosis, PrepareRemoval = prepareRemoval, LegacyEnabled = legacyEnabled,
-            });
+        public KitSection Section(string id, string label) => k.Sections.Add(new KitSection { Id = id, LabelEn = label });
 
-        /// <summary>A section that exists only with a mod or DLC (available = that packageId is active; requires text "Needs &lt;modName&gt;").</summary>
-        public KitSection SectionFor(string packageId, string modName, string id, string label, string desc = null, string icon = null, bool defaultOn = true, int order = 0)
-            => Section(id, label, desc, icon, defaultOn, () => KitCompat.IsModActive(packageId), "Needs " + modName, order);
+        /// <summary>A switchable feature area with a description (see <see cref="Section(string, string)"/>).</summary>
+        public KitSection Section(string id, string label, string desc) => k.Sections.Add(new KitSection { Id = id, LabelEn = label, DescEn = desc });
 
         // Settings ---------------------------------------------------------------------------------------------------------
-        /// <summary>On/off value. <paramref name="legacyScribe"/>: the mod's old Scribe_Values field name (migrated once).</summary>
-        public KitSetting Bool(string section, string cat, string key, bool def, string label, string desc = null, bool nerd = false, string legacyScribe = null)
-            => k.SettingsReg.Add(new KitSetting { SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.Bool, Default = def ? 1 : 0, SliderMin = 0, SliderMax = 1, HardMin = 0, HardMax = 1, LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe });
+        /// <summary>On/off value in <paramref name="section"/> (<see cref="KitMod.Core"/> for general settings). Read with <see cref="KitMod.GetBool"/>.</summary>
+        public KitSetting Bool(string section, string key, bool def, string label) => Bool(section, key, def, label, null);
+        /// <summary>On/off value with a description (tooltip and search text).</summary>
+        public KitSetting Bool(string section, string key, bool def, string label, string desc)
+            => k.SettingsReg.Add(new KitSetting { SectionId = section, Key = key, Kind = KitSettingKind.Bool, Default = def ? 1 : 0, SliderMin = 0, SliderMax = 1, HardMin = 0, HardMax = 1, LabelEn = label, DescEn = desc });
 
-        /// <summary>Whole number: slider <paramref name="min"/>..<paramref name="max"/>, free entry up to <paramref name="hardMin"/>..<paramref name="hardMax"/>.</summary>
-        public KitSetting Int(string section, string cat, string key, int def, int min, int max, string label, string desc = null, bool nerd = false, int hardMin = 0, int hardMax = 1_000_000, string legacyScribe = null)
-            => k.SettingsReg.Add(new KitSetting { SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.Int, Default = def, SliderMin = min, SliderMax = max, HardMin = hardMin, HardMax = hardMax, LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe });
+        /// <summary>
+        /// Whole number: slider <paramref name="min"/>..<paramref name="max"/>; typed values may go from min(0, min) to max(1,000,000, max)
+        /// (change with <see cref="KitSetting.HardLimits"/>). Read with <see cref="KitMod.GetInt"/>.
+        /// </summary>
+        public KitSetting Int(string section, string key, int def, int min, int max, string label) => Int(section, key, def, min, max, label, null);
+        /// <summary>Whole number with a description.</summary>
+        public KitSetting Int(string section, string key, int def, int min, int max, string label, string desc)
+            => k.SettingsReg.Add(Number(section, key, KitSettingKind.Int, def, min, max, label, desc, 1_000_000f));
 
-        /// <summary>Decimal number: slider <paramref name="min"/>..<paramref name="max"/>, free entry up to the hard limits.</summary>
-        public KitSetting Float(string section, string cat, string key, float def, float min, float max, string label, string desc = null, bool nerd = false, float hardMin = 0f, float hardMax = 1e6f, string legacyScribe = null)
-            => k.SettingsReg.Add(new KitSetting { SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.Float, Default = def, SliderMin = min, SliderMax = max, HardMin = hardMin, HardMax = hardMax, LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe });
+        /// <summary>Decimal number: slider <paramref name="min"/>..<paramref name="max"/>; typed values from min(0, min) to max(1,000,000, max). Read with <see cref="KitMod.Get"/>.</summary>
+        public KitSetting Float(string section, string key, float def, float min, float max, string label) => Float(section, key, def, min, max, label, null);
+        /// <summary>Decimal number with a description.</summary>
+        public KitSetting Float(string section, string key, float def, float min, float max, string label, string desc)
+            => k.SettingsReg.Add(Number(section, key, KitSettingKind.Float, def, min, max, label, desc, 1_000_000f));
 
-        /// <summary>Fraction stored as 0..1, shown and typed as percent.</summary>
-        public KitSetting Percent(string section, string cat, string key, float def, float min, float max, string label, string desc = null, bool nerd = false, float hardMin = 0f, float hardMax = 1f, string legacyScribe = null)
-            => k.SettingsReg.Add(new KitSetting { SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.Percent, Default = def, SliderMin = min, SliderMax = max, HardMin = hardMin, HardMax = hardMax, LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe });
+        /// <summary>Fraction stored as 0..1 (0.25 = 25 %), shown and typed as percent. Typed values from min(0, min) to max(1, max).</summary>
+        public KitSetting Percent(string section, string key, float def, float min, float max, string label) => Percent(section, key, def, min, max, label, null);
+        /// <summary>Percent value with a description.</summary>
+        public KitSetting Percent(string section, string key, float def, float min, float max, string label, string desc)
+            => k.SettingsReg.Add(Number(section, key, KitSettingKind.Percent, def, min, max, label, desc, 1f));
 
         /// <summary>Positive number on a log-scale slider (multipliers 0.1 … 100).</summary>
-        public KitSetting LogFloat(string section, string cat, string key, float def, float min, float max, string label, string desc = null, bool nerd = false, float hardMin = 0f, float hardMax = 1e6f, string legacyScribe = null)
-            => k.SettingsReg.Add(new KitSetting { SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.LogFloat, Default = def, SliderMin = min, SliderMax = max, HardMin = hardMin, HardMax = hardMax, LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe });
+        public KitSetting LogFloat(string section, string key, float def, float min, float max, string label) => LogFloat(section, key, def, min, max, label, null);
+        /// <summary>Log-scale number with a description.</summary>
+        public KitSetting LogFloat(string section, string key, float def, float min, float max, string label, string desc)
+            => k.SettingsReg.Add(Number(section, key, KitSettingKind.LogFloat, def, min, max, label, desc, 1_000_000f));
 
-        /// <summary>One of the values of an enum, shown as a dropdown (labels: &lt;Prefix&gt;.Enum.&lt;EnumType&gt;.&lt;Name&gt;).</summary>
-        public KitSetting Enum<T>(string section, string cat, string key, T def, string label, string desc = null, bool nerd = false, string legacyScribe = null) where T : struct, IConvertible
+        /// <summary>
+        /// One value of an enum, shown as a dropdown. Labels: &lt;KeyPrefix&gt;.Enum.&lt;EnumTypeName&gt;.&lt;ValueName&gt;, fallback the
+        /// value name split at capitals. Stored as the number: never renumber the enum. Read with <see cref="KitMod.GetEnum{T}"/>;
+        /// in a preset use <c>p.Set(key, (float)(int)MyEnum.X)</c>.
+        /// </summary>
+        public KitSetting Enum<T>(string section, string key, T def, string label) where T : struct, IConvertible => Enum(section, key, def, label, null);
+        /// <summary>Enum dropdown with a description.</summary>
+        public KitSetting Enum<T>(string section, string key, T def, string label, string desc) where T : struct, IConvertible
         {
             int max = 0; foreach (var v in System.Enum.GetValues(typeof(T))) max = Math.Max(max, Convert.ToInt32(v));
-            return k.SettingsReg.Add(new KitSetting { SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.Enum, EnumType = typeof(T), Default = Convert.ToInt32(def), SliderMin = 0, SliderMax = max, HardMin = 0, HardMax = max, LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe });
+            return k.SettingsReg.Add(new KitSetting { SectionId = section, Key = key, Kind = KitSettingKind.Enum, EnumType = typeof(T), Default = Convert.ToInt32(def), SliderMin = 0, SliderMax = max, HardMin = 0, HardMax = max, LabelEn = label, DescEn = desc });
         }
 
-        /// <summary>Whole silver. The hard maximum follows 10 × the silver stack limit (keeps the game stable).</summary>
-        public KitSetting Silver(string section, string cat, string key, int def, int min, int max, string label, string desc = null, bool nerd = false, string legacyScribe = null)
+        /// <summary>Whole silver. Typed values stop at 10 × the silver stack limit of the game (keeps the game stable).</summary>
+        public KitSetting Silver(string section, string key, int def, int min, int max, string label) => Silver(section, key, def, min, max, label, null);
+        /// <summary>Silver value with a description.</summary>
+        public KitSetting Silver(string section, string key, int def, int min, int max, string label, string desc)
             => k.SettingsReg.Add(new KitSetting
             {
-                SectionId = section, Category = cat, Key = key, Kind = KitSettingKind.Silver, Default = def, SliderMin = min, SliderMax = max, HardMin = 0, HardMax = 2_000_000_000f,
-                LabelEn = label, DescEn = desc, Nerd = nerd, LegacyScribe = legacyScribe,
+                SectionId = section, Key = key, Kind = KitSettingKind.Silver, Default = def, SliderMin = min, SliderMax = max, HardMin = 0, HardMax = 2_000_000_000f,
+                LabelEn = label, DescEn = desc,
                 DynamicHardMax = () => Math.Max(max, (ThingDefOf.Silver?.stackLimit ?? 500) * 10f), HardLimitReason = "10 × the silver stack limit of your game (keeps the game stable)",
             });
+
+        static KitSetting Number(string section, string key, KitSettingKind kind, float def, float min, float max, string label, string desc, float hardMaxDefault)
+            => new KitSetting
+            {
+                SectionId = section, Key = key, Kind = kind, Default = def, SliderMin = min, SliderMax = max,
+                HardMin = Math.Min(0f, min), HardMax = Math.Max(hardMaxDefault, max), LabelEn = label, DescEn = desc,
+            };
 
         // Presets, compatibility, pages, caretaker, per-save data -------------------------------------------------------------
         /// <summary>
         /// A named set of values shown as a chip on the Overview page and the welcome card. <paramref name="apply"/> changes only what it
-        /// names (<see cref="KitProfile.Set(string, float)"/>, <see cref="KitProfile.SetSection"/>). <paramref name="matches"/> (optional)
-        /// decides when the chip is highlighted; default: applying it would change nothing.
+        /// names (<see cref="KitProfile.Set(string, float)"/>, <see cref="KitProfile.SetSection"/>; an Int or Enum is set as a float).
+        /// The chip is highlighted while applying it would change nothing (<see cref="KitPreset.HighlightWhen"/> overrides that).
         /// </summary>
-        public KitPreset Preset(string id, string label, string desc, Action<KitProfile> apply, Func<KitProfile, bool> matches = null)
-            => k.Presets.Add(new KitPreset { Id = id, LabelEn = label, DescEn = desc, Apply = apply, Matches = matches });
+        public KitPreset Preset(string id, string label, string desc, Action<KitProfile> apply)
+            => k.Presets.Add(new KitPreset { Id = id, LabelEn = label, DescEn = desc, Apply = apply });
 
         /// <summary>
-        /// A soft integration shown on the Compatibility page. <paramref name="packageIdOrDlc"/>: the other mod's packageId (DLCs:
-        /// "ludeon.rimworld.biotech"). Tag its patch classes with [KitCompat(id)] so a failed patch shows up here.
+        /// A soft integration shown on the Compatibility page ("active" / "not installed" / "failed: reason").
+        /// <paramref name="packageIdOrDlc"/>: the other mod's packageId (DLCs: "ludeon.rimworld.biotech"). Put
+        /// [<see cref="KitCompatAttribute"/>(packageId)] on the Harmony patch classes of the integration: they are applied only while that mod
+        /// is active (no error otherwise), and a failed one shows up in this entry. <see cref="KitCompatEntry.HealthyWhen"/> adds a self-check.
         /// </summary>
-        public KitCompatEntry Compat(string name, string packageIdOrDlc, string what, Func<bool> healthy = null)
-            => k.Compat.Add(new KitCompatEntry { Name = name, PackageId = packageIdOrDlc, WhatEn = what, Healthy = healthy });
+        public KitCompatEntry Compat(string name, string packageIdOrDlc, string what)
+            => k.Compat.Add(new KitCompatEntry { Name = name, PackageId = packageIdOrDlc, WhatEn = what });
 
         /// <summary>A known incompatibility: the Compatibility page shows it with the reason and what to do.</summary>
         public KitCompatEntry Incompatible(string name, string packageId, string why)
             => k.Compat.Add(new KitCompatEntry { Name = name, PackageId = packageId, WhatEn = why, Incompatible = true });
 
         /// <summary>
-        /// A custom page drawn by the mod (inside the window's error fence). <paramref name="order"/> below 0 lists it before General;
-        /// <paramref name="section"/> dims it while that section is off.
+        /// A custom page drawn by the mod, listed after the section pages (<see cref="KitPage.WithOrder"/> below 0: before General).
+        /// <paramref name="draw"/> gets the page area and does its own scrolling. It runs inside a UI fence: an exception shows an error
+        /// box on that page (with a retry button) and never pauses a section or reaches another mod.
         /// </summary>
-        public KitPage Page(string id, string label, string icon = null, int order = 0, Action<Rect> draw = null, string section = null)
-            => k.Pages.Add(new KitPage { Id = id, LabelEn = label, Icon = icon, Order = order, Draw = draw, Section = section });
+        public KitPage Page(string id, string label, Action<Rect> draw)
+            => k.Pages.Add(new KitPage { Id = id, LabelEn = label, Draw = draw });
 
         /// <summary>
         /// A self-repair check: runs once after every load and then one check every 250 ticks (round robin), only while its section is on.
@@ -150,11 +183,16 @@ namespace JBFramework
 
         /// <summary>
         /// The mod's own per-save data, stored inside the framework's game component under the mod's packageId (so removing the mod
-        /// leaves no missing-class error). <paramref name="exposeData"/> runs in every Scribe pass inside the mod's own node: use
-        /// Scribe_Values/Collections/Deep as usual and fix nulls on PostLoadInit. <paramref name="reset"/> runs when a new game object is
-        /// created (new game or before a load) so values of the previous game never leak. Only the mod's data is skipped when it is absent.
+        /// leaves no missing-class error, and its data comes back when the mod returns). <paramref name="exposeData"/> runs in every Scribe
+        /// pass inside the mod's own node: use Scribe_Values/Collections/Deep as usual and fix nulls on PostLoadInit.
         /// </summary>
-        public void SaveData(Action exposeData, Action reset = null)
+        public void SaveData(Action exposeData) => SaveData(exposeData, null);
+
+        /// <summary>
+        /// Per-save data with a reset: <paramref name="reset"/> runs when a new game object is created (new game or before a load) so
+        /// values of the previous game never leak into the next one (static fields!).
+        /// </summary>
+        public void SaveData(Action exposeData, Action reset)
         {
             k.SaveExpose = exposeData;
             k.SaveReset = reset;

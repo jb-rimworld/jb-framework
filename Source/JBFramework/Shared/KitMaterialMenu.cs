@@ -23,10 +23,13 @@ namespace JBFramework
     {
         /// <summary>
         /// After a pick from any architect dropdown, open the material menu for the stuffed buildings <paramref name="applies"/> accepts.
-        /// <paramref name="offerAllMaterials"/>: false = vanilla's own menu (only materials on the map); true = <see cref="Open"/>
+        /// Opens vanilla's own menu (only materials on the map); the overload with offerAllMaterials = true opens <see cref="Open"/>
         /// (materials on the map first, the rest marked "none on the map"). Register in Register or OnDefsLoaded; defs are checked lazily.
         /// </summary>
-        public static void AfterDropdownPick(KitMod owner, Func<ThingDef, bool> applies, bool offerAllMaterials = false)
+        public static void AfterDropdownPick(KitMod owner, Func<ThingDef, bool> applies) => AfterDropdownPick(owner, applies, false);
+
+        /// <summary>Like <see cref="AfterDropdownPick(KitMod, Func{ThingDef, bool})"/>; <paramref name="offerAllMaterials"/> true = the framework's menu with every material.</summary>
+        public static void AfterDropdownPick(KitMod owner, Func<ThingDef, bool> applies, bool offerAllMaterials)
         {
             if (owner == null || applies == null) return;
             lock (rules) rules.Add(new Rule { Owner = owner, Applies = applies, OfferAll = offerAllMaterials });
@@ -138,7 +141,7 @@ namespace JBFramework
         }
     }
 
-    /// <summary>The one patch behind <see cref="KitMaterialMenu.AfterDropdownPick"/>. Early-out unless a mod registered.</summary>
+    /// <summary>The one patch behind <see cref="KitMaterialMenu.AfterDropdownPick(KitMod, Func{ThingDef, bool})"/>. Early-out unless a mod registered.</summary>
     [HarmonyPatch]
     internal static class Patch_KitDropdownMaterialMenu
     {

@@ -92,7 +92,7 @@ namespace JBFramework
             var mark = KitIcons.Mark(k);
             float tx = 20f + (mark != null ? 76f : 0f);
             string title = JoinedExisting ? KitText.K("Card.TitleJoined", "{0} joined this colony", name) : KitText.K("Card.Title", "Welcome to {0}", name);
-            string sub = k.Info?.FirstStartPitch ?? "";
+            string sub = k.Cfg?.FirstStartPitch ?? "";
             float tw = inRect.width - tx - 20f;
             float th = KitUI.TextH(title, tw, GameFont.Medium), sh = KitUI.TextH(sub, tw);
             float headH = Mathf.Max(mark != null ? 96f : 80f, 16f + th + 6f + sh + 16f);
@@ -199,7 +199,7 @@ namespace JBFramework
 
         internal static void ResetForGame() { shown.Clear(); readySince = -1f; }
 
-        static bool Wants(KitMod k) => !k.Blocked && k.Info.PerSave && !string.IsNullOrEmpty(k.Info.FirstStartPitch);
+        static bool Wants(KitMod k) => !k.Blocked && k.Cfg.PerSave && !string.IsNullOrEmpty(k.Cfg.FirstStartPitch);
 
         /// <summary>The first mod whose card would open now if the delay had passed, or null.</summary>
         public static KitMod Due()

@@ -24,6 +24,9 @@ namespace JBFramework
         public string Label => Owner.Key("Preset." + Id).TranslateOr(LabelEn ?? Id);
         /// <summary>Translated description (key &lt;Prefix&gt;.Preset.&lt;Id&gt;.Desc), English fallback.</summary>
         public string Desc => Owner.Key("Preset." + Id + ".Desc").TranslateOr(DescEn ?? "");
+
+        /// <summary>Decides when the chip is highlighted (default: applying the preset would change nothing).</summary>
+        public KitPreset HighlightWhen(Func<KitProfile, bool> matches) { Matches = matches; return this; }
     }
 
     internal sealed class KitPresetRegistry

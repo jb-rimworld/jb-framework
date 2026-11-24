@@ -33,11 +33,26 @@ namespace JBFramework
             return list;
         }
 
+        /// <summary>
+        /// Runs a mod's report function. A throwing one gives an error line instead; it is logged once and never pauses a section
+        /// (a broken report must not switch off gameplay).
+        /// </summary>
+        internal static List<string> SafeLines(KitMod k, string site, Func<IEnumerable<string>> f)
+        {
+            if (f == null) return new List<string>();
+            try { return (f() ?? Enumerable.Empty<string>()).ToList(); }
+            catch (Exception e)
+            {
+                k.Log.Once("report:" + site + ":" + e.GetType().Name, KitLogLevel.Error, "Report", site + " threw (report shows an error line; nothing was paused): " + e);
+                return new List<string> { "(" + site + " failed: " + e.GetType().Name + ": " + e.Message + ")" };
+            }
+        }
+
         public static List<string> Lines(KitMod k)
         {
             var L = new List<string>();
             void Add(string s) => L.Add(s);
-            var info = k.Info;
+            var info = k.Cfg;
             Add($"{info.Name} {info.Version} · packageId {k.PackageId} · per-save {(info.PerSave ? "on" : "off")} · needs API level {(k.RequiredApiLevel > 0 ? k.RequiredApiLevel.ToString() : "-")}" +
                 (string.IsNullOrEmpty(k.BuiltWithFramework) ? "" : " (built with " + k.BuiltWithFramework + ")"));
             if (k.Blocked) { Add("BLOCKED: " + k.BlockedReason); return L; }
@@ -52,10 +67,10 @@ namespace JBFramework
                     string state = k.On(s.Id) ? "on" : "off (" + k.WhyOff(s.Id) + ")";
                     Add($"  {s.Id}: {state}");
                     if (s.DiagnosisFunc != null)
-                        foreach (var line in k.Guard.Run(s.Id, "Diagnosis." + s.Id, () => s.DiagnosisFunc().ToList(), new List<string>())) Add("    " + line);
+                        foreach (var line in SafeLines(k, "Diagnosis." + s.Id, s.DiagnosisFunc)) Add("    " + line);
                 }
             }
-            Add($"Harmony ({k.Info.HarmonyId}): {k.Patches.Applied} patch classes applied, {k.Patches.Failures.Count} skipped, {k.Patches.SkippedInactive.Count} not needed");
+            Add($"Harmony ({k.Cfg.HarmonyId}): {k.Patches.Applied} patch classes applied, {k.Patches.Failures.Count} skipped, {k.Patches.SkippedInactive.Count} not needed");
             foreach (var f in k.Patches.Failures) Add("  skipped: " + f);
             var shared = k.Patches.SharedTargets();
             if (shared.Count > 0) { Add("Methods also patched by other mods:"); foreach (var s in shared) Add("  " + s); }
@@ -68,7 +83,7 @@ namespace JBFramework
             foreach (var p in k.Guard.Paused) Add("  paused: " + k.Guard.ReasonFor(p));
             if (k.Caretaker.Checks.Count > 0)
                 Add("Caretaker: " + string.Join(", ", k.Caretaker.Checks.Select(c => $"{c.Name} {c.Runs} runs/{c.TotalFixes} fixes")));
-            if (k.Mod != null) foreach (var line in k.Guard.Run(KitMod.Core, "Mod.Diagnosis", () => (k.Mod.CallDiagnosis() ?? Enumerable.Empty<string>()).ToList(), new List<string>())) Add(line);
+            if (k.Mod != null) foreach (var line in SafeLines(k, "Mod.Diagnosis", k.Mod.CallDiagnosis)) Add(line);
             KitHooks.Each(KitHooks.ReportLines, k, "ReportLines", h => { foreach (var line in h(k) ?? Enumerable.Empty<string>()) Add(line); });
             return L;
         }

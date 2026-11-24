@@ -95,7 +95,7 @@ namespace JBFramework.Testing
             ulong startB = b.Counter;
             for (int i = 0; i < 10; i++) a.NextULong();
             t.Check(b.Counter == startB && a.Counter == startA + 10, "streams are independent");
-            var fake = new KitRandomStream(KitRandom.SaveSeed, KitRandom.Key(k, "fw.test.a"), startA);
+            var fake = new KitRandomStream(KitRandom.SaveSeed, KitRandom.Key(k, "fw.test.a"), startA, KitRandomAlgorithm.SplitMix64);
             var probe = a.Clone(); probe.Counter = startA;
             t.Check(fake.NextULong() == probe.NextULong(), "stream = (save seed, hash of '<mod>/<name>', counter)");
             t.Check(KitRandom.Key(k, "x") != KitRandom.Key(Framework.Self, "x") && KitRandom.Key(null, "x") == "global/x", "names are namespaced per mod");
@@ -150,6 +150,31 @@ namespace JBFramework.Testing
             t.Check((wall.statBases?.Any(s => s.stat == beauty) ?? false) == hadBeauty, "stat presence restored");
             if (bed != null) t.Check(bed.building.bed_defaultMedical == medical, "nested field restored");
             t.Check(restored >= 3 && edits.Count == 0, "Restore counted " + restored + " values and cleared the book");
+
+            // ---- two mods edit the same field and stat: restores never undo the other mod's live edit
+            var book2 = KitDefEdits.For(Framework.Self);
+            t.Check(book2 != null && !ReferenceEquals(book2, edits), "a second mod has its own book");
+            edits.Set(wall, "costStuffCount", 5, "fwtest");
+            book2.Set(wall, "costStuffCount", 7, "fwtest");
+            t.Check(wall.costStuffCount == 7, "latest edit is live (7)");
+            edits.Restore("fwtest");
+            t.Check(wall.costStuffCount == 7, "the first mod's restore keeps the other mod's live value (" + wall.costStuffCount + ")");
+            book2.Restore("fwtest");
+            t.Check(wall.costStuffCount == oldStuff, "the last restore brings the original back (" + wall.costStuffCount + ")");
+            edits.Set(wall, "costStuffCount", 5, "fwtest");
+            book2.Set(wall, "costStuffCount", 7, "fwtest");
+            book2.Restore("fwtest");
+            t.Check(wall.costStuffCount == 5, "restoring the top edit falls back to the other mod's edit (" + wall.costStuffCount + ")");
+            edits.Restore("fwtest");
+            t.Check(wall.costStuffCount == oldStuff, "then to the original (" + wall.costStuffCount + ")");
+            bool hadTough = wall.statBases?.Any(s2 => s2.stat == beauty) ?? false;
+            edits.SetStat(wall, beauty, 3f, "fwtest");
+            book2.SetStat(wall, beauty, 4f, "fwtest");
+            edits.Restore("fwtest");
+            t.Check((wall.statBases?.FirstOrDefault(s2 => s2.stat == beauty)?.value ?? -1f) == 4f, "a stat the other mod still sets stays (4)");
+            book2.Restore("fwtest");
+            t.Check((wall.statBases?.Any(s2 => s2.stat == beauty) ?? false) == hadTough, "the stat's presence is back to the original after both restores");
+            t.Check(edits.Count == 0 && book2.Count == 0, "both books are empty");
 
             // ---- tiers: two vanilla buildable buildings of one size
             var pair = DefDatabase<ThingDef>.AllDefsListForReading

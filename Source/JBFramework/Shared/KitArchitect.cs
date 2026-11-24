@@ -20,7 +20,7 @@ namespace JBFramework
         /// The buildables for which <paramref name="family"/> returns the same non-empty key become one dropdown in their architect tab
         /// (keys are per mod: two mods never merge each other's families). Buildables already in a vanilla dropdown group of the same
         /// family are merged too. Register in Register (the regrouping then happens while the game loads) or later (it happens at once).
-        /// Combine with <see cref="KitMaterialMenu.AfterDropdownPick"/> for stuffed families.
+        /// Combine with <see cref="KitMaterialMenu.AfterDropdownPick(KitMod, Func{ThingDef, bool})"/> for stuffed families.
         /// </summary>
         public static void OneEntryPerFamily(KitMod owner, Func<BuildableDef, string> family)
         {

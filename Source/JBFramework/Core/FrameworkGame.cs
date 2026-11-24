@@ -10,9 +10,9 @@ namespace JBFramework
 {
     /// <summary>
     /// The framework's one GameComponent. It stores every dependent mod's per-save profile (plain values, keyed by packageId) and the
-    /// data of mods that registered <see cref="KitRegistry.SaveData"/>, drives ticks, caretaker checks, deferred change delivery and
+    /// data of mods that registered <see cref="KitRegistry.SaveData(System.Action)"/>, drives ticks, caretaker checks, deferred change delivery and
     /// welcome cards. A removed mod's profile is kept silently (plain values need none of its types); its own SaveData node is
-    /// skipped without touching its types. Created by RimWorld; mods never use it directly.
+    /// kept as raw XML (written back unchanged) without touching its types. Created by RimWorld; mods never use it directly.
     /// </summary>
     public sealed class FrameworkGame : GameComponent
     {
@@ -71,7 +71,7 @@ namespace JBFramework
                     var e = EntryFor(kk, false);
                     bool joined = !newGame && (!exposed || e == null);
                     if (e == null) e = EntryFor(kk, true);
-                    if (kk.Info.PerSave)
+                    if (kk.Cfg.PerSave)
                     {
                         if (e.profile == null || newGame)
                         {
@@ -155,11 +155,17 @@ namespace JBFramework
         }
     }
 
-    /// <summary>One mod's part of a save: its profile and, inside &lt;data&gt;, what its SaveData callback writes.</summary>
+    /// <summary>
+    /// One mod's part of a save: its profile and, inside &lt;data&gt;, what its SaveData callback writes. When the mod is absent or
+    /// blocked (framework too old), its &lt;data&gt; node is kept as raw XML and written back unchanged on the next save, so the mod finds
+    /// its values again when it returns; none of its types are touched.
+    /// </summary>
     internal sealed class KitSaveEntry : IExposable
     {
         public string id;
         public KitProfile profile;
+        /// <summary>The &lt;data&gt; node of an absent or blocked mod, as loaded (outer XML), or null.</summary>
+        internal string rawData;
 
         public void ExposeData()
         {
@@ -167,12 +173,56 @@ namespace JBFramework
             Scribe_Deep.Look(ref profile, "profile");
             var k = string.IsNullOrEmpty(id) ? null : Framework.Mods.FirstOrDefault(x => FrameworkGame.SaveKey(x) == id);
             if (profile != null && k != null) profile.Owner = k;
-            if (k == null || k.Blocked || k.SaveExpose == null) return;   // absent mod: its data node is skipped, its types never touched
+            bool live = k != null && !k.Blocked && k.SaveExpose != null;
+            if (!live)
+            {
+                KeepRaw();
+                return;
+            }
+            rawData = null;
             if (Scribe.EnterNode("data"))
             {
                 try { k.Guard.Run(KitMod.Core, "SaveData." + Scribe.mode, k.SaveExpose); }
                 finally { Scribe.ExitNode(); }
             }
+        }
+
+        /// <summary>Absent mod: remember its &lt;data&gt; node on load, write it back verbatim on save. Never throws.</summary>
+        void KeepRaw()
+        {
+            try
+            {
+                if (Scribe.mode == LoadSaveMode.LoadingVars)
+                    rawData = (Scribe.loader?.curXmlParent?["data"])?.OuterXml;
+                else if (Scribe.mode == LoadSaveMode.Saving && !string.IsNullOrEmpty(rawData))
+                    WriteRaw(rawData);
+            }
+            catch (Exception e) { Framework.Self?.Log.Warn("Core", "Could not keep the save data of absent mod " + id + ": " + e.Message); }
+        }
+
+        static System.Reflection.FieldInfo writerField;
+
+        static void WriteRaw(string xml)
+        {
+            if (writerField == null) writerField = HarmonyLib.AccessTools.Field(typeof(ScribeSaver), "writer");
+            if (writerField?.GetValue(Scribe.saver) is System.Xml.XmlWriter w) { w.WriteRaw(xml); return; }
+            // fallback without the private writer: rebuild the node with Scribe's public calls (elements, attributes, text leaves)
+            var doc = new System.Xml.XmlDocument(); doc.LoadXml(xml);
+            WriteNode(doc.DocumentElement);
+        }
+
+        static void WriteNode(System.Xml.XmlElement e)
+        {
+            bool hasChildElements = false;
+            foreach (System.Xml.XmlNode c in e.ChildNodes) if (c is System.Xml.XmlElement) { hasChildElements = true; break; }
+            if (!hasChildElements && e.Attributes.Count == 0) { Scribe.saver.WriteElement(e.Name, e.InnerText); return; }
+            Scribe.saver.EnterNode(e.Name);
+            try
+            {
+                foreach (System.Xml.XmlAttribute a in e.Attributes) Scribe.saver.WriteAttribute(a.Name, a.Value);
+                foreach (System.Xml.XmlNode c in e.ChildNodes) if (c is System.Xml.XmlElement ce) WriteNode(ce);
+            }
+            finally { Scribe.saver.ExitNode(); }
         }
     }
 }

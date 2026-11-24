@@ -135,6 +135,8 @@ namespace JBFramework.Testing
                 int fa = Time.frameCount;
                 foreach (var y in KitUiTest.Frames(6)) yield return y;
                 t.Check(b.Guard.TotalFailures > gb, "B's throwing page is booked on B's fence (" + (b.Guard.TotalFailures - gb) + " failures)");
+                t.Check(b.Window.PageErrors.ContainsKey(FwUtil.ThrowPage), "B's throwing page shows an error box instead (UI fence)");
+                t.Check(!b.Guard.Paused.Any(), "a throwing page pauses no section of B");
                 t.Check(a.Guard.TotalFailures == ga && a.Window.Last.Frame >= fa + 3 && a.Window.Last.Page == "general", "A keeps drawing, its fence is untouched");
                 t.Check(da.IsOpen && db.IsOpen, "both windows stay open");
                 b.Window.SelectPage(b, "general");
@@ -189,8 +191,9 @@ namespace JBFramework.Testing
 
     /// <summary>
     /// fw.removal (explicit; jbmod fw removal). Phase 1 with samples A and B: distinct values, B's SaveData, save. Phase 2: the save loaded
-    /// with A only: no red error of the framework (load included), A's values back, B's profile kept (it returns when B does), B's data
-    /// node skipped; after a new save B's data node is gone and its profile is still there.
+    /// with A only: no red error of the framework (load included), A's values back, B's profile kept, B's data node kept as raw XML
+    /// without touching B's types; a new save still holds B's profile AND its data node unchanged. Phase 3: that new save loaded with
+    /// A and B again: B finds its values and its SaveData (counter 777) again.
     /// </summary>
     internal sealed class FwRemovalSuite : KitTestSuite
     {
@@ -226,6 +229,20 @@ namespace JBFramework.Testing
                 yield break;
             }
 
+            if (SaveLoadKit.LoadedSave == Save + "_again")
+            {
+                t.Note("phase 3: loaded " + SaveLoadKit.LoadedSave + " (saved without B) WITH sample B again");
+                t.Check(b != null && !b.Blocked, "sample B is loaded again");
+                if (b == null) yield break;
+                var counter = FwUtil.Field(b, "KitSampleB.SampleBData", "counter")?.GetValue(null);
+                t.Check(counter is int c && c == 777, "B's SaveData survived a save without B: counter " + counter);
+                t.Check(b.GetInt("ksb.dailyBonus") == 6, "B's per-save value survived: dailyBonus " + b.GetInt("ksb.dailyBonus"));
+                t.Check(FrameworkGame.Instance != null && !FrameworkGame.Instance.AbsentMods.Contains(keyB), "B is no longer an absent mod");
+                yield return 600;
+                KitSuiteUtil.NoRedErrors(t, 0, "B returned: no red error of the framework or the mods");
+                yield break;
+            }
+
             t.Note("phase 2: loaded " + SaveLoadKit.LoadedSave + " WITHOUT sample B");
             t.Check(b == null && !Framework.Mods.Any(m => FrameworkGame.SaveKey(m) == keyB), "sample B is not loaded");
             var fwRed = KitTestLog.Since(0, KitTestLog.FrameworkMarkers());
@@ -242,7 +259,7 @@ namespace JBFramework.Testing
             yield return 1200;
             t.Check(KitTestLog.Since(mark, KitTestLog.FrameworkMarkers()).Count == 0 && !a.Guard.Paused.Any(), "1200 ticks played: no red error of the framework, nothing paused");
 
-            // save again: B's profile stays, its data node is dropped (its types were never touched)
+            // save again: B's profile and its data node stay (raw XML; its types were never touched)
             string resave = Save + "_again";
             if (SaveLoadKit.SaveWithFingerprint(resave, t))
             {
@@ -250,7 +267,7 @@ namespace JBFramework.Testing
                 var before = SaveLoadKit.ReadSide(Save, "profileB")?.FirstOrDefault();
                 t.Check(eb?["profile"] != null, "B's profile is still in the new save (it comes back when B returns)");
                 t.Check(eb != null && before != null && eb["profile"].OuterXml == before, "B's profile is unchanged (plain values)");
-                t.Check(eb != null && eb["data"] == null, "B's data node was dropped in the new save");
+                t.Check(eb?["data"]?["counter"]?.InnerText == "777", "B's data node is kept unchanged in the new save (counter " + eb?["data"]?["counter"]?.InnerText + ")");
             }
             KitSuiteUtil.NoRedErrors(t, 0, "whole run without sample B: no red error of the framework or A");
         }

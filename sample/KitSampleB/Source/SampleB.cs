@@ -23,11 +23,11 @@ namespace KitSampleB
 
         protected override void Register(KitRegistry r)
         {
-            r.Section("gamma", "Gamma", "The counter area: adds the daily bonus to the save's counter every 2500 ticks.", legacyEnabled: "Gamma_enabled");
-            r.Int("gamma", "Counter", "ksb.dailyBonus", 1, 0, 10, "Bonus per step", "How much the counter grows every 2500 ticks.", legacyScribe: "dailyBonus");
-            r.Float("gamma", "Counter", "ksb.growth", 1f, 0.1f, 5f, "Growth", "A plain decimal number (migrated from the old field 'growth').", legacyScribe: "growth");
-            r.Bool(KitMod.Core, "General", "ksb.loud", false, "Loud log", "Writes a log line at every counter step.", legacyScribe: "loud");
-            r.Percent(KitMod.Core, "General", "ksb.share", 0.5f, 0f, 1f, "A share", "Stored as 0..1, shown as percent.");
+            r.Section("gamma", "Gamma", "The counter area: adds the daily bonus to the save's counter every 2500 ticks.").LegacyEnabled("Gamma_enabled");
+            r.Int("gamma", "ksb.dailyBonus", 1, 0, 10, "Bonus per step", "How much the counter grows every 2500 ticks.").InGroup("Counter").Legacy("dailyBonus");
+            r.Float("gamma", "ksb.growth", 1f, 0.1f, 5f, "Growth", "A plain decimal number (migrated from the old field 'growth').").InGroup("Counter").Legacy("growth");
+            r.Bool(KitMod.Core, "ksb.loud", false, "Loud log", "Writes a log line at every counter step.").InGroup("General").Legacy("loud");
+            r.Percent(KitMod.Core, "ksb.share", 0.5f, 0f, 1f, "A share", "Stored as 0..1, shown as percent (migrated from the old whole-number field 'sharePercent').").InGroup("General").Legacy("sharePercent", v => v / 100f);
             r.Preset("quiet", "Quiet", "Bonus 0, loud log off.", p => { p.Set("ksb.dailyBonus", 0f); p.Set("ksb.loud", false); });
             r.SaveData(SampleBData.Expose, SampleBData.Reset);
         }
@@ -47,7 +47,7 @@ namespace KitSampleB
         }
     }
 
-    /// <summary>Settings class (keeps the pre-framework name; the old flat fields are migrated through legacyScribe/legacyEnabled).</summary>
+    /// <summary>Settings class (keeps the pre-framework name; the old flat fields are migrated through Legacy()/LegacyEnabled()).</summary>
     public sealed class KitSampleBSettings : KitSettingsBase { }
 
     /// <summary>The mod's per-save data: plain static fields, saved inside the framework's game component under this mod's packageId.</summary>

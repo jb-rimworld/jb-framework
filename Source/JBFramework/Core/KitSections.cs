@@ -18,10 +18,11 @@ namespace JBFramework
         internal Func<bool> AvailableFunc;
         internal string RequiresText;
         internal int Order;
-        internal Action<bool> OnSwitched;
+        internal Action<bool> SwitchedFunc;
         internal Func<IEnumerable<string>> DiagnosisFunc;
         internal Action<List<string>> PrepareRemoval;
-        internal string LegacyEnabled;
+        internal string LegacyEnabledField;
+        internal string RequiresPackageId, RequiresModName;
 
         /// <summary>The section id ("walls"). Settings, pages and caretaker checks refer to it.</summary>
         public string Id { get; internal set; }
@@ -29,7 +30,57 @@ namespace JBFramework
         public string Label => Owner.Key("Section." + Id).TranslateOr(LabelEn ?? Id);
         /// <summary>Translated description (key &lt;Prefix&gt;.Section.&lt;Id&gt;.Desc), English fallback.</summary>
         public string Desc => Owner.Key("Section." + Id + ".Desc").TranslateOr(DescEn ?? "");
-        internal string RequiresLabel => string.IsNullOrEmpty(RequiresText) ? null : Owner.Key("Section." + Id + ".Requires").TranslateOr(RequiresText);
+        internal string RequiresLabel
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(RequiresText)) return Owner.Key("Section." + Id + ".Requires").TranslateOr(RequiresText);
+                if (string.IsNullOrEmpty(RequiresPackageId)) return null;
+                return KitText.K("Section.NeedsMod", "Needs {0}.", RequiresModName ?? KitDetect.ActiveName(RequiresPackageId) ?? KitKnown.Note(RequiresPackageId)?.label ?? KitDlcName(RequiresPackageId) ?? RequiresPackageId);
+            }
+        }
+
+        static string KitDlcName(string id) { foreach (var d in KitCompat.Dlcs) if (KitCompat.Same(d.Id, id)) return d.Name; return null; }
+
+        // Modifiers (return this) --------------------------------------------------------------------------------------
+        /// <summary>The description (shown on the Overview page and the section page; key &lt;Prefix&gt;.Section.&lt;Id&gt;.Desc).</summary>
+        public KitSection Describe(string desc) { DescEn = desc; return this; }
+        /// <summary>Icon of the section page (texture path such as "UI/MyMod/Walls"). A missing texture draws nothing.</summary>
+        public KitSection WithIcon(string texPath) { Icon = texPath; return this; }
+        /// <summary>The section starts switched off (new games and the template).</summary>
+        public KitSection OffByDefault() { DefaultOn = false; return this; }
+        /// <summary>
+        /// The section exists only while the mod or DLC <paramref name="packageIdOrDlc"/> is active; otherwise it is greyed with "Needs &lt;name&gt;."
+        /// (name of the active mod, of the known-mods list, of the DLC, else the packageId).
+        /// </summary>
+        public KitSection OnlyWith(string packageIdOrDlc) => OnlyWith(packageIdOrDlc, null);
+        /// <summary>Like <see cref="OnlyWith(string)"/> with the name shown in "Needs &lt;modName&gt;.".</summary>
+        public KitSection OnlyWith(string packageIdOrDlc, string modName)
+        {
+            AvailableFunc = () => KitCompat.IsModActive(packageIdOrDlc);
+            RequiresPackageId = packageIdOrDlc; RequiresModName = modName; RequiresText = null;
+            return this;
+        }
+        /// <summary>The section exists only while <paramref name="available"/> is true; <paramref name="whyNot"/> says why not ("Needs a map with water.").</summary>
+        public KitSection AvailableWhen(Func<bool> available, string whyNot) { AvailableFunc = available; RequiresText = whyNot; RequiresPackageId = null; return this; }
+        /// <summary>Position among the sections (default: registration order).</summary>
+        public KitSection WithOrder(int order) { Order = order; Owner?.Sections.Resort(); return this; }
+        /// <summary>Called when the section is switched in the current profile (true = on). Runs even while the section is paused, so it can settle what it holds.</summary>
+        public KitSection WhenSwitched(Action<bool> onSwitched) { SwitchedFunc = onSwitched; return this; }
+        /// <summary>Extra lines for the section on the Diagnosis page and in the report. Fenced: a throwing function shows an error line.</summary>
+        public KitSection WithDiagnosis(Func<IEnumerable<string>> lines) { DiagnosisFunc = lines; return this; }
+        /// <summary>
+        /// "Prepare for removal": undoes what the section put into the running save (things, bills, hediffs; see <see cref="KitRemoval"/>)
+        /// and appends one report line per action. Offered on the section page and the Diagnosis page while a game runs.
+        /// </summary>
+        public KitSection WithRemoval(Action<List<string>> prepareRemoval)
+        {
+            var before = PrepareRemoval;
+            PrepareRemoval = before == null ? prepareRemoval : (report => { before(report); prepareRemoval?.Invoke(report); });
+            return this;
+        }
+        /// <summary>The mod's OLD settings field (a bool Scribe_Values name) that held this switch: migrated once.</summary>
+        public KitSection LegacyEnabled(string oldScribeName) { LegacyEnabledField = oldScribeName; return this; }
     }
 
     /// <summary>All sections of one mod and the one question every patch asks (<see cref="KitMod.On"/>).</summary>
@@ -48,9 +99,12 @@ namespace JBFramework
             s.Owner = k;
             if (s.Order == 0) s.Order = (All.Count + 1) * 10;
             byId[s.Id] = s; All.Add(s);
-            All.Sort((a, b) => a.Order.CompareTo(b.Order));
+            Resort();
             return s;
         }
+
+        /// <summary>Stable sort by Order (equal orders keep registration order).</summary>
+        public void Resort() { var o = All.ToList(); All.Sort((a, b) => a.Order != b.Order ? a.Order.CompareTo(b.Order) : o.IndexOf(a).CompareTo(o.IndexOf(b))); }
 
         public KitSection Find(string id) => id != null && byId.TryGetValue(id, out var s) ? s : null;
 
@@ -91,9 +145,9 @@ namespace JBFramework
         internal void NotifySwitched(string id, bool on)
         {
             var s = Find(id);
-            if (s?.OnSwitched == null) return;
+            if (s?.SwitchedFunc == null) return;
             // not Guard.Run: a paused section must still be able to settle what it holds when switched off
-            try { s.OnSwitched(on); }
+            try { s.SwitchedFunc(on); }
             catch (Exception e) { k.Log.Error(id, "OnSwitched(" + on + ") failed", e); }
             k.Log.Info(id, "Section switched " + (on ? "on" : "off"));
         }

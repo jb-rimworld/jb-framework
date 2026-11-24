@@ -40,6 +40,7 @@ namespace JBFramework
         internal Func<float, float> LegacyToValue;
         /// <summary>Name of the mod's OLD Scribe_Values field in the settings file. Read once (as string) when the store has no value yet. See KitSettingsBase.</summary>
         internal string LegacyScribe;
+        internal Func<float, float> LegacyScribeConvert;
         /// <summary>Called (deferred, once per flush) after the value changed. Gets the new value.</summary>
         internal Action<float> OnChanged;
         /// <summary>The change only takes effect after a restart (the row shows a small tag).</summary>
@@ -160,14 +161,14 @@ namespace JBFramework
         }
 
         /// <summary>Parses an old settings-file value (True/False, int, float in invariant culture, enum name). False if it cannot.</summary>
-        internal bool TryParseLegacy(string raw, out float value)
+        internal bool TryParseLegacy(string raw, out float value, bool clamp = true)
         {
             value = 0f;
             if (raw == null) return false;
             raw = raw.Trim();
             if (raw.Length == 0) return false;
             if (bool.TryParse(raw, out bool b)) { value = b ? 1f : 0f; return true; }
-            if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out float f) && !float.IsNaN(f) && !float.IsInfinity(f)) { value = Clamp(f); return true; }
+            if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out float f) && !float.IsNaN(f) && !float.IsInfinity(f)) { value = clamp ? Clamp(f) : f; return true; }
             if (Kind == KitSettingKind.Enum && EnumType != null)
             {
                 try { value = Clamp(Convert.ToInt32(System.Enum.Parse(EnumType, raw, true))); return true; } catch { }
@@ -184,16 +185,28 @@ namespace JBFramework
         public KitSetting NeedsRestart() { Restart = true; return this; }
         /// <summary>Slider rounding step (0 = automatic).</summary>
         public KitSetting WithStep(float step) { Step = step; return this; }
-        /// <summary>Why the hard limit exists (shown when the player hits it), optionally a limit computed at runtime.</summary>
-        public KitSetting WithLimit(string reasonEn, Func<float> dynamicHardMax = null) { HardLimitReason = reasonEn; if (dynamicHardMax != null) DynamicHardMax = dynamicHardMax; return this; }
+        /// <summary>Why the hard limit exists (shown when the player hits it).</summary>
+        public KitSetting WithLimit(string reasonEn) { HardLimitReason = reasonEn; return this; }
+        /// <summary>Why the hard limit exists and a maximum computed at runtime (the lower of it and the hard maximum wins).</summary>
+        public KitSetting WithLimit(string reasonEn, Func<float> dynamicHardMax) { HardLimitReason = reasonEn; if (dynamicHardMax != null) DynamicHardMax = dynamicHardMax; return this; }
+        /// <summary>The range a typed value may have (the slider range stays). Values outside are clamped on read and write.</summary>
+        public KitSetting HardLimits(float min, float max) { HardMin = Math.Min(min, max); HardMax = Math.Max(min, max); return this; }
+        /// <summary>Description (tooltip and search text; key &lt;Prefix&gt;.Setting.&lt;Key&gt;.Desc).</summary>
+        public KitSetting Describe(string desc) { DescEn = desc; return this; }
+        /// <summary>A group header on the section page ("Speed", "Costs"); rows of one group are drawn together under it. Key &lt;Prefix&gt;.SettingCat.&lt;Group&gt;.</summary>
+        public KitSetting InGroup(string group) { Category = group; return this; }
         /// <summary>The mod's old Scribe_Values field name in the settings file: read once, when the store has no value yet.</summary>
         public KitSetting Legacy(string oldScribeName) { LegacyScribe = oldScribeName; return this; }
+        /// <summary>Like <see cref="Legacy(string)"/>, with a conversion of the old number (old percent 25 → fraction: <c>v =&gt; v / 100f</c>).</summary>
+        public KitSetting Legacy(string oldScribeName, Func<float, float> convert) { LegacyScribe = oldScribeName; LegacyScribeConvert = convert; return this; }
         /// <summary>An older store key this setting replaces, with a conversion of its value.</summary>
         public KitSetting LegacyStoreKey(string oldKey, Func<float, float> convert) { LegacyKey = oldKey; LegacyToValue = convert; return this; }
         /// <summary>Called (deferred, once per frame) after the value changed; gets the new value. Fenced.</summary>
         public KitSetting OnChange(Action<float> onChanged) { OnChanged = onChanged; return this; }
+        /// <summary>Greys the row unless a section of this mod is on or a mod/DLC is active.</summary>
+        public KitSetting RequiresOn(string sectionOrPackageId) { Requires = sectionOrPackageId; RequiresText = null; return this; }
         /// <summary>Greys the row unless a section of this mod is on or a mod/DLC is active; <paramref name="reasonEn"/> says why.</summary>
-        public KitSetting RequiresOn(string sectionOrPackageId, string reasonEn = null) { Requires = sectionOrPackageId; RequiresText = reasonEn; return this; }
+        public KitSetting RequiresOn(string sectionOrPackageId, string reasonEn) { Requires = sectionOrPackageId; RequiresText = reasonEn; return this; }
     }
 
     /// <summary>Registry and value access of all settings of one mod.</summary>

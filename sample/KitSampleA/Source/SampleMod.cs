@@ -32,32 +32,35 @@ namespace KitSampleA
 
         protected override void Register(KitRegistry r)
         {
+            // sections: plain, only with a DLC (off by default), only with a mod, with a diagnosis line and a removal step
             r.Section("alpha", "Alpha", "The first sample area. On by default.");
-            r.SectionFor("ludeon.rimworld.biotech", "Biotech", "beta", "Beta (Biotech)", "Exists only with Biotech. Off by default.", defaultOn: false);
-            r.SectionFor("ceteam.combatextended", "Combat Extended", "gamma", "Gamma (Combat Extended)", "Exists only with Combat Extended: shows the \"needs X (not installed)\" row.");
-            r.Section("delta", "Delta", "A section with a removal step and a diagnosis line.",
-                diagnosis: () => new[] { "Delta diagnosis line" },
-                prepareRemoval: report => report.Add("Delta: nothing was placed in this save (sample)."));
+            r.Section("beta", "Beta (Biotech)", "Exists only with Biotech. Off by default.").OnlyWith("ludeon.rimworld.biotech", "Biotech").OffByDefault();
+            r.Section("gamma", "Gamma (Combat Extended)", "Exists only with Combat Extended: shows the \"needs X (not installed)\" row.").OnlyWith("ceteam.combatextended");
+            r.Section("delta", "Delta", "A section with a removal step and a diagnosis line.")
+                .WithDiagnosis(() => new[] { "Delta diagnosis line" })
+                .WithRemoval(report => report.Add("Delta: nothing was placed in this save (sample)."));
 
-            r.Bool("alpha", "Switches", "ksa.flag", true, "A flag", "A plain on/off value.", legacyScribe: "oldFlag");
-            r.Int("alpha", "Numbers", "ksa.count", 5, 0, 20, "A count", "Whole numbers from 0 to 20 on the slider, up to 1000 typed.", hardMax: 1000);
-            r.Float("alpha", "Numbers", "ksa.speed", 1f, 0.1f, 5f, "A speed", "A plain decimal number.", legacyScribe: "oldSpeed");
-            r.Percent("alpha", "Numbers", "ksa.chance", 0.25f, 0f, 1f, "A chance", "Stored as 0..1, shown as percent.");
-            r.LogFloat("beta", "Scale", "ksa.factor", 1f, 0.1f, 100f, "A factor", "Log-scale slider from 0.1 to 100.", nerd: true);
-            r.Enum("beta", "Scale", "ksa.mode", SampleMode.Normal, "A mode", "One of three named choices.");
-            r.Silver(KitMod.Core, "Economy", "ksa.price", 100, 0, 1000, "A price", "Whole silver; typed values stop at 10 × the silver stack limit.")
-                .RequiresOn("alpha", "Needs the Alpha section.");
-            r.Bool("delta", "Switches", "ksa.restartFlag", false, "A restart flag", "Shows the \"after restart\" tag.").NeedsRestart();
-            r.Float(KitMod.Core, "Interface", "ksa.uiPref", 1f, 0.5f, 2f, "A global preference", "Global: the same in every save, shows the \"all games\" tag.").AsGlobal();
+            // one setting of every kind: section, key, default, (slider range,) label, description; then modifiers
+            r.Bool("alpha", "ksa.flag", true, "A flag", "A plain on/off value.").InGroup("Switches").Legacy("oldFlag");
+            r.Int("alpha", "ksa.count", 5, 0, 20, "A count", "Whole numbers from 0 to 20 on the slider, up to 1000 typed.").InGroup("Numbers").HardLimits(0, 1000);
+            r.Float("alpha", "ksa.speed", 1f, 0.1f, 5f, "A speed", "A plain decimal number.").InGroup("Numbers").Legacy("oldSpeed");
+            r.Percent("alpha", "ksa.chance", 0.25f, 0f, 1f, "A chance", "Stored as 0..1, shown as percent.").InGroup("Numbers").Legacy("oldChancePercent", v => v / 100f);
+            r.LogFloat("beta", "ksa.factor", 1f, 0.1f, 100f, "A factor", "Log-scale slider from 0.1 to 100.").InGroup("Scale").AsNerd();
+            r.Enum("beta", "ksa.mode", SampleMode.Normal, "A mode", "One of three named choices.").InGroup("Scale");
+            r.Silver(KitMod.Core, "ksa.price", 100, 0, 1000, "A price", "Whole silver; typed values stop at 10 × the silver stack limit.")
+                .InGroup("Economy").RequiresOn("alpha", "Needs the Alpha section.");
+            r.Bool("delta", "ksa.restartFlag", false, "A restart flag", "Shows the \"after restart\" tag.").InGroup("Switches").NeedsRestart();
+            r.Float(KitMod.Core, "ksa.uiPref", 1f, 0.5f, 2f, "A global preference", "Global: the same in every save, shows the \"all games\" tag.").InGroup("Interface").AsGlobal();
 
-            r.Preset("calm", "Calm", "Low numbers, Beta off.", p => { p.Set("ksa.count", 2f); p.Set("ksa.speed", 0.5f); p.SetSection("beta", false); });
-            r.Preset("loud", "Loud", "High numbers, Beta on.", p => { p.Set("ksa.count", 15f); p.Set("ksa.speed", 3f); p.SetSection("beta", true); });
+            // presets set only what they name; an enum is set as its number
+            r.Preset("calm", "Calm", "Low numbers, gentle mode, Beta off.", p => { p.Set("ksa.count", 2f); p.Set("ksa.speed", 0.5f); p.Set("ksa.mode", (float)(int)SampleMode.Gentle); p.SetSection("beta", false); });
+            r.Preset("loud", "Loud", "High numbers, wild mode, Beta on.", p => { p.Set("ksa.count", 15f); p.Set("ksa.speed", 3f); p.Set("ksa.mode", (float)(int)SampleMode.Wild); p.SetSection("beta", true); });
 
             r.Compat("Biotech", "ludeon.rimworld.biotech", "Unlocks the Beta section.");
-            r.Compat("Missing Sample Mod", "juliusberger00.jbkit.missing", "Patch class Patch_MissingMod is applied only when this mod is active.");
+            r.Compat("Missing Sample Mod", "juliusberger00.jbkit.missing", "Patch class Patch_MissingMod is applied only when this mod is active.").HealthyWhen(() => true);
             r.Incompatible("Imaginary Conflict", "juliusberger00.jbkit.conflict", "Would fight over the same setting. Use only one of the two.");
 
-            r.Page("notes", "Notes", order: 50, draw: NotesPage.Draw, section: "alpha");
+            r.Page("notes", "Notes", NotesPage.Draw).WithOrder(50).InSection("alpha");
         }
 
         protected override void OnSettingsChanged(string key) => Kit.Log.Debug("Sample", "Changed: " + key);

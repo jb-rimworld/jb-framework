@@ -3,6 +3,9 @@
 // A line changes when anything a dependent mod could bind to changes (name, kind, modifiers, types, parameter names and defaults).
 // Usage: PublicApi <assembly.dll>          the public API
 //        PublicApi --types <assembly.dll>  every type DEFINED in the assembly (full name), for tools/release.py
+//        PublicApi --uses <consumer.dll> <framework.dll>
+//                                          the API lines of every framework type and member the consumer references, after one line
+//                                          "# requires N" (N = the API level stamped by [KitRequires], 0 = none), for tools/release.py
 using Mono.Cecil;
 
 static class Program
@@ -14,14 +17,67 @@ static class Program
             foreach (var t in AssemblyDefinition.ReadAssembly(args[1]).MainModule.GetTypes()) Console.WriteLine(t.FullName);
             return 0;
         }
-        if (args.Length != 1) { Console.Error.WriteLine("usage: PublicApi [--types] <assembly.dll>"); return 2; }
+        if (args.Length == 3 && args[0] == "--uses") return Uses(args[1], args[2]);
+        if (args.Length != 1) { Console.Error.WriteLine("usage: PublicApi [--types] <assembly.dll> | --uses <consumer.dll> <framework.dll>"); return 2; }
         var asm = AssemblyDefinition.ReadAssembly(args[0]);
+        var lines = List(asm, null);
+        foreach (var l in lines.Distinct().OrderBy(x => x, StringComparer.Ordinal)) Console.WriteLine(l);
+        return 0;
+    }
+
+    /// <summary>Lines of the framework's public API that a consumer assembly binds to (types, fields, properties, methods, events).</summary>
+    static int Uses(string consumer, string framework)
+    {
+        var fw = AssemblyDefinition.ReadAssembly(framework);
+        var byMember = new Dictionary<string, string>();
+        List(fw, byMember);
+        var resolver = new DefaultAssemblyResolver();
+        resolver.AddSearchDirectory(Path.GetDirectoryName(Path.GetFullPath(framework)));
+        var mod = AssemblyDefinition.ReadAssembly(consumer, new ReaderParameters { AssemblyResolver = resolver }).MainModule;
+        int requires = 0;
+        foreach (var a in mod.Assembly.CustomAttributes)
+            if (a.AttributeType.Name == "KitRequiresAttribute" && a.ConstructorArguments.Count > 0 && a.ConstructorArguments[0].Value is int lv) requires = lv;
+        Console.WriteLine("# requires " + requires);
+        string fwName = fw.Name.Name;
+        bool FromFw(TypeReference t) => t != null && (t.Scope?.Name == fwName || t.Scope?.Name == fwName + ".dll");
+        var used = new SortedSet<string>(StringComparer.Ordinal);
+        void Mark(string key) { if (key != null && byMember.TryGetValue(key, out var line)) used.Add(line); }
+        foreach (var tr in mod.GetTypeReferences()) if (FromFw(tr)) Mark("T:" + tr.FullName);
+        foreach (var mr in mod.GetMemberReferences())
+        {
+            var decl = mr.DeclaringType is GenericInstanceType git ? git.ElementType : mr.DeclaringType;
+            if (!FromFw(decl)) continue;
+            Mark("T:" + decl.FullName);
+            IMemberDefinition def = null;
+            try { def = (mr as MethodReference)?.Resolve() ?? (IMemberDefinition)(mr as FieldReference)?.Resolve(); } catch { }
+            if (def == null) { Console.WriteLine("# unresolved " + mr.FullName); continue; }
+            Mark(Key(def));
+        }
+        foreach (var l in used) Console.WriteLine(l);
+        return 0;
+    }
+
+    static string Key(IMemberDefinition d)
+    {
+        if (d is MethodDefinition m)
+        {
+            foreach (var p in m.DeclaringType.Properties) if (p.GetMethod == m || p.SetMethod == m) return "P:" + p.FullName;
+            foreach (var e in m.DeclaringType.Events) if (e.AddMethod == m || e.RemoveMethod == m) return "E:" + e.FullName;
+            return "M:" + m.FullName;
+        }
+        if (d is FieldDefinition f) return "F:" + f.FullName;
+        return null;
+    }
+
+    static List<string> List(AssemblyDefinition asm, Dictionary<string, string> byMember)
+    {
         var lines = new List<string>();
+        void Add(string key, string line) { lines.Add(line); if (byMember != null && key != null) byMember[key] = line; }
         foreach (var t in asm.MainModule.GetTypes())
         {
             if (!Visible(t)) continue;
             string tn = Name(t);
-            lines.Add(tn + ": type " + TypeHeader(t));
+            Add("T:" + t.FullName, tn + ": type " + TypeHeader(t));
             bool open = !t.IsSealed;   // protected members of sealed types cannot be reached
             foreach (var f in t.Fields)
             {
@@ -29,7 +85,7 @@ static class Program
                 if (!(f.IsPublic || (open && (f.IsFamily || f.IsFamilyOrAssembly)))) continue;
                 string mods = Access(f.IsPublic) + (f.IsLiteral ? " const" : f.IsStatic ? " static" : "") + (f.IsInitOnly ? " readonly" : "");
                 string val = f.HasConstant ? " = " + Const(f.Constant) : "";
-                lines.Add($"{tn}: field {mods} {Name(f.FieldType)} {f.Name}{val}");
+                Add("F:" + f.FullName, $"{tn}: field {mods} {Name(f.FieldType)} {f.Name}{val}");
             }
             foreach (var p in t.Properties)
             {
@@ -38,12 +94,12 @@ static class Program
                 var any = g ?? s;
                 string acc = (g != null ? Access(g.IsPublic) + " get; " : "") + (s != null ? Access(s.IsPublic) + " set; " : "");
                 string ps = p.HasParameters ? "[" + string.Join(", ", p.Parameters.Select(Param)) + "]" : "";
-                lines.Add($"{tn}: property{Mods(any)} {Name(p.PropertyType)} {p.Name}{ps} {{ {acc}}}");
+                Add("P:" + p.FullName, $"{tn}: property{Mods(any)} {Name(p.PropertyType)} {p.Name}{ps} {{ {acc}}}");
             }
             foreach (var e in t.Events)
             {
                 if (!Reach(e.AddMethod, open)) continue;
-                lines.Add($"{tn}: event{Mods(e.AddMethod)} {Name(e.EventType)} {e.Name}");
+                Add("E:" + e.FullName, $"{tn}: event{Mods(e.AddMethod)} {Name(e.EventType)} {e.Name}");
             }
             foreach (var m in t.Methods)
             {
@@ -52,14 +108,13 @@ static class Program
                 string gen = m.HasGenericParameters ? "<" + string.Join(", ", m.GenericParameters.Select(GenParam)) + ">" : "";
                 string name = m.IsConstructor ? (m.IsStatic ? ".cctor" : ".ctor") : m.Name;
                 string ret = m.IsConstructor ? "" : " " + Name(m.ReturnType);
-                lines.Add($"{tn}: method {Access(m.IsPublic)}{Mods(m)}{ret} {name}{gen}({string.Join(", ", m.Parameters.Select(Param))})");
+                Add("M:" + m.FullName, $"{tn}: method {Access(m.IsPublic)}{Mods(m)}{ret} {name}{gen}({string.Join(", ", m.Parameters.Select(Param))})");
             }
         }
         foreach (var a in asm.CustomAttributes)
             if (a.AttributeType.Name == "AssemblyVersionAttribute") lines.Add("assembly version " + a.ConstructorArguments[0].Value);
         lines.Add("assembly name " + asm.Name.Name + " " + asm.Name.Version);
-        foreach (var l in lines.Distinct().OrderBy(x => x, StringComparer.Ordinal)) Console.WriteLine(l);
-        return 0;
+        return lines;
     }
 
     static bool Visible(TypeDefinition t)

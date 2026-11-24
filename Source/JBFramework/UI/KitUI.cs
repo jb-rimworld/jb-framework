@@ -8,7 +8,7 @@ namespace JBFramework
 {
     /// <summary>
     /// Window sizing for every window of a mod. Windows declare the size they were designed for at a 900 px tall screen;
-    /// <see cref="Size"/> scales it up for larger screens and by the player's global "Window size" preference (Mod settings,
+    /// <see cref="Size(float, float)"/> scales it up for larger screens and by the player's global "Window size" preference (Mod settings,
     /// JB Framework), and never lets it leave the screen. Usage: <c>public override Vector2 InitialSize =&gt; KitUI.Size(900f, 640f);</c>
     /// </summary>
     public static class KitUI
@@ -38,10 +38,12 @@ namespace JBFramework
         }
 
         /// <summary>
-        /// Scaled window size for a window designed at <paramref name="w"/> × <paramref name="h"/>, clamped to a fraction of the screen
-        /// (<paramref name="maxFracW"/>, <paramref name="maxFracH"/>) and never below <paramref name="minW"/> × <paramref name="minH"/>.
+        /// Scaled window size for a window designed at <paramref name="w"/> × <paramref name="h"/>, clamped to 92 % of the screen.
         /// </summary>
-        public static Vector2 Size(float w, float h, float minW = 0f, float minH = 0f, float maxFracW = 0.92f, float maxFracH = 0.92f)
+        public static Vector2 Size(float w, float h) => Size(w, h, 0f, 0f, 0.92f, 0.92f);
+
+        /// <summary>Like <see cref="Size(float, float)"/> with a minimum size and the largest share of the screen (0.92 by default).</summary>
+        public static Vector2 Size(float w, float h, float minW, float minH, float maxFracW, float maxFracH)
         {
             float s = Scale;
             float maxW = ScreenW * maxFracW, maxH = ScreenH * maxFracH - 35f;

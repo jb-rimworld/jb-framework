@@ -160,4 +160,7 @@
   <JBF.Setting.jbf.welcomeCards.Desc>A small card with presets and a link to the settings, once per new colony (and once when a mod joins a save), for every JB mod that has one.</JBF.Setting.jbf.welcomeCards.Desc>
   <JBF.SettingCat.Interface>Interface</JBF.SettingCat.Interface>
   <JBF.Page.mods>Mods</JBF.Page.mods>
+  <JBF.Section.NeedsMod>Needs {0}.</JBF.Section.NeedsMod>
+  <JBF.Page.Failed>This page ran into an error and is not drawn: {0}\n\nDetails are in {1}. The rest of {2} keeps working.</JBF.Page.Failed>
+  <JBF.Page.Retry>Retry</JBF.Page.Retry>
 </LanguageData>

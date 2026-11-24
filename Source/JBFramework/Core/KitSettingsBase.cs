@@ -63,16 +63,24 @@ namespace JBFramework
                 try { Scribe_Values.Look(ref raw, s.LegacyScribe); }
                 catch (Exception e) { k.Log.Warn("Migration", "Could not read old field " + s.LegacyScribe + ": " + e.Message); continue; }
                 if (raw == null) continue;
-                if (s.TryParseLegacy(raw, out float v)) { Template.Store.Set(s.Key, v); Migrated.Add(s.Key + "=" + s.Format(v) + " (from " + s.LegacyScribe + ")"); }
+                if (s.TryParseLegacy(raw, out float v, s.LegacyScribeConvert == null))
+                {
+                    if (s.LegacyScribeConvert != null)
+                    {
+                        try { v = s.Clamp(s.LegacyScribeConvert(v)); }
+                        catch (Exception e) { k.Log.Warn("Migration", "Converting the old value of " + s.LegacyScribe + " threw (" + e.Message + "); " + s.Key + " keeps its default"); continue; }
+                    }
+                    Template.Store.Set(s.Key, v); Migrated.Add(s.Key + "=" + s.Format(v) + " (from " + s.LegacyScribe + ")");
+                }
                 else k.Log.Warn("Migration", "Old value of " + s.LegacyScribe + " ('" + raw + "') could not be read; " + s.Key + " keeps its default");
             }
             foreach (var sec in k.Sections.All)
             {
-                if (string.IsNullOrEmpty(sec.LegacyEnabled) || Template.SectionStored(sec.Id)) continue;
+                if (string.IsNullOrEmpty(sec.LegacyEnabledField) || Template.SectionStored(sec.Id)) continue;
                 string raw = null;
-                try { Scribe_Values.Look(ref raw, sec.LegacyEnabled); } catch { continue; }
+                try { Scribe_Values.Look(ref raw, sec.LegacyEnabledField); } catch { continue; }
                 if (raw == null) continue;
-                if (bool.TryParse(raw.Trim(), out bool on)) { Template.sections[sec.Id] = on; Migrated.Add("section:" + sec.Id + "=" + on + " (from " + sec.LegacyEnabled + ")"); }
+                if (bool.TryParse(raw.Trim(), out bool on)) { Template.sections[sec.Id] = on; Migrated.Add("section:" + sec.Id + "=" + on + " (from " + sec.LegacyEnabledField + ")"); }
             }
             if (Migrated.Count == 0) return;
             BackupOnce(k);

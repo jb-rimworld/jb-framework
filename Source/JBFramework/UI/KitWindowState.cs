@@ -16,6 +16,8 @@ namespace JBFramework
         public KitPreset PresetCacheMatch;
         /// <summary>The mod was added to the running save (welcome card variant).</summary>
         public bool JoinedExistingSave;
+        /// <summary>Custom pages that threw while drawing (page id → message); shown as an error box until Retry or the window closes.</summary>
+        public readonly System.Collections.Generic.Dictionary<string, string> PageErrors = new System.Collections.Generic.Dictionary<string, string>();
 
         /// <summary>Where the last frame put the window's parts (read by the window test to check that they fit and do not overlap).</summary>
         internal struct Layout { public Rect In, Side, Main, Title, Search, Nerd, Content; public float ContentH; public string Page; public int Frame; }
@@ -32,6 +34,7 @@ namespace JBFramework
         {
             KitRow.ClearBuffers();
             PresetCacheTime = -1f;
+            PageErrors.Clear();
         }
     }
 }

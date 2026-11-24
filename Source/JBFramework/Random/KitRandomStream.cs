@@ -23,20 +23,25 @@ namespace JBFramework
     /// <summary>
     /// A counter-based deterministic random stream: value number n is a pure function of (<see cref="Seed"/>, <see cref="StreamId"/>, n).
     /// Two streams with the same seed, id and counter produce the same numbers on every machine and after every reload, which makes
-    /// results reproducible and multiplayer-safe. Get per-save named streams from <see cref="KitRandom.Stream(KitMod, string, KitRandomAlgorithm)"/>; create your own with
+    /// results reproducible and multiplayer-safe. Get per-save named streams from <see cref="KitRandom.Stream(KitMod, string)"/>; create your own with
     /// the constructor (tests, previews, world generation).
     /// </summary>
     public sealed class KitRandomStream
     {
+        /// <summary>A stream from its start (SplitMix64).</summary>
+        public KitRandomStream(ulong seed, ulong streamId) : this(seed, streamId, 0, KitRandomAlgorithm.SplitMix64) { }
+
         /// <summary>A stream. <paramref name="counter"/> is the number of values already drawn (0 = from the start).</summary>
-        public KitRandomStream(ulong seed, ulong streamId, ulong counter = 0, KitRandomAlgorithm algorithm = KitRandomAlgorithm.SplitMix64)
+        public KitRandomStream(ulong seed, ulong streamId, ulong counter, KitRandomAlgorithm algorithm)
         {
             Seed = seed; StreamId = streamId; Counter = counter; Algorithm = algorithm;
         }
 
         /// <summary>A stream whose id is the stable hash of <paramref name="name"/> (<see cref="HashString"/>).</summary>
-        public KitRandomStream(ulong seed, string name, ulong counter = 0, KitRandomAlgorithm algorithm = KitRandomAlgorithm.SplitMix64)
-            : this(seed, HashString(name), counter, algorithm) { }
+        public KitRandomStream(ulong seed, string name) : this(seed, HashString(name), 0, KitRandomAlgorithm.SplitMix64) { }
+
+        /// <summary>A named stream at a position, with a generator.</summary>
+        public KitRandomStream(ulong seed, string name, ulong counter, KitRandomAlgorithm algorithm) : this(seed, HashString(name), counter, algorithm) { }
 
         /// <summary>The seed (per save for <see cref="KitRandom"/> streams).</summary>
         public ulong Seed { get; private set; }
@@ -121,8 +126,10 @@ namespace JBFramework
         public int RangeInclusive(int min, int max) => max <= min ? min : (int)(min + (long)(NextULong() % (ulong)((long)max - min + 1)));
         /// <summary>Uniform in [<paramref name="min"/>, <paramref name="max"/>).</summary>
         public double Range(double min, double max) => min + (max - min) * NextDouble();
+        /// <summary>Standard normal distribution (mean 0, standard deviation 1; Box-Muller, draws two values).</summary>
+        public double Gaussian() => Gaussian(0, 1);
         /// <summary>Normal distribution (Box-Muller; draws two values).</summary>
-        public double Gaussian(double mean = 0, double sd = 1)
+        public double Gaussian(double mean, double sd)
         {
             double u1 = Math.Max(1e-12, NextDouble()), u2 = NextDouble();
             return mean + sd * Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2 * Math.PI * u2);

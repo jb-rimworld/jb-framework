@@ -28,7 +28,7 @@ namespace JBFramework
         }
 
         /// <summary>The mod's mark (Theme.MarkTex), or null.</summary>
-        public static Texture2D Mark(KitMod k) => Get(k?.Info?.Theme?.MarkTex);
+        public static Texture2D Mark(KitMod k) => Get(k?.Cfg?.Theme?.MarkTex);
 
         /// <summary>Framework icon of a standard page (Common/Textures/UI/JBFramework/&lt;Name&gt;), or null.</summary>
         static Texture2D Own(string name) => Get("UI/JBFramework/" + name);
@@ -37,7 +37,7 @@ namespace JBFramework
         public static Texture2D Page(KitMod k, string pageId)
         {
             if (pageId == null || k == null) return null;
-            var icons = k.Info?.Theme?.Icons;
+            var icons = k.Cfg?.Theme?.Icons;
             if (icons != null && icons.TryGetValue(pageId, out var p) && Get(p) is Texture2D themed) return themed;
             if (pageId.StartsWith("section:")) return Get(k.Sections.Find(pageId.Substring(8))?.Icon);
             if (pageId.StartsWith("page:")) return Get(k.Pages.Find(pageId.Substring(5))?.Icon);
@@ -70,7 +70,7 @@ namespace JBFramework
         /// <summary>Tests: every texture path the theme, sections and pages name (each should resolve).</summary>
         public static IEnumerable<string> AllPaths(KitMod k)
         {
-            var th = k?.Info?.Theme;
+            var th = k?.Cfg?.Theme;
             if (!string.IsNullOrEmpty(th?.MarkTex)) yield return th.MarkTex;
             if (th?.Icons != null) foreach (var kv in th.Icons) if (!string.IsNullOrEmpty(kv.Value)) yield return kv.Value;
             if (k == null) yield break;

@@ -78,8 +78,10 @@
     <WriteLinesToFile File="$(JBFrameworkRoot)About/About.xml" Lines="$(_JBAboutText)" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="utf-8" />
   </Target>
 
-  <!-- Docs for other modders: the 1.7 doc XML is copied to api/ (the DLL folders stay clean). -->
-  <Target Name="JBFrameworkDocs" AfterTargets="Build" Condition="'$(RimVersion)' == '1.7'">
-    <Copy SourceFiles="$(DocumentationFile)" DestinationFolder="$(JBFrameworkRoot)api/" SkipUnchangedFiles="true" />
+  <!-- Docs for other modders: the doc XML lies next to the DLL (IDEs show the comments when a mod references the Workshop copy;
+       RimWorld loads only *.dll from Assemblies/), and the 1.7 one is also copied to api/. -->
+  <Target Name="JBFrameworkDocs" AfterTargets="Build">
+    <Copy SourceFiles="$(DocumentationFile)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy Condition="'$(RimVersion)' == '1.7'" SourceFiles="$(DocumentationFile)" DestinationFolder="$(JBFrameworkRoot)api/" SkipUnchangedFiles="true" />
   </Target>
 </Project>

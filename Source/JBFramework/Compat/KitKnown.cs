@@ -85,7 +85,7 @@ namespace JBFramework
             var name = KitDetect.ActiveName(harmonyId);
             if (!string.IsNullOrEmpty(name)) return name;
             foreach (var k in Framework.AllContexts())
-                if (string.Equals(k.Info.HarmonyId, harmonyId, StringComparison.OrdinalIgnoreCase)) return k.Name;
+                if (string.Equals(k.Cfg.HarmonyId, harmonyId, StringComparison.OrdinalIgnoreCase)) return k.Name;
             return harmonyId;
         }
 

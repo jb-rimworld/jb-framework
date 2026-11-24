@@ -7,9 +7,12 @@
 Steps (all checks run, then the first failing group stops before anything is copied):
   1 build      release build with -p:JBTests=false (skip: --no-build). csproj: --csproj, else Source/**: one that imports JBMod.props, else
                *.rw17.csproj, else the only *.csproj (obj/bin/_frozen16 ignored).
-  2 dll scan   no test harness in 1.7/Assemblies (JBFramework.Testing, KitTestRunner, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST,
+  2 dll scan   no test harness in 1.7/, 1.6/ and Common/Assemblies (JBFramework.Testing, KitTestRunner, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST,
                JB_UI_SHOTS, JB_PROBE, HearthTestRunner), ASCII and UTF-16. A dependent mod ships no JBFramework.dll and DEFINES no type in the
-               framework's namespace (tools/PublicApi --types; a copied framework source file would shadow the real framework).
+               framework's namespace (tools/PublicApi --types; a copied framework source file would shadow the real framework), and the
+               API level it states covers every framework member it binds to (tools/public_api.py uses; api/Since.txt).
+  2b dependency  a dependent mod lists the framework in modDependencies (with steamWorkshopUrl, checked against the framework's
+               About/PublishedFileId.txt once it exists) and in loadAfter.
                The framework itself (a folder with build/Identity.props): built for 1.7 AND 1.6, `tools/public_api.py check` must pass (the
                public API is additive only), and the copy leaves out sample/, build/, api/, TestMod/ and API.md.
   3 freeze     freeze16.py --check (1.6 byte-identical to Source/Frozen16.sha256); About lists 1.6 but no manifest = error.
@@ -128,6 +131,39 @@ def defined_types(dll):
     return [l.strip() for l in p.stdout.splitlines() if l.strip()] if p.returncode == 0 else None
 
 
+def uses_framework(dll):
+    asm = fw_identity()["JBFrameworkAssemblyName"]
+    data = open(dll, "rb").read()
+    return asm.encode() in data
+
+
+def step_dependency(mod, R):
+    """A dependent mod lists the framework in About.xml with a Workshop link (players without it get a subscribe button)."""
+    R.group = "dependency"
+    if is_framework(mod): return
+    s = open(os.path.join(HERE, "..", "build", "Identity.props"), encoding="utf-8").read()
+    fwpid = re.search(r"<JBFrameworkPackageId>([^<]*)</JBFrameworkPackageId>", s).group(1).strip().lower()
+    r = ET.parse(os.path.join(mod, "About", "About.xml")).getroot()
+    deps = [li for li in r.findall("./modDependencies/li")] + [li for li in r.findall("./modDependenciesByVersion/*/li")]
+    mine = [li for li in deps if (li.findtext("packageId") or "").strip().lower() == fwpid]
+    built = any(os.path.isfile(os.path.join(mod, v, "Assemblies", f)) and uses_framework(os.path.join(mod, v, "Assemblies", f))
+                for v in ("1.7", "1.6") if os.path.isdir(os.path.join(mod, v, "Assemblies")) for f in os.listdir(os.path.join(mod, v, "Assemblies")) if f.endswith(".dll"))
+    if not mine:
+        (R.err if built else R.ok)(f"About.xml lists no modDependency {fwpid}" + ("" if built else " (the mod does not use the framework)")); return
+    load_after = [(e.text or "").strip().lower() for e in r.findall("./loadAfter/li")]
+    if fwpid not in load_after: R.err(f"About.xml: add <li>{fwpid}</li> to <loadAfter>")
+    fid_file = os.path.join(HERE, "..", "About", "PublishedFileId.txt")
+    fid = open(fid_file).read().strip() if os.path.isfile(fid_file) else ""
+    for li in mine:
+        url = (li.findtext("steamWorkshopUrl") or "").strip()
+        if not url: R.err(f"About.xml: the {fwpid} dependency has no <steamWorkshopUrl> (players without the framework get no subscribe link)")
+        elif "JBFRAMEWORK_WORKSHOP_ID" in url:
+            (R.err if fid else R.warn)(f"About.xml: steamWorkshopUrl still holds the placeholder JBFRAMEWORK_WORKSHOP_ID" + (f": put {fid} there" if fid else " (the framework is not uploaded yet)"))
+        elif fid and not url.endswith("/" + fid): R.err(f"About.xml: steamWorkshopUrl {url} does not point at the framework's Workshop id {fid}")
+        elif not fid: R.warn("the framework has no About/PublishedFileId.txt yet: steamWorkshopUrl not checked against it")
+        else: R.ok(f"framework dependency with Workshop link {url}")
+
+
 def step_build(mod, a, R):
     R.group = "build"
     cs = find_csproj(mod, a.get("--csproj"))
@@ -149,9 +185,10 @@ def step_build(mod, a, R):
 def step_dll(mod, R, label="dll scan"):
     R.group = label
     dlls = []
-    for d in (os.path.join(mod, "1.7", "Assemblies"), os.path.join(mod, "Common", "Assemblies")):
+    for d in (os.path.join(mod, "1.7", "Assemblies"), os.path.join(mod, "1.6", "Assemblies"), os.path.join(mod, "Common", "Assemblies")):
         if os.path.isdir(d): dlls += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith(".dll")]
-    if not dlls: R.warn("no DLL in 1.7/Assemblies"); return
+    if not any(os.sep + "1.7" + os.sep in d or os.sep + "Common" + os.sep in d for d in dlls): R.warn("no DLL in 1.7/Assemblies")
+    if not dlls: return
     fw = is_framework(mod)
     ident = fw_identity()
     ns, asm = ident["JBFrameworkNamespace"], ident["JBFrameworkAssemblyName"]
@@ -172,6 +209,13 @@ def step_dll(mod, R, label="dll scan"):
                 bad = [t for t in types if t == ns or t.startswith(ns + ".")]
                 if bad: R.err(f"{os.path.relpath(d, mod)} defines framework types (copied framework source?): {', '.join(bad[:8])}")
                 else: R.ok(f"{os.path.relpath(d, mod)} defines no {ns}.* type ({len(types)} types)")
+            if os.sep + "1.7" + os.sep in d and uses_framework(d):
+                pa = load("public_api")
+                try: stamped, need, used, unresolved = pa.uses(d, os.path.join(HERE, "..", "1.7", "Assemblies", asm + ".dll"))
+                except SystemExit as e: R.err(f"{os.path.relpath(d, mod)}: could not list its framework use ({e})"); continue
+                if unresolved: R.err(f"{os.path.relpath(d, mod)} binds to {len(unresolved)} member(s) this framework build does not have: {unresolved[0][2:]}")
+                if stamped < need: R.err(f"{os.path.relpath(d, mod)} uses API level {need} but states {stamped}: set <JBMinApiLevel>{need}</JBMinApiLevel> in its csproj")
+                else: R.ok(f"{os.path.relpath(d, mod)}: {len(used)} framework members, needs API level {need}, states {stamped}")
     if fw:
         R.group = "public api"
         p = subprocess.run([sys.executable, "-I", os.path.join(HERE, "public_api.py"), "check"], capture_output=True, text=True)
@@ -415,7 +459,7 @@ def main(argv):
 
     if "--no-build" not in a: step_build(mod, a, R)
     if R.errors: return summary(R, a)
-    step_dll(mod, R); step_freeze(mod, about, R); step_layout(mod, about, version, R); step_defs(mod, R)
+    step_dll(mod, R); step_dependency(mod, R); step_freeze(mod, about, R); step_layout(mod, about, version, R); step_defs(mod, R)
     note, version = step_notes(mod, about, version, a, R, changelog)
     if R.errors or ("--strict" in a and R.warns): return summary(R, a)
 

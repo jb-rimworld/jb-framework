@@ -26,11 +26,14 @@ namespace JBFramework
         /// <summary>
         /// Families by rule: every building def for which <paramref name="family"/> returns a non-empty key and <paramref name="tier"/>
         /// a tier ≥ 1 belongs to that family. A family needs at least two members with distinct tiers and one size; others are ignored.
-        /// <paramref name="allowed"/> (optional) hides the gizmo for a thing; <paramref name="afterSwap"/> (optional) runs after a change
-        /// (old thing, already destroyed; new thing, spawned).
+        /// The five-argument overload adds allowed (hides the gizmo for a thing) and afterSwap (runs after a change: old thing, already
+        /// destroyed; new thing, spawned).
         /// </summary>
+        public static void Families(KitMod owner, Func<ThingDef, string> family, Func<ThingDef, int> tier) => Families(owner, family, tier, null, null);
+
+        /// <summary>Like <see cref="Families(KitMod, Func{ThingDef, string}, Func{ThingDef, int})"/> with the two optional callbacks (each may be null).</summary>
         public static void Families(KitMod owner, Func<ThingDef, string> family, Func<ThingDef, int> tier,
-            Func<Thing, bool> allowed = null, Action<Thing, Thing> afterSwap = null)
+            Func<Thing, bool> allowed, Action<Thing, Thing> afterSwap)
         {
             if (owner == null || family == null || tier == null) return;
             lock (rules) rules.Add(new Rule { Owner = owner, Family = family, Tier = tier, Allowed = allowed, AfterSwap = afterSwap });
