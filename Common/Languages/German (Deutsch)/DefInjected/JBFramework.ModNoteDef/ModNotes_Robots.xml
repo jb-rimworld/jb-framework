@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_MiscRobots.label>Misc. Robots</JBF_Note_MiscRobots.label>
+  <JBF_Note_MiscRobots.description>Misc. Robots: Trage- und Putzroboter, bei Händlern zu kaufen.</JBF_Note_MiscRobots.description>
+  <JBF_Note_MiscRobots.pitfall>Auf RimWorld 1.7 hat die Grundmod nur Träger und Putzer; Bauroboter kommen aus Misc. Robots++.</JBF_Note_MiscRobots.pitfall>
+  <JBF_Note_MiscRobotsPP.label>Misc. Robots++</JBF_Note_MiscRobotsPP.label>
+  <JBF_Note_MiscRobotsPP.description>Misc. Robots++: Küchen-, Handwerks-, Bau-, Notfall- und Allzweckroboter in fünf Stufen (Fertigkeit 4 bis 20).</JBF_Note_MiscRobotsPP.description>
+  <JBF_Note_MiscRobotsPP.pitfall>Vanilla würfelt Arbeit von Mechanoiden mit fester Fertigkeit 10; Roboter nutzen dort nicht ihre eigene Fertigkeit.</JBF_Note_MiscRobotsPP.pitfall>
+  <JBF_Note_MiscRobotsPP.advice>QualityBuilder × Misc. Robots lässt Roboter mit ihrer eigenen Fertigkeit würfeln.</JBF_Note_MiscRobotsPP.advice>
+  <JBF_Note_QBRobots.label>QualityBuilder × Misc. Robots</JBF_Note_QBRobots.label>
+  <JBF_Note_QBRobots.description>QualityBuilder × Misc. Robots: Roboter dürfen QualityBuilder-Rahmen bauen, wenn ihr Wurf die Mindestqualität erreichen kann.</JBF_Note_QBRobots.description>
+</LanguageData>

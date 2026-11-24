@@ -1,4 +1,4 @@
-# JB Framework API (API level 1, framework 1.0.0)
+# JB Framework API (API level 2, framework 1.0.0)
 
 Namespace `JBFramework`, assembly `JBFramework.dll` (identity: `build/Identity.props`). Part 1 is the public contract for mod authors.
 Part 2 is the internal architecture and the contract for the people (and agents) who extend the framework: what exists, where to hook in,
@@ -90,6 +90,74 @@ key per frame (settings window), on window close and from `FrameworkGame.GameCom
 Window size (`KitUI.Scale`), detailed log (`KitLog` writes Info/Debug to the game log), nerd settings, welcome cards. Shown on the
 framework's General page; every mod's General page links there.
 
+### Compatibility knowledge base (API level 2)
+What the framework knows about other mods, shipped as data and read by every mod that uses it. Updating the framework updates the knowledge.
+- **`ModNoteDef : Def`** (`Common/Defs/ModNotes/*.xml`, German via `DefInjected/JBFramework.ModNoteDef`): `label`, `description`,
+  `packageIds` (every upload/fork, exact case from About.xml), `tags`, `versions`, `workshopIds`, `harmonyIds`, `pitfall`, `advice`,
+  `source` (not shown); `Active`, `ActivePackageId`, `HasTag(tag)`. Any mod may add its own notes in XML. The seed (60 notes) is built by
+  `python3 -I tools/modnotes/build.py` from `tools/modnotes/notes.py`; it refuses a packageId that no real About.xml or
+  `Rimling/ModKnowledge` file contains.
+- **`KitTags`**: the tag strings the notes use (`alien-races`, `changes-bills-ui`, `changes-bills`, `adds-pipe-networks`,
+  `combat-overhaul`, `replaces-construction`, `changes-quality`, `changes-storage`, `changes-medical`, `guests`, `robots`, `editor`,
+  `performance`, `early-patcher`, `multiplayer`, `ai`, `library`, `changes-architect`, `changes-work`, `adds-buildings`, `economy`,
+  `psycasts`, `genes`, `changes-pawn-ui`, `jb-mod`). Plain strings: own tags are allowed.
+- **`KitKnown`** (static, after defs are loaded): `All`, `Note(packageId)`, `WithTag(tag)`, `Active()`, `ActiveWithTag(tag)`,
+  `AnyActiveWithTag(tag)`, `Declare(k, tags…)` (the tags a mod cares about; call in Register or OnDefsLoaded), `DeclaredTags(k)`,
+  `RelevantFor(k)`, `OwnerName(harmonyId)`.
+- **Compatibility pages**: every mod's page shows, after its own integrations, "Known mods in your game" (active notes matching its
+  declared tags, with pitfall and advice) and "Other mods changing the same game code" (Harmony co-owners of the methods it patches, by
+  name). The framework's own page lists every active known mod. The same appears in the diagnosis reports.
+- **`KitDetect`** (static, cached, never throws): `Royalty`, `Ideology`, `Biotech`, `Anomaly`, `Odyssey` and their `…Id` constants,
+  `ActiveDlcNames`, `IsActive(id)`, `AnyActive(ids…)`, `FirstActive(ids…)`, `ActiveName(id)`, `ActivePackageIds`, `Normalize(id)`,
+  `Same(a, b)`, `Refresh()`. Every id check ignores case and the Workshop `_steam` postfix.
+
+### Adapters (API level 2)
+One guarded class per other mod; reflection only, resolved once, a failure is one warning in the framework log (channel `Compat`) and a
+safe default. Adding a mod = a ModNoteDef plus, at most, one class in `Source/JBFramework/Compat/Adapters/`.
+| Class | What | Verified against |
+|---|---|---|
+| `KitCE` | `Active`, `PackageIds`, `AmmoSetOf(weapon)`, `AmmoTypesFor(weapon)`, `DefaultAmmoFor(weapon)`, `IsAmmo(def)` | CombatExtended.dll 1.6 (`ammoSet`, `ammoTypes`, `ammo`), as DNDM's CEAmmo |
+| `KitHAR` | `Active`, `IsAlienRace(race)`, `IsAlien(pawn)`, `IsCustomBodied(race/pawn)` (humanlike, body ≠ Human), `HumanlikeRaces()` | AlienRace.dll 1.6 (`AlienRace.ThingDef_AlienRace`), LO's race modes |
+| `KitNiceBillTab` | `Active`, `RequestRefresh()` (also the copy bundled in Nice Inventory Tab) | NiceBillTab.dll 1.6 (`TabBillsDrawer.shouldRefreshFilter`), BWD's fix |
+| `KitHearth` | `HearthHarbor`, `Silverline`, `Any`, id constants | About.xml files |
+| `KitVEPipes` | `Active`, `NetworksOf(def)`, `IsPipeDef(def)`, `IsOnPipeNet(thing)` (read-only) | VEF PipeSystem.dll **1.7** (`CompResource`, `CompProperties_Resource.pipeNet`) |
+No Dubs Bad Hygiene adapter: no 1.7 build of it was available to check against (its note exists).
+
+### Shared functions (API level 2)
+- **`KitMaterialMenu`**: `AfterDropdownPick(k, applies, offerAllMaterials)` opens the material menu after a pick from any architect
+  dropdown for the stuffed defs `applies` accepts (vanilla's dropdown never does). One framework patch on
+  `Designator_Dropdown.GetDesignatorSelectAction`, however many mods register; no-op for other defs. `offerAllMaterials: false` = vanilla's
+  menu (materials on the map), `true` = `Open(des)`: materials on the map first, the rest marked "none on the map". Replaces DNDM's
+  `DNDMMaterialMenu` and HBG2's `Patch_DropdownStuffMenu` (remove those patches when a mod switches over, or the menu opens twice).
+- **`KitArchitect`**: `OneEntryPerFamily(k, def → familyKey)` merges a family's buildables (and vanilla dropdown groups of it) into one
+  dropdown per tab, sorted by uiOrder; keys are per mod. Postfix on `DesignationCategoryDef.ResolveDesignators` + a startup pass;
+  registering later regroups at once. `RegroupAll()`.
+- **`KitTiers`**: `Families(k, family, tier, allowed, afterSwap)` or `Family(k, id, defNames…)`; members get the "Change tier" gizmo
+  (`CompProperties_KitTierSwap`/`CompKitTierSwap`/`Command_KitTierSwap`, save nothing). `Swap(thing, toDef)` keeps faction, material, HP
+  ratio, paint, forbidden, storage settings, bills, battery charge, selection and `IKitTierState` comps. `SiblingsOf`, `TierOf`,
+  `SiblingAt`, `Roman`. Register in Register/OnDefsLoaded: comps added later reach only things spawned afterwards.
+- **`KitDefEdits.For(k)`**: reversible def edits. `Set(def, "field.path", value, group)`, `SetStat(def, stat, value, group)`,
+  `SetConstructionSkill(def, skill, group)` (also the blueprint/frame copies), `Restore(group)` / `Restore()` / `RestoreDef(def)`,
+  `IsEdited`, `Count`. The first edit records the original (lists copied, stat presence remembered).
+- **`KitRemoval`**: building blocks for a section's `prepareRemoval`: `RemoveThings(defs, report, refund)` (maps, minified, blueprints,
+  frames, inventories, equipment, apparel), `RemoveHediffs`, `RemoveBills`, `RemoveDesignations`; `AddStep(k, sectionId, step)` adds a step
+  to an existing section. Each step writes one report line and never throws.
+
+### Random streams (API level 2)
+Deterministic, save-stable random numbers (from Hearth & Harbor's JRand), for any mod:
+- **`KitRandom.Stream(k, name)`**: the named stream of the running save. Same name = same sequence after a reload and on every machine
+  (multiplayer-safe), streams are independent, names are namespaced per mod (`<packageId>/<name>`). State: seed from the world seed,
+  position of every used stream, stored in `FrameworkGame` (`<framework><random>`); a removed mod leaves a few numbers, no types.
+  `Stream(globalName)` for code without a KitMod (prefix your packageId). `Vanilla()` = throw-away stream fed from Verse.Rand (re-rolls
+  like vanilla). `SaveSeed`, `Persistent`. Without a game: a non-persistent clock-seeded stream.
+- **`KitRandomStream`** (pure, no game types; `new KitRandomStream(seed, name or id, counter, algorithm)`): `NextULong`, `NextDouble`,
+  `NextFloat`, `Chance(p)`, `Range(min, maxExcl)`, `RangeInclusive`, `Range(double, double)`, `Gaussian`, `Poisson`, `Shuffle(list)`
+  (Fisher-Yates), `Pick(list)`, `WeightedIndex(weights)`, `PickWeighted(items, weight)`, `Clone`, `Counter` (settable), `Reseed`, static
+  `Mix`, `HashString` (FNV-1a). `KitRandomAlgorithm`: SplitMix64 (default), Pcg32, Xoshiro256, ChaCha8 (values bit-identical to H&H's
+  RngStream, checked for 1000 values each).
+- **`KitShuffleBag`** (`IExposable`): every index 0…Count-1 once per round in shuffled order; `Next(stream)`, `Resize`, `Remaining`.
+  Save it in your own `SaveData`.
+
 ---
 
 ## Part 2: architecture and contract for contributors
@@ -117,6 +185,8 @@ internals; nobody else may rely on them.
 | `KitHooks.DefsLoaded` | once, after all mods' OnDefsLoaded | `Action` |
 | `KitHooks.ReportLines` | building a mod's diagnosis report | `Func<KitMod, IEnumerable<string>>` |
 | `KitHooks.CompatPage` | drawing a mod's Compatibility page, after integrations/conflicts | `Func<KitMod, float width, float y, float newY>` |
+| `KitHooks.GameExpose` | every Scribe pass of `FrameworkGame`, inside node `<framework>` (framework-wide per-save data, e.g. random streams) | `Action` |
+| `KitHooks.GameReset` | a new `FrameworkGame` was created (new game or before a load; `Current.Game` is not the new game yet) | `Action` |
 All are fenced per mod (`KitHooks.Each`). Subscribe from a static constructor of your part or a `[StaticConstructorOnStartup]` class.
 If you need a new hook, add it to KitHooks (one line) rather than editing a drawing method.
 
@@ -140,6 +210,12 @@ If you need a new hook, add it to KitHooks (one line) rather than editing a draw
 | `src/Testing/` → new project `Source/JBFramework.Testing/` (assembly `JBFramework.Testing`), a local unpublished test mod folder (suggested `testmod/`), `tools/jbmod`, `tools/probe/`, the `JB_TESTS` reference in `build/JBMod.props` | **agent 3: harness split and jbmod** |
 
 ### Agent 2 (compat knowledge base, shared functions, random): where to hook in
+Status (API level 2): done in `Source/JBFramework/{Compat,Compat/Adapters,Shared,Random}/`, `Common/Defs/ModNotes/`,
+`Common/Languages/*/Keyed/JBFramework_Compat.xml`, `Common/Languages/German (Deutsch)/DefInjected/JBFramework.ModNoteDef/`,
+`tools/modnotes/`, suites `TestMod/Source/Suites/FwPartsSuites.cs` (`fw.known`, `fw.adapters`, `fw.random`, `fw.shared` (explicit only)).
+Edits outside those paths: two hooks in `KitHooks` (`GameExpose`, `GameReset`) and their two call sites in `FrameworkGame` (ctor, ExposeData),
+`JBFrameworkApiLevel` 1 → 2 in `build/Identity.props`, `api/PublicApi.txt` regenerated. Startup of these parts: `Shared/KitPartsStartup.cs`
+(its order relative to `KitStartup` is undefined, so registrations after it are applied at once).
 - Public types the game resolves by name (a `ModNoteDef : Def`, comps, place workers) must be `public` and live in namespace `JBFramework`;
   their full names are then fixed forever. Everything else stays `internal` until it is meant as API.
 - New public API: add members/types, raise `JBFrameworkApiLevel` to 2 in `build/Identity.props`, rebuild both versions, run

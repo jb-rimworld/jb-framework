@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (Storage). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_DeepStorage</defName>
+    <label>LWM's Deep Storage</label>
+    <description>LWM's Deep Storage: shelves, pallets and lockers that hold several stacks per cell.</description>
+    <packageIds><li>LWM.DeepStorage</li></packageIds>
+    <tags><li>changes-storage</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li></versions>
+    <workshopIds><li>1617282896</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_DeepStack</defName>
+    <label>Deep Stack</label>
+    <description>Deep Stack: much larger stack limits.</description>
+    <packageIds><li>void.deepstack</li></packageIds>
+    <tags><li>changes-storage</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>1874659640</li></workshopIds>
+    <pitfall>With very large stacks the colony's resource counter can lag behind: counting stock through it can overproduce.</pitfall>
+    <advice>JB mods count items directly (including carried stacks).</advice>
+    <source>Rimling/ModKnowledge; DNDM Creator counting (22_RimWorld/CLAUDE.md)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_AdaptiveStorage</defName>
+    <label>Adaptive Storage Framework</label>
+    <description>Adaptive Storage Framework: storage buildings with content-dependent graphics and capacities.</description>
+    <packageIds><li>adaptive.storage.framework</li></packageIds>
+    <tags><li>changes-storage</li><li>library</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>3033901359</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_PickUpAndHaul</defName>
+    <label>Pick Up And Haul</label>
+    <description>Pick Up And Haul: pawns gather several items into their inventory before walking to the stockpile.</description>
+    <packageIds><li>Zzyxzz.PickUpAndHaulReworked</li><li>Mehni.PickUpAndHaul</li></packageIds>
+    <tags><li>changes-storage</li><li>changes-work</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>1279012058</li><li>3829549663</li></workshopIds>
+    <source>Rimling/ModKnowledge; About.xml (Workshop 3829549663, 1279012058)</source>
+  </JBFramework.ModNoteDef>
+</Defs>

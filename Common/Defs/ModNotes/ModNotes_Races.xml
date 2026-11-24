@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (Races). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_HAR</defName>
+    <label>Humanoid Alien Races</label>
+    <description>Humanoid Alien Races: the framework most custom humanoid races are built on (own bodies, graphics, stats, thoughts).</description>
+    <packageIds><li>erdelf.HumanoidAlienRaces</li></packageIds>
+    <tags><li>alien-races</li><li>library</li></tags>
+    <versions><li>0.19</li><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>839005762</li></workshopIds>
+    <pitfall>Many alien races have their own body instead of the human one: code that expects human limbs and organs can miss parts or do needless work.</pitfall>
+    <advice>JB mods ask the framework's HAR adapter whether a race is custom-bodied and fall back to vanilla behaviour for it (Luciferium Overhaul does so by default).</advice>
+    <source>Rimling/ModKnowledge; AlienRace.dll 1.6 (Workshop 839005762); LuciferiumOverhaul LORaceModes</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_Ratkin</defName>
+    <label>NewRatkinPlus</label>
+    <description>NewRatkinPlus: the Ratkin, a small rat-eared humanoid race with factions, research, weapons and buildings (built on HAR).</description>
+    <packageIds><li>Solaris.RatkinRaceMod</li></packageIds>
+    <tags><li>alien-races</li></tags>
+    <versions><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1578693166</li></workshopIds>
+    <pitfall>A player reported tick spikes with Ratkin and Luciferium Overhaul; they could not be reproduced (about 1 µs per tick).</pitfall>
+    <advice>If it happens: Luciferium Overhaul's "Alien races use vanilla Luciferium healing" and its performance watchdog.</advice>
+    <source>Rimling/ModKnowledge; LuciferiumOverhaul update 13.11.2026 (22_RimWorld/CLAUDE.md)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VREAndroid</defName>
+    <label>Vanilla Races Expanded - Android</label>
+    <description>Vanilla Races Expanded - Android: buildable android colonists with hardware genes, powered by neutroamine.</description>
+    <packageIds><li>vanillaracesexpanded.android</li></packageIds>
+    <tags><li>alien-races</li><li>genes</li></tags>
+    <versions><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2975771801</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VRESanguophage</defName>
+    <label>Vanilla Races Expanded - Sanguophage</label>
+    <description>Vanilla Races Expanded - Sanguophage: more vampire xenotypes, hemogen abilities and a hemogen pipe network.</description>
+    <packageIds><li>vanillaracesexpanded.sanguophage</li></packageIds>
+    <tags><li>genes</li><li>adds-pipe-networks</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2963116383</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+</Defs>

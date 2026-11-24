@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (Bills). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VECooking</defName>
+    <label>Vanilla Cooking Expanded</label>
+    <description>Vanilla Cooking Expanded: many new meals, condiments and cooking buildings.</description>
+    <packageIds><li>VanillaExpanded.VCookE</li></packageIds>
+    <tags><li>changes-bills</li><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2134308519</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_NiceBillTab</defName>
+    <label>Nice Bill Tab</label>
+    <description>Nice Bill Tab: a redesigned bills tab with stat readouts.</description>
+    <packageIds><li>Andromeda.NiceBillTab</li></packageIds>
+    <tags><li>changes-bills-ui</li></tags>
+    <versions><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>3520130671</li></workshopIds>
+    <pitfall>It caches the list of the open bills tab: bills that another mod adds or removes stay invisible until the tab is reopened. It also enlarges the shared bills tab size.</pitfall>
+    <advice>JB mods ask it to refresh through the framework's Nice Bill Tab adapter; otherwise reopen the tab.</advice>
+    <source>Rimling/ModKnowledge; NiceBillTab.dll 1.6 (Workshop 3520130671); BetterWorkbenchDefaults fix 13.11.2026; DNDM bill tab size</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_NiceInventoryTab</defName>
+    <label>Nice Inventory Tab</label>
+    <description>Nice Inventory Tab: a redesigned gear tab; it brings its own copy of Nice Bill Tab when Nice Bill Tab itself is not active.</description>
+    <packageIds><li>Andromeda.NiceInventoryTab</li></packageIds>
+    <tags><li>changes-pawn-ui</li><li>changes-bills-ui</li></tags>
+    <versions><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3609897594</li></workshopIds>
+    <pitfall>Its bundled Nice Bill Tab has the same bill list cache (see Nice Bill Tab).</pitfall>
+    <source>Rimling/ModKnowledge; LoadFolders.xml (Workshop 3609897594)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_BWM</defName>
+    <label>Better Workbench Management - 1.7 Waylith (Unofficial)</label>
+    <description>Better Workbench Management: counting by hit points, quality and material, bill copying and pawn restrictions.</description>
+    <packageIds><li>falconne.BWM</li></packageIds>
+    <tags><li>changes-bills-ui</li><li>changes-bills</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3819555998</li><li>935982361</li></workshopIds>
+    <source>Rimling/ModKnowledge; About.xml 1.7 (Workshop 3819555998)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_DubsMintMenus</defName>
+    <label>Dubs Mint Menus</label>
+    <description>Dubs Mint Menus: searchable pickers for bills, operations, plants, research and the architect menu.</description>
+    <packageIds><li>Dubwise.DubsMintMenus</li></packageIds>
+    <tags><li>changes-bills-ui</li><li>changes-architect</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1446523594</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_NoMaxBills</defName>
+    <label>No Max Bills: Redux</label>
+    <description>No Max Bills: Redux: removes the limit of 15 bills per workbench.</description>
+    <packageIds><li>justharry.nomaxbillsredux</li></packageIds>
+    <tags><li>changes-bills</li></tags>
+    <versions><li>1.6</li></versions>
+    <workshopIds><li>3526216885</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_CommonSense</defName>
+    <label>Common Sense</label>
+    <description>Common Sense: pawns clean before working, haul all ingredients at once and eat food that spoils first.</description>
+    <packageIds><li>avilmask.CommonSense</li></packageIds>
+    <tags><li>changes-bills</li><li>changes-work</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1561769193</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+</Defs>

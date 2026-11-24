@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_ReplaceStuff.label>Replace Stuff</JBF_Note_ReplaceStuff.label>
+  <JBF_Note_ReplaceStuff.description>Replace Stuff: Material eines Gebäudes an Ort und Stelle tauschen, Baupläne über Fels und Nebel, automatische Brücken.</JBF_Note_ReplaceStuff.description>
+  <JBF_Note_AllowTool.label>Allow Tool</JBF_Note_AllowTool.label>
+  <JBF_Note_AllowTool.description>Allow Tool: mehr Befehle zum Erlauben, Verbieten, Ähnliches-Auswählen, Erlösen und dringenden Tragen.</JBF_Note_AllowTool.description>
+  <JBF_Note_QualityBuilder.label>QualityBuilder</JBF_Note_QualityBuilder.label>
+  <JBF_Note_QualityBuilder.description>QualityBuilder: nur die besten Baumeister:innen bauen Qualitätsgegenstände, und Gebäude unter einer Mindestqualität werden neu gebaut.</JBF_Note_QualityBuilder.description>
+  <JBF_Note_QualityBuilder.pitfall>Roboter scheitern an seiner Regel „nur der beste Baumeister“, und solange sie mitzählen, heben sie die Latte für Kolonist:innen.</JBF_Note_QualityBuilder.pitfall>
+  <JBF_Note_QualityBuilder.advice>Mit Misc. Robots: QualityBuilder × Misc. Robots lässt Roboter nur das bauen, was sie schaffen.</JBF_Note_QualityBuilder.advice>
+  <JBF_Note_StaticQuality.label>Static Quality</JBF_Note_StaticQuality.label>
+  <JBF_Note_StaticQuality.description>Static Quality: Qualität bei Herstellung und Bau folgt der Fertigkeit statt eines breiten Zufallswurfs.</JBF_Note_StaticQuality.description>
+</LanguageData>

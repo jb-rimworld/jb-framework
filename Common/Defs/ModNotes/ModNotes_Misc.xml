@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (Misc). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_CharacterEditor</defName>
+    <label>Character Editor</label>
+    <description>Character Editor: edit pawns, appearance, gear, health, skills and genes in game or at the start.</description>
+    <packageIds><li>void.charactereditor</li></packageIds>
+    <tags><li>editor</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>1874644848</li></workshopIds>
+    <pitfall>Xenotypes you create with it can show up in other factions.</pitfall>
+    <advice>Mod Settings Overrides keeps your own xenotypes away from other factions.</advice>
+    <source>Rimling/ModKnowledge; ModSettingsOverrides feature C (22_RimWorld/CLAUDE.md)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_PawnCompatibilityEditor</defName>
+    <label>Pawn Compatibility Editor</label>
+    <description>Pawn Compatibility Editor: view and override the compatibility between pawns.</description>
+    <packageIds><li>jomar.pawncompatibilityeditor</li></packageIds>
+    <tags><li>editor</li></tags>
+    <versions><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3692227939</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_RocketMan</defName>
+    <label>RocketMan - Performance Mod</label>
+    <description>RocketMan: throttles pawn ticks and caches stats for speed.</description>
+    <packageIds><li>Krkr.RocketMan</li></packageIds>
+    <tags><li>performance</li></tags>
+    <versions><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li></versions>
+    <workshopIds><li>2479389928</li></workshopIds>
+    <pitfall>Its About.xml lists RimWorld up to 1.5 only.</pitfall>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_PerformanceOptimizer</defName>
+    <label>Performance Optimizer</label>
+    <description>Performance Optimizer: optimises vanilla routines, caches UI and throttles background checks.</description>
+    <packageIds><li>Taranchuk.PerformanceOptimizer</li></packageIds>
+    <tags><li>performance</li></tags>
+    <versions><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2664723367</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_DubsPerformanceAnalyzer</defName>
+    <label>Dubs Performance Analyzer</label>
+    <description>Dubs Performance Analyzer: profiles where tick and frame time goes, per mod.</description>
+    <packageIds><li>Dubwise.DubsPerformanceAnalyzer.steam</li></packageIds>
+    <tags><li>performance</li></tags>
+    <versions><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2038874626</li></workshopIds>
+    <advice>The tool to use when a JB mod seems slow; the numbers help a bug report.</advice>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_Multiplayer</defName>
+    <label>Multiplayer</label>
+    <description>Multiplayer: co-op over LAN or the internet on one colony.</description>
+    <packageIds><li>rwmt.Multiplayer</li></packageIds>
+    <tags><li>multiplayer</li></tags>
+    <versions><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2606448745</li></workshopIds>
+    <pitfall>Every mod must make the same random choices on every machine; JB mods are not tested in Multiplayer.</pitfall>
+    <advice>JB Framework's random streams are deterministic per save, a good base; still treat JB mods in Multiplayer as untested.</advice>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_MultiplayerCompat</defName>
+    <label>Multiplayer Compatibility</label>
+    <description>Multiplayer Compatibility: patches that make other mods work with Multiplayer.</description>
+    <packageIds><li>rwmt.MultiplayerCompatibility</li></packageIds>
+    <tags><li>multiplayer</li></tags>
+    <versions><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1629973374</li></workshopIds>
+    <source>About.xml (Workshop 1629973374)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_RimTalk</defName>
+    <label>RimTalk</label>
+    <description>RimTalk: AI-written dialogue for social interactions.</description>
+    <packageIds><li>cj.rimtalk</li></packageIds>
+    <tags><li>ai</li></tags>
+    <versions><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>3551203752</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_WorkTab</defName>
+    <label>Work Tab</label>
+    <description>Work Tab: sub-tasks per work type, priorities by time of day, priorities up to 9.</description>
+    <packageIds><li>mbesh.WorkTab</li><li>Fluffy.WorkTab</li></packageIds>
+    <tags><li>changes-work</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.7</li></versions>
+    <workshopIds><li>3823275757</li><li>725219116</li></workshopIds>
+    <source>Rimling/ModKnowledge; About.xml (Workshop 3823275757, 725219116)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_RimHUD</defName>
+    <label>RimHUD</label>
+    <description>RimHUD: a configurable HUD instead of the inspect card.</description>
+    <packageIds><li>Jaxe.RimHUD</li></packageIds>
+    <tags><li>changes-pawn-ui</li></tags>
+    <versions><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1508850027</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+</Defs>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework: knowledge base, shared functions (material menu, tiers, removal). Fallbacks in code are identical. -->
+<LanguageData>
+  <JBF.Known.Title>Known mods in your game</JBF.Known.Title>
+  <JBF.Known.NoneActive>None of the mods {0} knows about for this mod is active.</JBF.Known.NoneActive>
+  <JBF.Known.FrameworkTitle>Known mods in your game ({0} of {1} in the knowledge base)</JBF.Known.FrameworkTitle>
+  <JBF.Known.FrameworkIntro>What {0} knows about other mods. Every JB mod reads this list; updating {0} updates the knowledge for all of them.</JBF.Known.FrameworkIntro>
+  <JBF.Known.NoneAtAll>None of the known mods is active.</JBF.Known.NoneAtAll>
+  <JBF.Known.CoOwners>Other mods changing the same game code</JBF.Known.CoOwners>
+  <JBF.Known.CoOwnersIntro>Usually harmless. When something misbehaves, these are the first mods to try without.</JBF.Known.CoOwnersIntro>
+  <JBF.Known.Pitfall>Watch out: {0}</JBF.Known.Pitfall>
+  <JBF.Known.Advice>Advice: {0}</JBF.Known.Advice>
+  <JBF.Material.Other>Other materials ({0}, none on the map)...</JBF.Material.Other>
+  <JBF.Material.NoneOnMap>(none on the map, the blueprint waits for it)</JBF.Material.NoneOnMap>
+  <JBF.Tier.Change>Change tier</JBF.Tier.Change>
+  <JBF.Tier.ChangeDesc>Replace this building with another tier of the same kind, right here, free and at once. Material, hit points, paint, storage settings and bills are kept.</JBF.Tier.ChangeDesc>
+  <JBF.Tier.MakeIt>Make it {0}</JBF.Tier.MakeIt>
+  <JBF.Tier.MakeItCount>Make them tier {0} ({1} buildings)</JBF.Tier.MakeItCount>
+  <JBF.Tier.SomeFailed>{0} buildings could not change tier (see the log).</JBF.Tier.SomeFailed>
+  <JBF.Removal.Things>{0} things removed</JBF.Removal.Things>
+  <JBF.Removal.Hediffs>{0} health conditions removed</JBF.Removal.Hediffs>
+  <JBF.Removal.Bills>{0} bills deleted</JBF.Removal.Bills>
+  <JBF.Removal.Designations>{0} designations removed</JBF.Removal.Designations>
+  <JBF.Removal.NoGame>No game running: nothing to remove ({0}).</JBF.Removal.NoGame>
+</LanguageData>

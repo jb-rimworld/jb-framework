@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_VFE.label>Vanilla Furniture Expanded</JBF_Note_VFE.label>
+  <JBF_Note_VFE.description>Vanilla Furniture Expanded: rund 50 Möbel im Vanilla-Stil mit eigener Forschung.</JBF_Note_VFE.description>
+  <JBF_Note_VFEMedical.label>Vanilla Furniture Expanded - Medical Module</JBF_Note_VFEMedical.label>
+  <JBF_Note_VFEMedical.description>Vanilla Furniture Expanded - Medical: Krankenhausmöbel und Anbauteile wie Infusionsständer und Vitalmonitore.</JBF_Note_VFEMedical.description>
+  <JBF_Note_VFEArchitect.label>Vanilla Furniture Expanded - Architect</JBF_Note_VFEArchitect.label>
+  <JBF_Note_VFEArchitect.description>Vanilla Furniture Expanded - Architect: Mauern, Zäune, Böden, Teppiche und Brücken.</JBF_Note_VFEArchitect.description>
+  <JBF_Note_VFEProduction.label>Vanilla Furniture Expanded - Production</JBF_Note_VFEProduction.label>
+  <JBF_Note_VFEProduction.description>Vanilla Furniture Expanded - Production: elektrische frühe Werkbänke, Werkzeugschränke und große Doppelwerkbänke.</JBF_Note_VFEProduction.description>
+  <JBF_Note_VFESecurity.label>Vanilla Furniture Expanded - Security</JBF_Note_VFESecurity.label>
+  <JBF_Note_VFESecurity.description>Vanilla Furniture Expanded - Security: Verteidigungsbauten für jede Techstufe, von Fallen über Geschütze bis zu Gräben.</JBF_Note_VFESecurity.description>
+  <JBF_Note_VEHelixien.label>Vanilla Helixien Gas Expanded</JBF_Note_VEHelixien.label>
+  <JBF_Note_VEHelixien.description>Vanilla Helixien Gas Expanded: ein Gasnetz für Generatoren, Heizungen und Werkbänke.</JBF_Note_VEHelixien.description>
+  <JBF_Note_VEChemfuel.label>Vanilla Chemfuel Expanded</JBF_Note_VEChemfuel.label>
+  <JBF_Note_VEChemfuel.description>Vanilla Chemfuel Expanded: Tiefenchemie und Chemtreibstoff in Rohren, mit Raffinerien, Tanks und automatischem Betanken.</JBF_Note_VEChemfuel.description>
+  <JBF_Note_VENutrient.label>Vanilla Nutrient Paste Expanded</JBF_Note_VENutrient.label>
+  <JBF_Note_VENutrient.description>Vanilla Nutrient Paste Expanded: Nährpaste in Rohren mit Mühlen, Tanks, Zapfstellen und Tropfernährung.</JBF_Note_VENutrient.description>
+  <JBF_Note_VEPsycasts.label>Vanilla Psycasts Expanded</JBF_Note_VEPsycasts.label>
+  <JBF_Note_VEPsycasts.description>Vanilla Psycasts Expanded: ersetzt die Royalty-Psycasts durch Stufenpfade mit rund 150 Fähigkeiten.</JBF_Note_VEPsycasts.description>
+  <JBF_Note_DubsBadHygiene.label>Dubs Bad Hygiene</JBF_Note_DubsBadHygiene.label>
+  <JBF_Note_DubsBadHygiene.description>Dubs Bad Hygiene: Hygiene- und Blasenbedürfnis mit Rohrleitungen, Wasser, Abwasser, Heizung und Kühlung.</JBF_Note_DubsBadHygiene.description>
+  <JBF_Note_DubsBadHygieneLite.label>Dubs Bad Hygiene Lite</JBF_Note_DubsBadHygieneLite.label>
+  <JBF_Note_DubsBadHygieneLite.description>Dubs Bad Hygiene Lite: dasselbe ohne Durst und Wasserqualität.</JBF_Note_DubsBadHygieneLite.description>
+</LanguageData>

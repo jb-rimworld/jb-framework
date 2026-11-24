@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_Harmony.label>Harmony</JBF_Note_Harmony.label>
+  <JBF_Note_Harmony.description>Die Patch-Bibliothek, die fast jede Code-Mod braucht, auch JB Framework.</JBF_Note_Harmony.description>
+  <JBF_Note_Harmony.advice>Ganz oben laden, vor allem anderen.</JBF_Note_Harmony.advice>
+  <JBF_Note_HugsLib.label>HugsLib</JBF_Note_HugsLib.label>
+  <JBF_Note_HugsLib.description>Gemeinsame Bibliothek mit Einstellungen, Log und Update-Hinweisen für andere Mods.</JBF_Note_HugsLib.description>
+  <JBF_Note_VEF.label>Vanilla Expanded Framework</JBF_Note_VEF.label>
+  <JBF_Note_VEF.description>Vanilla Expanded Framework: der gemeinsame Code aller Vanilla-Expanded-Mods, mit dem Rohrnetz-System (PipeSystem).</JBF_Note_VEF.description>
+  <JBF_Note_VEF.advice>JB-Mods lesen VE-Rohrgebäude über den VE-Adapter des Frameworks und lassen deren Netze in Ruhe.</JBF_Note_VEF.advice>
+  <JBF_Note_Prepatcher.label>Prepatcher</JBF_Note_Prepatcher.label>
+  <JBF_Note_Prepatcher.description>Patcht Spielcode noch vor Harmony, für Mods, die neue Felder in Vanilla-Klassen brauchen.</JBF_Note_Prepatcher.description>
+  <JBF_Note_Prepatcher.pitfall>Auf RimWorld 1.7 (neue Laufzeit) bricht es mit „Not available on non-Mono runtime“ ab; Mods, die es voraussetzen, laufen dort nicht.</JBF_Note_Prepatcher.pitfall>
+  <JBF_Note_Prepatcher.advice>Auf 1.7 weglassen, außer eine Mod nennt ausdrücklich 1.7. JB-Mods brauchen es auf 1.7 nie.</JBF_Note_Prepatcher.advice>
+  <JBF_Note_MiscCore.label>Miscellaneous 'CORE'</JBF_Note_MiscCore.label>
+  <JBF_Note_MiscCore.description>Miscellaneous 'CORE': gemeinsamer Code von Haplos Misc.-Mods.</JBF_Note_MiscCore.description>
+</LanguageData>

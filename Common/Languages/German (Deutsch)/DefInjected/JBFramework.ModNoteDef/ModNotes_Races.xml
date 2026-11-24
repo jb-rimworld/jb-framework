@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_HAR.label>Humanoid Alien Races</JBF_Note_HAR.label>
+  <JBF_Note_HAR.description>Humanoid Alien Races: das Framework, auf dem die meisten eigenen Menschenrassen aufbauen (eigene Körper, Grafik, Werte, Gedanken).</JBF_Note_HAR.description>
+  <JBF_Note_HAR.pitfall>Viele Alien-Rassen haben einen eigenen Körper statt des menschlichen: Code, der menschliche Gliedmaßen und Organe erwartet, verfehlt Teile oder arbeitet unnötig.</JBF_Note_HAR.pitfall>
+  <JBF_Note_HAR.advice>JB-Mods fragen den HAR-Adapter des Frameworks, ob eine Rasse einen eigenen Körper hat, und nutzen dafür Vanilla-Verhalten (Luciferium Overhaul macht das standardmäßig).</JBF_Note_HAR.advice>
+  <JBF_Note_Ratkin.label>NewRatkinPlus</JBF_Note_Ratkin.label>
+  <JBF_Note_Ratkin.description>NewRatkinPlus: die Ratkin, eine kleine Rasse mit Rattenohren, mit Fraktionen, Forschung, Waffen und Gebäuden (auf HAR).</JBF_Note_Ratkin.description>
+  <JBF_Note_Ratkin.pitfall>Ein Spieler meldete Tick-Spitzen mit Ratkin und Luciferium Overhaul; nachstellen ließ sich das nicht (etwa 1 µs pro Tick).</JBF_Note_Ratkin.pitfall>
+  <JBF_Note_Ratkin.advice>Falls es auftritt: in Luciferium Overhaul „Alien-Rassen nutzen Vanilla-Luciferium-Heilung“ und den Leistungswächter verwenden.</JBF_Note_Ratkin.advice>
+  <JBF_Note_VREAndroid.label>Vanilla Races Expanded - Android</JBF_Note_VREAndroid.label>
+  <JBF_Note_VREAndroid.description>Vanilla Races Expanded - Android: baubare Android-Kolonist:innen mit Hardware-Genen, betrieben mit Neutroamin.</JBF_Note_VREAndroid.description>
+  <JBF_Note_VRESanguophage.label>Vanilla Races Expanded - Sanguophage</JBF_Note_VRESanguophage.label>
+  <JBF_Note_VRESanguophage.description>Vanilla Races Expanded - Sanguophage: weitere Vampir-Xenotypen, Hämogen-Fähigkeiten und ein Hämogen-Rohrnetz.</JBF_Note_VRESanguophage.description>
+</LanguageData>

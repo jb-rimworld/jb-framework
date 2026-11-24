@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework: Wissensbasis, gemeinsame Funktionen (Materialmenü, Stufen, Entfernen). -->
+<LanguageData>
+  <JBF.Known.Title>Bekannte Mods in deinem Spiel</JBF.Known.Title>
+  <JBF.Known.NoneActive>Keine der Mods, die {0} für diese Mod kennt, ist aktiv.</JBF.Known.NoneActive>
+  <JBF.Known.FrameworkTitle>Bekannte Mods in deinem Spiel ({0} von {1} in der Wissensbasis)</JBF.Known.FrameworkTitle>
+  <JBF.Known.FrameworkIntro>Was {0} über andere Mods weiß. Jede JB-Mod liest diese Liste; ein Update von {0} aktualisiert das Wissen für alle.</JBF.Known.FrameworkIntro>
+  <JBF.Known.NoneAtAll>Keine der bekannten Mods ist aktiv.</JBF.Known.NoneAtAll>
+  <JBF.Known.CoOwners>Andere Mods, die denselben Spielcode ändern</JBF.Known.CoOwners>
+  <JBF.Known.CoOwnersIntro>Meist harmlos. Wenn etwas hakt, sind das die ersten Mods, die man testweise weglässt.</JBF.Known.CoOwnersIntro>
+  <JBF.Known.Pitfall>Achtung: {0}</JBF.Known.Pitfall>
+  <JBF.Known.Advice>Tipp: {0}</JBF.Known.Advice>
+  <JBF.Material.Other>Andere Materialien ({0}, keins auf der Karte) ...</JBF.Material.Other>
+  <JBF.Material.NoneOnMap>(keins auf der Karte, der Bauplan wartet darauf)</JBF.Material.NoneOnMap>
+  <JBF.Tier.Change>Stufe wechseln</JBF.Tier.Change>
+  <JBF.Tier.ChangeDesc>Ersetzt dieses Gebäude durch eine andere Stufe derselben Art, genau hier, kostenlos und sofort. Material, Trefferpunkte, Farbe, Lagereinstellungen und Aufträge bleiben erhalten.</JBF.Tier.ChangeDesc>
+  <JBF.Tier.MakeIt>Zu {0} machen</JBF.Tier.MakeIt>
+  <JBF.Tier.MakeItCount>Auf Stufe {0} bringen ({1} Gebäude)</JBF.Tier.MakeItCount>
+  <JBF.Tier.SomeFailed>{0} Gebäude konnten die Stufe nicht wechseln (siehe Log).</JBF.Tier.SomeFailed>
+  <JBF.Removal.Things>{0} Dinge entfernt</JBF.Removal.Things>
+  <JBF.Removal.Hediffs>{0} Gesundheitszustände entfernt</JBF.Removal.Hediffs>
+  <JBF.Removal.Bills>{0} Aufträge gelöscht</JBF.Removal.Bills>
+  <JBF.Removal.Designations>{0} Markierungen entfernt</JBF.Removal.Designations>
+  <JBF.Removal.NoGame>Kein Spiel geladen: nichts zu entfernen ({0}).</JBF.Removal.NoGame>
+</LanguageData>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (Combat). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_CombatExtended</defName>
+    <label>Combat Extended</label>
+    <description>Combat Extended replaces combat with ballistics: calibres, penetration armour, cover, suppression and an ammo and bulk inventory.</description>
+    <packageIds><li>CETeam.CombatExtended</li></packageIds>
+    <tags><li>combat-overhaul</li></tags>
+    <versions><li>1.4</li><li>1.6</li></versions>
+    <workshopIds><li>1631756268</li><li>2890901044</li></workshopIds>
+    <pitfall>Every gun needs its ammo; guns made or spawned by other mods arrive without any.</pitfall>
+    <advice>JB mods look up a gun's ammo through the framework's CE adapter (default ammo of its ammo set).</advice>
+    <source>Rimling/ModKnowledge; CombatExtended.dll 1.6 (Workshop 2890901044); DNDM Creator withAmmo</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_YayosCombat</defName>
+    <label>Yayo's Combat 3 (Continued)</label>
+    <description>Yayo's Combat 3: a lighter combat overhaul with ammo, armour and accuracy changes.</description>
+    <packageIds><li>Mlie.YayosCombat3</li></packageIds>
+    <tags><li>combat-overhaul</li></tags>
+    <versions><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2854006492</li></workshopIds>
+    <source>About.xml (Workshop 2854006492)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_SimpleSidearms</defName>
+    <label>Simple sidearms</label>
+    <description>Pawns carry extra weapons as sidearms and switch on their own between melee and ranged.</description>
+    <packageIds><li>PeteTimesSix.SimpleSidearms</li></packageIds>
+    <tags><li>combat-overhaul</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>927155256</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFEPirates</defName>
+    <label>Vanilla Factions Expanded - Pirates</label>
+    <description>Vanilla Factions Expanded - Pirates: pirate factions, curses and buildable warcaskets.</description>
+    <packageIds><li>OskarPotocki.VFE.Pirates</li></packageIds>
+    <tags><li>combat-overhaul</li></tags>
+    <versions><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2723801948</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+</Defs>

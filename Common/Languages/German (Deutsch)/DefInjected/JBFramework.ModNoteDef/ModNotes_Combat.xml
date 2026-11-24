@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_CombatExtended.label>Combat Extended</JBF_Note_CombatExtended.label>
+  <JBF_Note_CombatExtended.description>Combat Extended ersetzt den Kampf durch Ballistik: Kaliber, Durchschlag gegen Rüstung, Deckung, Niederhalten und Munition mit Gewicht und Volumen.</JBF_Note_CombatExtended.description>
+  <JBF_Note_CombatExtended.pitfall>Jede Waffe braucht ihre Munition; von anderen Mods erzeugte Waffen kommen ohne.</JBF_Note_CombatExtended.pitfall>
+  <JBF_Note_CombatExtended.advice>JB-Mods finden die Munition einer Waffe über den CE-Adapter des Frameworks (Standardmunition ihres Munitionssatzes).</JBF_Note_CombatExtended.advice>
+  <JBF_Note_YayosCombat.label>Yayo's Combat 3 (Continued)</JBF_Note_YayosCombat.label>
+  <JBF_Note_YayosCombat.description>Yayo's Combat 3: leichtere Kampfüberarbeitung mit Munition, Rüstung und Trefferänderungen.</JBF_Note_YayosCombat.description>
+  <JBF_Note_SimpleSidearms.label>Simple sidearms</JBF_Note_SimpleSidearms.label>
+  <JBF_Note_SimpleSidearms.description>Figuren tragen Zweitwaffen im Inventar und wechseln selbst zwischen Nah- und Fernkampf.</JBF_Note_SimpleSidearms.description>
+  <JBF_Note_VFEPirates.label>Vanilla Factions Expanded - Pirates</JBF_Note_VFEPirates.label>
+  <JBF_Note_VFEPirates.description>Vanilla Factions Expanded - Pirates: Piratenfraktionen, Flüche und baubare Kriegspanzer (Warcaskets).</JBF_Note_VFEPirates.description>
+</LanguageData>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_DeepStorage.label>LWM's Deep Storage</JBF_Note_DeepStorage.label>
+  <JBF_Note_DeepStorage.description>LWM's Deep Storage: Regale, Paletten und Spinde mit mehreren Stapeln pro Feld.</JBF_Note_DeepStorage.description>
+  <JBF_Note_DeepStack.label>Deep Stack</JBF_Note_DeepStack.label>
+  <JBF_Note_DeepStack.description>Deep Stack: viel größere Stapelgrenzen.</JBF_Note_DeepStack.description>
+  <JBF_Note_DeepStack.pitfall>Bei sehr großen Stapeln hinkt der Ressourcenzähler der Kolonie hinterher: wer darüber den Vorrat zählt, produziert zu viel.</JBF_Note_DeepStack.pitfall>
+  <JBF_Note_DeepStack.advice>JB-Mods zählen Gegenstände direkt (auch getragene Stapel).</JBF_Note_DeepStack.advice>
+  <JBF_Note_AdaptiveStorage.label>Adaptive Storage Framework</JBF_Note_AdaptiveStorage.label>
+  <JBF_Note_AdaptiveStorage.description>Adaptive Storage Framework: Lagergebäude mit inhaltsabhängiger Grafik und Kapazität.</JBF_Note_AdaptiveStorage.description>
+  <JBF_Note_PickUpAndHaul.label>Pick Up And Haul</JBF_Note_PickUpAndHaul.label>
+  <JBF_Note_PickUpAndHaul.description>Pick Up And Haul: Figuren sammeln mehrere Gegenstände ins Inventar, bevor sie zum Lager laufen.</JBF_Note_PickUpAndHaul.description>
+</LanguageData>

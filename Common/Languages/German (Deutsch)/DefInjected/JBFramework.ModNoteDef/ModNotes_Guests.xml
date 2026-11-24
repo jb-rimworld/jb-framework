@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_VFEEmpire.label>Vanilla Factions Expanded - Empire</JBF_Note_VFEEmpire.label>
+  <JBF_Note_VFEEmpire.description>Vanilla Factions Expanded - Empire: mehr Adelstitel, Vasallen, Ehren und Adelsbesuche für das Royalty-Imperium.</JBF_Note_VFEEmpire.description>
+  <JBF_Note_VFEEmpire.pitfall>Es greift in das Einrichten von Gästen ein (Gaststatus); Gäste-Mods können von ihm veränderte Besucher sehen.</JBF_Note_VFEEmpire.pitfall>
+  <JBF_Note_Hospitality.label>Hospitality (Continued)</JBF_Note_Hospitality.label>
+  <JBF_Note_Hospitality.description>Hospitality: Besuchergruppen bleiben als Hotelgäste, mieten Betten, kaufen ein, essen und lassen sich anfreunden oder anwerben.</JBF_Note_Hospitality.description>
+  <JBF_Note_Hospitality.pitfall>Hearth &amp; Harbor ist als Nachfolger dieser Mod gebaut und erwartet, dass sie aus ist; nur eine von beiden verwenden.</JBF_Note_Hospitality.pitfall>
+  <JBF_Note_Hospitality.advice>Hearth &amp; Harbor kann einen Spielstand übernehmen, der sie benutzt hat.</JBF_Note_Hospitality.advice>
+  <JBF_Note_HospitalityCasino.label>Hospitality: Casino</JBF_Note_HospitalityCasino.label>
+  <JBF_Note_HospitalityCasino.description>Hospitality: Casino: Glücksspielgebäude für Gäste und Kolonist:innen.</JBF_Note_HospitalityCasino.description>
+  <JBF_Note_HospitalityCasino.pitfall>Hearth &amp; Harbor ist als Nachfolger dieser Mod gebaut und erwartet, dass sie aus ist; nur eine von beiden verwenden.</JBF_Note_HospitalityCasino.pitfall>
+  <JBF_Note_HospitalityStorefront.label>Hospitality: Storefront</JBF_Note_HospitalityStorefront.label>
+  <JBF_Note_HospitalityStorefront.description>Hospitality: Storefront: eine Ladenkasse und eine Verkaufsarbeit für gesellige Kolonist:innen.</JBF_Note_HospitalityStorefront.description>
+  <JBF_Note_HospitalityStorefront.pitfall>Hearth &amp; Harbor ist als Nachfolger dieser Mod gebaut und erwartet, dass sie aus ist; nur eine von beiden verwenden.</JBF_Note_HospitalityStorefront.pitfall>
+  <JBF_Note_HospitalitySpa.label>Hospitality: Spa</JBF_Note_HospitalitySpa.label>
+  <JBF_Note_HospitalitySpa.description>Hospitality: Spa: Gäste zahlen für Becken, Whirlpools und Saunen aus Dubs Bad Hygiene.</JBF_Note_HospitalitySpa.description>
+  <JBF_Note_HospitalitySpa.pitfall>Hearth &amp; Harbor ist als Nachfolger dieser Mod gebaut und erwartet, dass sie aus ist; nur eine von beiden verwenden.</JBF_Note_HospitalitySpa.pitfall>
+  <JBF_Note_HospitalityVending.label>Hospitality: Vending machines</JBF_Note_HospitalityVending.label>
+  <JBF_Note_HospitalityVending.description>Hospitality: Vending machines: Automaten, an denen Gäste selbst Waren und Essen kaufen.</JBF_Note_HospitalityVending.description>
+  <JBF_Note_HospitalityVending.pitfall>Hearth &amp; Harbor ist als Nachfolger dieser Mod gebaut und erwartet, dass sie aus ist; nur eine von beiden verwenden.</JBF_Note_HospitalityVending.pitfall>
+  <JBF_Note_HearthHarbor.label>Hearth &amp; Harbor – Guests, Hotels &amp; Hospitality</JBF_Note_HearthHarbor.label>
+  <JBF_Note_HearthHarbor.description>Hearth &amp; Harbor: Gäste, Hotels und Gastfreundschaft mit Läden, Casino, Wellness und der Silverline-Bank.</JBF_Note_HearthHarbor.description>
+  <JBF_Note_HearthHarbor.advice>Eine JB-Mod mit eigenem Kern (Hearth.Core); JB-Framework-Mods erkennen sie über den Hearth-Adapter des Frameworks.</JBF_Note_HearthHarbor.advice>
+  <JBF_Note_Silverline.label>Silverline – Banking, Loans &amp; Insurance</JBF_Note_Silverline.label>
+  <JBF_Note_Silverline.description>Silverline: Bank, Kredite und Versicherungen, eigenständig oder in Hearth &amp; Harbor.</JBF_Note_Silverline.description>
+</LanguageData>

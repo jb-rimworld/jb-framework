@@ -23,6 +23,10 @@ namespace JBFramework
         /// Drawn inside the page's scroll view and error fence.
         /// </summary>
         public static readonly List<Func<KitMod, float, float, float>> CompatPage = new List<Func<KitMod, float, float, float>>();
+        /// <summary>Framework-wide per-save data (not owned by one mod), inside FrameworkGame's node "framework". Called in every Scribe pass.</summary>
+        public static readonly List<Action> GameExpose = new List<Action>();
+        /// <summary>A new Game object was created (new game, or right before a save is loaded): reset framework-wide per-save state.</summary>
+        public static readonly List<Action> GameReset = new List<Action>();
 
         internal static void Each<T>(List<T> list, KitMod k, string site, Action<T> call)
         {

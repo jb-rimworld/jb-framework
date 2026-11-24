@@ -31,6 +31,7 @@ namespace JBFramework
                 k.AttachSave(null, null);
                 if (k.SaveReset != null && !k.Blocked) k.Guard.Run(KitMod.Core, "SaveData.reset", k.SaveReset);
             }, "FrameworkGame.ctor");
+            KitHooks.Each(KitHooks.GameReset, null, "GameReset", h => h());
         }
 
         /// <summary>The component of the running game, or null (main menu, other game).</summary>
@@ -141,6 +142,11 @@ namespace JBFramework
         {
             exposed = true;
             Scribe_Collections.Look(ref mods, "mods", LookMode.Deep);
+            if (KitHooks.GameExpose.Count > 0 && Scribe.EnterNode("framework"))
+            {
+                try { KitHooks.Each(KitHooks.GameExpose, null, "GameExpose." + Scribe.mode, h => h()); }
+                finally { Scribe.ExitNode(); }
+            }
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (mods == null) mods = new List<KitSaveEntry>();

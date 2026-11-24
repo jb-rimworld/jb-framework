@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (VanillaExpanded). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFE</defName>
+    <label>Vanilla Furniture Expanded</label>
+    <description>Vanilla Furniture Expanded: about 50 vanilla-style furniture pieces with their own research.</description>
+    <packageIds><li>VanillaExpanded.VFECore</li></packageIds>
+    <tags><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1718190143</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFEMedical</defName>
+    <label>Vanilla Furniture Expanded - Medical Module</label>
+    <description>Vanilla Furniture Expanded - Medical: hospital furniture and linkables such as IV drips and vitals monitors.</description>
+    <packageIds><li>VanillaExpanded.VFEMedical</li></packageIds>
+    <tags><li>adds-buildings</li><li>changes-medical</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1718191613</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFEArchitect</defName>
+    <label>Vanilla Furniture Expanded - Architect</label>
+    <description>Vanilla Furniture Expanded - Architect: walls, fences, floors, carpets and bridges.</description>
+    <packageIds><li>VanillaExpanded.VFEArchitect</li></packageIds>
+    <tags><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2608762624</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFEProduction</defName>
+    <label>Vanilla Furniture Expanded - Production</label>
+    <description>Vanilla Furniture Expanded - Production: powered early workbenches, tool cabinets and large double workbenches.</description>
+    <packageIds><li>VanillaExpanded.VFEProduction</li></packageIds>
+    <tags><li>adds-buildings</li><li>changes-bills</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1880253632</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFESecurity</defName>
+    <label>Vanilla Furniture Expanded - Security</label>
+    <description>Vanilla Furniture Expanded - Security: defensive buildings for every tech level, from traps to turrets and trenches.</description>
+    <packageIds><li>VanillaExpanded.VFESecurity</li></packageIds>
+    <tags><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>1845154007</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VEHelixien</defName>
+    <label>Vanilla Helixien Gas Expanded</label>
+    <description>Vanilla Helixien Gas Expanded: a gas network that feeds generators, heaters and workbenches.</description>
+    <packageIds><li>VanillaExpanded.HelixienGas</li></packageIds>
+    <tags><li>adds-pipe-networks</li><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2877699803</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VEChemfuel</defName>
+    <label>Vanilla Chemfuel Expanded</label>
+    <description>Vanilla Chemfuel Expanded: piped deepchem and chemfuel with refineries, tanks and automatic refuelling.</description>
+    <packageIds><li>VanillaExpanded.VChemfuelE</li></packageIds>
+    <tags><li>adds-pipe-networks</li><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2792917473</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VENutrient</defName>
+    <label>Vanilla Nutrient Paste Expanded</label>
+    <description>Vanilla Nutrient Paste Expanded: piped nutrient paste with grinders, vats, taps and drip feeders.</description>
+    <packageIds><li>VanillaExpanded.VNutrientE</li></packageIds>
+    <tags><li>adds-pipe-networks</li><li>adds-buildings</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2920385763</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VEPsycasts</defName>
+    <label>Vanilla Psycasts Expanded</label>
+    <description>Vanilla Psycasts Expanded: replaces Royalty psycasts with level-up paths and about 150 abilities.</description>
+    <packageIds><li>VanillaExpanded.VPsycastsE</li></packageIds>
+    <tags><li>psycasts</li></tags>
+    <versions><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2842502659</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_DubsBadHygiene</defName>
+    <label>Dubs Bad Hygiene</label>
+    <description>Dubs Bad Hygiene: hygiene and bladder needs with plumbing, water, sewage, heating and cooling.</description>
+    <packageIds><li>Dubwise.DubsBadHygiene</li></packageIds>
+    <tags><li>adds-pipe-networks</li><li>adds-buildings</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>836308268</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_DubsBadHygieneLite</defName>
+    <label>Dubs Bad Hygiene Lite</label>
+    <description>Dubs Bad Hygiene Lite: the same without thirst and water quality.</description>
+    <packageIds><li>Dubwise.DubsBadHygiene.Lite</li></packageIds>
+    <tags><li>adds-pipe-networks</li><li>adds-buildings</li></tags>
+    <versions><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li></versions>
+    <workshopIds><li>2570319432</li></workshopIds>
+    <source>Rimling/ModKnowledge</source>
+  </JBFramework.ModNoteDef>
+</Defs>

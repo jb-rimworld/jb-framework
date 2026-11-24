@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework compatibility knowledge base (Guests). Generated from real About.xml files and Rimling/ModKnowledge;
+     packageIds are never invented. Format: Source/JBFramework/Compat/ModNoteDef.cs. German: Languages/German (Deutsch)/DefInjected. -->
+<Defs>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_VFEEmpire</defName>
+    <label>Vanilla Factions Expanded - Empire</label>
+    <description>Vanilla Factions Expanded - Empire: more noble titles, vassals, honours and noble visits for the Royalty Empire.</description>
+    <packageIds><li>OskarPotocki.VFE.Empire</li></packageIds>
+    <tags><li>guests</li></tags>
+    <versions><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2938820380</li></workshopIds>
+    <pitfall>It changes how guests are set up (guest status); guest mods may see visitors it changed.</pitfall>
+    <source>Rimling/ModKnowledge (compat notes: patches Pawn_GuestTracker.SetGuestStatus)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_Hospitality</defName>
+    <label>Hospitality (Continued)</label>
+    <description>Hospitality: visiting groups stay as hotel guests, rent beds, shop and eat, and can be befriended or recruited.</description>
+    <packageIds><li>Orion.Hospitality</li></packageIds>
+    <tags><li>guests</li></tags>
+    <versions><li>1.0</li><li>1.1</li><li>1.2</li><li>1.3</li><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3509486825</li><li>753498552</li></workshopIds>
+    <pitfall>Hearth &amp; Harbor is built as the successor of this mod and expects it to be switched off; run one of the two.</pitfall>
+    <advice>Hearth &amp; Harbor can take over a save that used it.</advice>
+    <source>Rimling/ModKnowledge; HearthHarbor Source/Hearth/Compat/Hospitality/HospitalityFamily.cs (role Replaced)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_HospitalityCasino</defName>
+    <label>Hospitality: Casino</label>
+    <description>Hospitality: Casino: gambling buildings for guests and colonists.</description>
+    <packageIds><li>Adamas.HospitalityCasino</li></packageIds>
+    <tags><li>guests</li><li>economy</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2939292644</li></workshopIds>
+    <pitfall>Hearth &amp; Harbor is built as the successor of this mod and expects it to be switched off; run one of the two.</pitfall>
+    <source>Rimling/ModKnowledge; HearthHarbor Source/Hearth/Compat/Hospitality/HospitalityFamily.cs (role Replaced)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_HospitalityStorefront</defName>
+    <label>Hospitality: Storefront</label>
+    <description>Hospitality: Storefront: a shop register and a selling job for social colonists.</description>
+    <packageIds><li>Adamas.Storefront</li></packageIds>
+    <tags><li>guests</li><li>economy</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2952321484</li></workshopIds>
+    <pitfall>Hearth &amp; Harbor is built as the successor of this mod and expects it to be switched off; run one of the two.</pitfall>
+    <source>Rimling/ModKnowledge; HearthHarbor Source/Hearth/Compat/Hospitality/HospitalityFamily.cs (role Replaced)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_HospitalitySpa</defName>
+    <label>Hospitality: Spa</label>
+    <description>Hospitality: Spa: guests pay to use Dubs Bad Hygiene pools, hot tubs and saunas.</description>
+    <packageIds><li>Adamas.HospitalitySpa</li></packageIds>
+    <tags><li>guests</li><li>economy</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>2971831654</li></workshopIds>
+    <pitfall>Hearth &amp; Harbor is built as the successor of this mod and expects it to be switched off; run one of the two.</pitfall>
+    <source>Rimling/ModKnowledge; HearthHarbor Source/Hearth/Compat/Hospitality/HospitalityFamily.cs (role Replaced)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_HospitalityVending</defName>
+    <label>Hospitality: Vending machines</label>
+    <description>Hospitality: Vending machines: powered machines where guests buy goods and meals themselves.</description>
+    <packageIds><li>Adamas.VendingMachines</li></packageIds>
+    <tags><li>guests</li><li>economy</li></tags>
+    <versions><li>1.4</li><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3014885065</li></workshopIds>
+    <pitfall>Hearth &amp; Harbor is built as the successor of this mod and expects it to be switched off; run one of the two.</pitfall>
+    <source>Rimling/ModKnowledge; HearthHarbor Source/Hearth/Compat/Hospitality/HospitalityFamily.cs (role Replaced)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_HearthHarbor</defName>
+    <label>Hearth &amp; Harbor – Guests, Hotels &amp; Hospitality</label>
+    <description>Hearth &amp; Harbor: guests, hotels and hospitality with shops, casino, wellness and the Silverline bank.</description>
+    <packageIds><li>juliusberger00.hearthharbor</li></packageIds>
+    <tags><li>guests</li><li>economy</li><li>jb-mod</li></tags>
+    <versions><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3844621374</li></workshopIds>
+    <advice>A JB mod with its own core (Hearth.Core); JB Framework mods detect it through the framework's Hearth adapter.</advice>
+    <source>About.xml (Workshop 3844621374)</source>
+  </JBFramework.ModNoteDef>
+  <JBFramework.ModNoteDef>
+    <defName>JBF_Note_Silverline</defName>
+    <label>Silverline – Banking, Loans &amp; Insurance</label>
+    <description>Silverline: banking, loans and insurance, standalone or inside Hearth &amp; Harbor.</description>
+    <packageIds><li>juliusberger00.silverline</li></packageIds>
+    <tags><li>economy</li><li>jb-mod</li></tags>
+    <versions><li>1.5</li><li>1.6</li><li>1.7</li></versions>
+    <workshopIds><li>3844621622</li></workshopIds>
+    <source>_Release/Packages_v110/Silverline/About/About.xml</source>
+  </JBFramework.ModNoteDef>
+</Defs>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_CharacterEditor.label>Character Editor</JBF_Note_CharacterEditor.label>
+  <JBF_Note_CharacterEditor.description>Character Editor: Figuren, Aussehen, Ausrüstung, Gesundheit, Fertigkeiten und Gene im Spiel oder beim Start bearbeiten.</JBF_Note_CharacterEditor.description>
+  <JBF_Note_CharacterEditor.pitfall>Damit erstellte Xenotypen können bei anderen Fraktionen auftauchen.</JBF_Note_CharacterEditor.pitfall>
+  <JBF_Note_CharacterEditor.advice>Mod Settings Overrides hält eigene Xenotypen von anderen Fraktionen fern.</JBF_Note_CharacterEditor.advice>
+  <JBF_Note_PawnCompatibilityEditor.label>Pawn Compatibility Editor</JBF_Note_PawnCompatibilityEditor.label>
+  <JBF_Note_PawnCompatibilityEditor.description>Pawn Compatibility Editor: Kompatibilität zwischen Figuren ansehen und überschreiben.</JBF_Note_PawnCompatibilityEditor.description>
+  <JBF_Note_RocketMan.label>RocketMan - Performance Mod</JBF_Note_RocketMan.label>
+  <JBF_Note_RocketMan.description>RocketMan: drosselt Figuren-Ticks und puffert Werte für mehr Tempo.</JBF_Note_RocketMan.description>
+  <JBF_Note_RocketMan.pitfall>Seine About.xml nennt RimWorld nur bis 1.5.</JBF_Note_RocketMan.pitfall>
+  <JBF_Note_PerformanceOptimizer.label>Performance Optimizer</JBF_Note_PerformanceOptimizer.label>
+  <JBF_Note_PerformanceOptimizer.description>Performance Optimizer: optimiert Vanilla-Abläufe, puffert Oberflächen und drosselt Hintergrundprüfungen.</JBF_Note_PerformanceOptimizer.description>
+  <JBF_Note_DubsPerformanceAnalyzer.label>Dubs Performance Analyzer</JBF_Note_DubsPerformanceAnalyzer.label>
+  <JBF_Note_DubsPerformanceAnalyzer.description>Dubs Performance Analyzer: misst, wohin Tick- und Bildzeit geht, je Mod.</JBF_Note_DubsPerformanceAnalyzer.description>
+  <JBF_Note_DubsPerformanceAnalyzer.advice>Das Werkzeug der Wahl, wenn eine JB-Mod langsam wirkt; die Zahlen helfen bei einer Fehlermeldung.</JBF_Note_DubsPerformanceAnalyzer.advice>
+  <JBF_Note_Multiplayer.label>Multiplayer</JBF_Note_Multiplayer.label>
+  <JBF_Note_Multiplayer.description>Multiplayer: Koop über LAN oder Internet in einer Kolonie.</JBF_Note_Multiplayer.description>
+  <JBF_Note_Multiplayer.pitfall>Jede Mod muss auf jedem Rechner dieselben Zufallsentscheidungen treffen; JB-Mods sind nicht im Multiplayer getestet.</JBF_Note_Multiplayer.pitfall>
+  <JBF_Note_Multiplayer.advice>Die Zufallsströme von JB Framework sind je Spielstand deterministisch, eine gute Grundlage; JB-Mods im Multiplayer trotzdem als ungetestet behandeln.</JBF_Note_Multiplayer.advice>
+  <JBF_Note_MultiplayerCompat.label>Multiplayer Compatibility</JBF_Note_MultiplayerCompat.label>
+  <JBF_Note_MultiplayerCompat.description>Multiplayer Compatibility: Patches, die andere Mods Multiplayer-tauglich machen.</JBF_Note_MultiplayerCompat.description>
+  <JBF_Note_RimTalk.label>RimTalk</JBF_Note_RimTalk.label>
+  <JBF_Note_RimTalk.description>RimTalk: KI-geschriebene Dialoge für soziale Interaktionen.</JBF_Note_RimTalk.description>
+  <JBF_Note_WorkTab.label>Work Tab</JBF_Note_WorkTab.label>
+  <JBF_Note_WorkTab.description>Work Tab: Unteraufgaben je Arbeitsart, Prioritäten nach Tageszeit, Prioritäten bis 9.</JBF_Note_WorkTab.description>
+  <JBF_Note_RimHUD.label>RimHUD</JBF_Note_RimHUD.label>
+  <JBF_Note_RimHUD.description>RimHUD: ein einstellbares HUD statt der Infokarte.</JBF_Note_RimHUD.description>
+</LanguageData>

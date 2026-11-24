@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <JBF_Note_VECooking.label>Vanilla Cooking Expanded</JBF_Note_VECooking.label>
+  <JBF_Note_VECooking.description>Vanilla Cooking Expanded: viele neue Mahlzeiten, Würzmittel und Kochgebäude.</JBF_Note_VECooking.description>
+  <JBF_Note_NiceBillTab.label>Nice Bill Tab</JBF_Note_NiceBillTab.label>
+  <JBF_Note_NiceBillTab.description>Nice Bill Tab: ein neu gestalteter Aufträge-Reiter mit Werteanzeigen.</JBF_Note_NiceBillTab.description>
+  <JBF_Note_NiceBillTab.pitfall>Es puffert die Liste des offenen Aufträge-Reiters: Aufträge, die eine andere Mod hinzufügt oder entfernt, erscheinen erst nach erneutem Öffnen. Außerdem vergrößert es die gemeinsame Größe des Aufträge-Reiters.</JBF_Note_NiceBillTab.pitfall>
+  <JBF_Note_NiceBillTab.advice>JB-Mods lassen es über den Nice-Bill-Tab-Adapter des Frameworks neu aufbauen; sonst den Reiter neu öffnen.</JBF_Note_NiceBillTab.advice>
+  <JBF_Note_NiceInventoryTab.label>Nice Inventory Tab</JBF_Note_NiceInventoryTab.label>
+  <JBF_Note_NiceInventoryTab.description>Nice Inventory Tab: ein neu gestalteter Ausrüstungsreiter; bringt eine eigene Kopie von Nice Bill Tab mit, wenn Nice Bill Tab selbst nicht aktiv ist.</JBF_Note_NiceInventoryTab.description>
+  <JBF_Note_NiceInventoryTab.pitfall>Das mitgelieferte Nice Bill Tab hat denselben Auftragslisten-Puffer (siehe Nice Bill Tab).</JBF_Note_NiceInventoryTab.pitfall>
+  <JBF_Note_BWM.label>Better Workbench Management - 1.7 Waylith (Unofficial)</JBF_Note_BWM.label>
+  <JBF_Note_BWM.description>Better Workbench Management: Zählen nach Trefferpunkten, Qualität und Material, Aufträge kopieren und Figuren festlegen.</JBF_Note_BWM.description>
+  <JBF_Note_DubsMintMenus.label>Dubs Mint Menus</JBF_Note_DubsMintMenus.label>
+  <JBF_Note_DubsMintMenus.description>Dubs Mint Menus: durchsuchbare Auswahlmenüs für Aufträge, Operationen, Pflanzen, Forschung und das Baumenü.</JBF_Note_DubsMintMenus.description>
+  <JBF_Note_NoMaxBills.label>No Max Bills: Redux</JBF_Note_NoMaxBills.label>
+  <JBF_Note_NoMaxBills.description>No Max Bills: Redux: hebt die Grenze von 15 Aufträgen pro Werkbank auf.</JBF_Note_NoMaxBills.description>
+  <JBF_Note_CommonSense.label>Common Sense</JBF_Note_CommonSense.label>
+  <JBF_Note_CommonSense.description>Common Sense: Figuren putzen vor der Arbeit, tragen alle Zutaten auf einmal und essen zuerst, was bald verdirbt.</JBF_Note_CommonSense.description>
+</LanguageData>
