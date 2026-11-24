@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from _Shared/JBKit/Languages/German/JBKit.xml (prefix KSA). -->
+<LanguageData>
+  <KSA.Kit.On>An</KSA.Kit.On>
+  <KSA.Kit.Off>Aus</KSA.Kit.Off>
+  <KSA.Kit.Silver>{0} Silber</KSA.Kit.Silver>
+  <KSA.Kit.Guard.PausedTitle>{0}: Bereich pausiert</KSA.Kit.Guard.PausedTitle>
+  <KSA.Kit.Guard.PausedText>Ein Teil von {0} ist wiederholt auf Fehler gestoßen und hat sich selbst pausiert, damit dein Spiel weiterläuft.\n\n{1}\n\nDu kannst ihn unter Mod-Einstellungen → {0} fortsetzen (Knopf „Fortsetzen“ auf der Übersicht). Einzelheiten stehen in {2}.</KSA.Kit.Guard.PausedText>
+  <KSA.Kit.Section.NotAvailable>In diesem Spiel nicht verfügbar.</KSA.Kit.Section.NotAvailable>
+  <KSA.Kit.Section.SwitchedOff>Ausgeschaltet.</KSA.Kit.Section.SwitchedOff>
+  <KSA.Kit.Row.RequiresSection>Braucht den eingeschalteten Bereich „{0}“.</KSA.Kit.Row.RequiresSection>
+  <KSA.Kit.Row.RequiresMod>Braucht {0}.</KSA.Kit.Row.RequiresMod>
+  <KSA.Kit.Compat.Active>aktiv</KSA.Kit.Compat.Active>
+  <KSA.Kit.Compat.NotInstalled>nicht installiert</KSA.Kit.Compat.NotInstalled>
+  <KSA.Kit.Compat.Failed>fehlgeschlagen: {0}</KSA.Kit.Compat.Failed>
+  <KSA.Kit.Compat.Unhealthy>installiert, aber die Anbindung meldet ein Problem</KSA.Kit.Compat.Unhealthy>
+  <KSA.Kit.Compat.IncompatiblePresent>installiert: bekannter Konflikt</KSA.Kit.Compat.IncompatiblePresent>
+  <KSA.Kit.Compat.IncompatibleAbsent>nicht installiert (gut so)</KSA.Kit.Compat.IncompatibleAbsent>
+  <KSA.Kit.Fallback.Sections>Bereiche</KSA.Kit.Fallback.Sections>
+  <KSA.Kit.Fallback.ThisSave>Diese Werte gehören zu diesem Spielstand. Neue Kolonien starten mit der Vorlage aus der Einstellungsdatei.</KSA.Kit.Fallback.ThisSave>
+  <!-- kit-eigene Einstellungen -->
+  <KSA.SettingCat.Interface>Oberfläche</KSA.SettingCat.Interface>
+  <KSA.Setting.kit.windowScale>Fenstergröße</KSA.Setting.kit.windowScale>
+  <KSA.Setting.kit.windowScale.Desc>Alle Fenster dieser Mod werden um diesen Faktor größer oder kleiner (zusätzlich zur automatischen Größe auf großen Bildschirmen).</KSA.Setting.kit.windowScale.Desc>
+  <KSA.Setting.kit.verboseLog>Ausführliches Protokoll</KSA.Setting.kit.verboseLog>
+  <KSA.Setting.kit.verboseLog.Desc>Schreibt Info- und Debug-Zeilen auch ins Spielprotokoll (in die eigene Protokolldatei der Mod gehen sie immer). Nur zur Fehlersuche.</KSA.Setting.kit.verboseLog.Desc>
+  <KSA.Setting.kit.showNerd>Technische Einstellungen zeigen</KSA.Setting.kit.showNerd>
+  <KSA.Setting.kit.showNerd.Desc>Zeigt die technischen Einstellungen, die die meisten Spieler nie brauchen.</KSA.Setting.kit.showNerd.Desc>
+  <KSA.Setting.kit.firstStartCard>Willkommenskarte zeigen</KSA.Setting.kit.firstStartCard>
+  <KSA.Setting.kit.firstStartCard.Desc>Einmal je neuer Kolonie (und einmal, wenn die Mod zu einem Spielstand dazukommt): eine kleine Karte mit den Voreinstellungen und einem Link zu diesen Einstellungen.</KSA.Setting.kit.firstStartCard.Desc>
+</LanguageData>

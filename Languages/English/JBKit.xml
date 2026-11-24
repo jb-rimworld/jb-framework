@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB.Kit template (English). {P} = the mod's key prefix; tools/kit_lang.py writes <Mod>/Common/Languages/English/Keyed/<P>_Kit.xml.
+     src/Core keys below; src/UI and src/Testing append theirs. The English text in code is the fallback; keep both identical.
+     Labels of the kit's own settings ({P}.Setting.kit.*) come from the settings dump (<P>_Settings.xml), not from this file. -->
+<LanguageData>
+  <!-- values -->
+  <{P}.Kit.On>On</{P}.Kit.On>
+  <{P}.Kit.Off>Off</{P}.Kit.Off>
+  <{P}.Kit.Silver>{0} silver</{P}.Kit.Silver>
+  <!-- error barrier -->
+  <{P}.Kit.Guard.PausedTitle>{0}: feature paused</{P}.Kit.Guard.PausedTitle>
+  <{P}.Kit.Guard.PausedText>A part of {0} ran into repeated errors and paused itself so your game keeps running.\n\n{1}\n\nYou can resume it in Mod settings → {0} (Resume button on the Overview page). Details are in {2}.</{P}.Kit.Guard.PausedText>
+  <!-- sections and rows -->
+  <{P}.Kit.Section.NotAvailable>Not available in this game.</{P}.Kit.Section.NotAvailable>
+  <{P}.Kit.Section.SwitchedOff>Switched off.</{P}.Kit.Section.SwitchedOff>
+  <{P}.Kit.Row.RequiresSection>Needs the section "{0}" to be on.</{P}.Kit.Row.RequiresSection>
+  <{P}.Kit.Row.RequiresMod>Needs {0}.</{P}.Kit.Row.RequiresMod>
+  <!-- compatibility states -->
+  <{P}.Kit.Compat.Active>active</{P}.Kit.Compat.Active>
+  <{P}.Kit.Compat.NotInstalled>not installed</{P}.Kit.Compat.NotInstalled>
+  <{P}.Kit.Compat.Failed>failed: {0}</{P}.Kit.Compat.Failed>
+  <{P}.Kit.Compat.Unhealthy>installed, but the integration reports a problem</{P}.Kit.Compat.Unhealthy>
+  <{P}.Kit.Compat.IncompatiblePresent>installed: known conflict</{P}.Kit.Compat.IncompatiblePresent>
+  <{P}.Kit.Compat.IncompatibleAbsent>not installed (good)</{P}.Kit.Compat.IncompatibleAbsent>
+  <!-- minimal window (tier core) -->
+  <{P}.Kit.Fallback.Sections>Sections</{P}.Kit.Fallback.Sections>
+  <{P}.Kit.Fallback.ThisSave>These values belong to this save. New colonies start from the template in the settings file.</{P}.Kit.Fallback.ThisSave>
+</LanguageData>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- German texts of JB.Kit Sample A (English comes from the code fallbacks / the settings dump). -->
+<LanguageData>
+  <KSA.Section.alpha>Alpha</KSA.Section.alpha>
+  <KSA.Section.alpha.Desc>Der erste Beispielbereich. Standardmäßig an.</KSA.Section.alpha.Desc>
+  <KSA.Section.beta>Beta (Biotech)</KSA.Section.beta>
+  <KSA.Section.beta.Desc>Gibt es nur mit Biotech. Standardmäßig aus.</KSA.Section.beta.Desc>
+  <KSA.Section.beta.Requires>Braucht Biotech</KSA.Section.beta.Requires>
+  <KSA.SettingCat.Switches>Schalter</KSA.SettingCat.Switches>
+  <KSA.SettingCat.Numbers>Zahlen</KSA.SettingCat.Numbers>
+  <KSA.SettingCat.Scale>Maßstab</KSA.SettingCat.Scale>
+  <KSA.SettingCat.Economy>Wirtschaft</KSA.SettingCat.Economy>
+  <KSA.Setting.ksa.flag>Ein Schalter</KSA.Setting.ksa.flag>
+  <KSA.Setting.ksa.flag.Desc>Ein einfacher An/Aus-Wert.</KSA.Setting.ksa.flag.Desc>
+  <KSA.Setting.ksa.count>Eine Anzahl</KSA.Setting.ksa.count>
+  <KSA.Setting.ksa.count.Desc>Ganze Zahlen von 0 bis 20 am Schieber, getippt bis 1000.</KSA.Setting.ksa.count.Desc>
+  <KSA.Setting.ksa.speed>Ein Tempo</KSA.Setting.ksa.speed>
+  <KSA.Setting.ksa.speed.Desc>Eine einfache Dezimalzahl.</KSA.Setting.ksa.speed.Desc>
+  <KSA.Setting.ksa.chance>Eine Chance</KSA.Setting.ksa.chance>
+  <KSA.Setting.ksa.chance.Desc>Gespeichert als 0..1, angezeigt in Prozent.</KSA.Setting.ksa.chance.Desc>
+  <KSA.Setting.ksa.factor>Ein Faktor</KSA.Setting.ksa.factor>
+  <KSA.Setting.ksa.factor.Desc>Logarithmischer Schieber von 0,1 bis 100.</KSA.Setting.ksa.factor.Desc>
+  <KSA.Setting.ksa.mode>Ein Modus</KSA.Setting.ksa.mode>
+  <KSA.Setting.ksa.mode.Desc>Eine von drei benannten Möglichkeiten.</KSA.Setting.ksa.mode.Desc>
+  <KSA.Enum.SampleMode.Gentle>Sanft</KSA.Enum.SampleMode.Gentle>
+  <KSA.Enum.SampleMode.Normal>Normal</KSA.Enum.SampleMode.Normal>
+  <KSA.Enum.SampleMode.Wild>Wild</KSA.Enum.SampleMode.Wild>
+  <KSA.Setting.ksa.price>Ein Preis</KSA.Setting.ksa.price>
+  <KSA.Setting.ksa.price.Desc>Ganzes Silber; getippte Werte enden beim Zehnfachen der Silber-Stapelgröße.</KSA.Setting.ksa.price.Desc>
+  <KSA.Preset.calm>Ruhig</KSA.Preset.calm>
+  <KSA.Preset.calm.Desc>Kleine Zahlen, Beta aus.</KSA.Preset.calm.Desc>
+  <KSA.Preset.loud>Laut</KSA.Preset.loud>
+  <KSA.Preset.loud.Desc>Große Zahlen, Beta an.</KSA.Preset.loud.Desc>
+  <KSA.Compat.Biotech.What>Schaltet den Bereich Beta frei.</KSA.Compat.Biotech.What>
+</LanguageData>

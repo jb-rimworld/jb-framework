@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- JB.Kit sample, tier core. Build: dotnet build (from this folder). Output: ../1.7/Assemblies/KitSampleA.dll -->
+  <PropertyGroup>
+    <AssemblyName>KitSampleA</AssemblyName>
+    <RootNamespace>KitSampleA</RootNamespace>
+    <JBKit>core</JBKit>
+  </PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)/../../../build/JBMod.props" />
+</Project>

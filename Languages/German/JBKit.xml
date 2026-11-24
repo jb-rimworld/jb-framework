@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB.Kit Vorlage (Deutsch). {P} = Schlüsselpräfix der Mod; tools/kit_lang.py schreibt <Mod>/Common/Languages/German/Keyed/<P>_Kit.xml.
+     Enthält zusätzlich die deutschen Texte der kit-eigenen Einstellungen ({P}.Setting.kit.*, {P}.SettingCat.Interface). -->
+<LanguageData>
+  <{P}.Kit.On>An</{P}.Kit.On>
+  <{P}.Kit.Off>Aus</{P}.Kit.Off>
+  <{P}.Kit.Silver>{0} Silber</{P}.Kit.Silver>
+  <{P}.Kit.Guard.PausedTitle>{0}: Bereich pausiert</{P}.Kit.Guard.PausedTitle>
+  <{P}.Kit.Guard.PausedText>Ein Teil von {0} ist wiederholt auf Fehler gestoßen und hat sich selbst pausiert, damit dein Spiel weiterläuft.\n\n{1}\n\nDu kannst ihn unter Mod-Einstellungen → {0} fortsetzen (Knopf „Fortsetzen“ auf der Übersicht). Einzelheiten stehen in {2}.</{P}.Kit.Guard.PausedText>
+  <{P}.Kit.Section.NotAvailable>In diesem Spiel nicht verfügbar.</{P}.Kit.Section.NotAvailable>
+  <{P}.Kit.Section.SwitchedOff>Ausgeschaltet.</{P}.Kit.Section.SwitchedOff>
+  <{P}.Kit.Row.RequiresSection>Braucht den eingeschalteten Bereich „{0}“.</{P}.Kit.Row.RequiresSection>
+  <{P}.Kit.Row.RequiresMod>Braucht {0}.</{P}.Kit.Row.RequiresMod>
+  <{P}.Kit.Compat.Active>aktiv</{P}.Kit.Compat.Active>
+  <{P}.Kit.Compat.NotInstalled>nicht installiert</{P}.Kit.Compat.NotInstalled>
+  <{P}.Kit.Compat.Failed>fehlgeschlagen: {0}</{P}.Kit.Compat.Failed>
+  <{P}.Kit.Compat.Unhealthy>installiert, aber die Anbindung meldet ein Problem</{P}.Kit.Compat.Unhealthy>
+  <{P}.Kit.Compat.IncompatiblePresent>installiert: bekannter Konflikt</{P}.Kit.Compat.IncompatiblePresent>
+  <{P}.Kit.Compat.IncompatibleAbsent>nicht installiert (gut so)</{P}.Kit.Compat.IncompatibleAbsent>
+  <{P}.Kit.Fallback.Sections>Bereiche</{P}.Kit.Fallback.Sections>
+  <{P}.Kit.Fallback.ThisSave>Diese Werte gehören zu diesem Spielstand. Neue Kolonien starten mit der Vorlage aus der Einstellungsdatei.</{P}.Kit.Fallback.ThisSave>
+  <!-- kit-eigene Einstellungen -->
+  <{P}.SettingCat.Interface>Oberfläche</{P}.SettingCat.Interface>
+  <{P}.Setting.kit.windowScale>Fenstergröße</{P}.Setting.kit.windowScale>
+  <{P}.Setting.kit.windowScale.Desc>Alle Fenster dieser Mod werden um diesen Faktor größer oder kleiner (zusätzlich zur automatischen Größe auf großen Bildschirmen).</{P}.Setting.kit.windowScale.Desc>
+  <{P}.Setting.kit.verboseLog>Ausführliches Protokoll</{P}.Setting.kit.verboseLog>
+  <{P}.Setting.kit.verboseLog.Desc>Schreibt Info- und Debug-Zeilen auch ins Spielprotokoll (in die eigene Protokolldatei der Mod gehen sie immer). Nur zur Fehlersuche.</{P}.Setting.kit.verboseLog.Desc>
+  <{P}.Setting.kit.showNerd>Technische Einstellungen zeigen</{P}.Setting.kit.showNerd>
+  <{P}.Setting.kit.showNerd.Desc>Zeigt die technischen Einstellungen, die die meisten Spieler nie brauchen.</{P}.Setting.kit.showNerd.Desc>
+  <{P}.Setting.kit.firstStartCard>Willkommenskarte zeigen</{P}.Setting.kit.firstStartCard>
+  <{P}.Setting.kit.firstStartCard.Desc>Einmal je neuer Kolonie (und einmal, wenn die Mod zu einem Spielstand dazukommt): eine kleine Karte mit den Voreinstellungen und einem Link zu diesen Einstellungen.</{P}.Setting.kit.firstStartCard.Desc>
+</LanguageData>

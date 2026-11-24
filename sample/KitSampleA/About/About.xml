@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>JB.Kit Sample A</name>
+  <author>juliusberger00</author>
+  <packageId>juliusberger00.jbkitsamplea</packageId>
+  <modVersion>1.0.0</modVersion>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+  <description>Test and example mod for JB.Kit (kit tier core). Not for players. Registers two sections, one setting of every kind, a preset and a compatibility entry, with per-save values.</description>
+</ModMetaData>
