@@ -7,6 +7,17 @@ using Verse;
 
 namespace JBFramework
 {
+    /// <summary>One list value of a profile (saved as plain strings).</summary>
+    internal sealed class KitStringList : IExposable
+    {
+        public List<string> items = new List<string>();
+        public void ExposeData()
+        {
+            Scribe_Collections.Look(ref items, "li", LookMode.Value);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && items == null) items = new List<string>();
+        }
+    }
+
     /// <summary>
     /// One mod's values for one save: section switches and setting values, plus the welcome-card state. The template (in the mod's
     /// settings file, <see cref="KitMod.Template"/>) has the same shape and is copied into every new game (and into an existing save
@@ -19,6 +30,8 @@ namespace JBFramework
         internal KitMod Owner;
         internal Dictionary<string, bool> sections = new Dictionary<string, bool>();
         internal KitStore Store = new KitStore();
+        internal Dictionary<string, string> texts = new Dictionary<string, string>();
+        internal Dictionary<string, KitStringList> lists = new Dictionary<string, KitStringList>();
         internal int ProfileVersion = CurrentVersion;
         internal bool FirstStartCardDone;
 
@@ -85,11 +98,40 @@ namespace JBFramework
         /// <summary>Resets a setting in this profile to its default.</summary>
         public void Reset(string key) { var s = Owner?.SettingsReg.Find(key); if (s != null) Owner.SettingsReg.Reset(s, this); }
 
+        // Free text and list values (per save like the numbers; no registration, no row: show them on a custom page) ---------
+        /// <summary>
+        /// A text value of this profile under a free key of the mod ("dndm.creatorNote"; never a registered setting key), or null.
+        /// Like the numbers it lives per save (and in the template). Plain strings only: a save keeps them without any of the mod's types.
+        /// </summary>
+        public string GetText(string key) => key != null && texts.TryGetValue(key, out var v) ? v : null;
+        /// <summary>Sets a text value (null removes it). When this profile is current, OnSettingsChanged(key) follows (debounced).</summary>
+        public void SetText(string key, string value)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            string old = GetText(key);
+            if (value == null) texts.Remove(key); else texts[key] = value;
+            if (old != value) NotifyFree(key);
+        }
+        /// <summary>A list value under a free key (a copy, in the stored order; empty when unset): mod exclusion lists, defNames …</summary>
+        public IReadOnlyList<string> GetList(string key) => key != null && lists.TryGetValue(key, out var l) && l?.items != null ? l.items.ToList() : new List<string>();
+        /// <summary>Sets a list value (a copy is stored; null removes it). When this profile is current, OnSettingsChanged(key) follows.</summary>
+        public void SetList(string key, IEnumerable<string> values)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            var old = GetList(key);
+            if (values == null) lists.Remove(key); else lists[key] = new KitStringList { items = values.Where(x => x != null).ToList() };
+            if (!old.SequenceEqual(GetList(key))) NotifyFree(key);
+        }
+        void NotifyFree(string key) { if (Owner != null && ReferenceEquals(this, Owner.Current)) Owner.MarkChanged(key); }
+
         /// <summary>Copy for a new game (or a save the mod joins): switches and values; the card is shown again.</summary>
         internal KitProfile CloneForNewGame()
         {
             var p = new KitProfile { Owner = Owner, Store = Store.Clone(), FirstStartCardDone = false, ProfileVersion = ProfileVersion };
             foreach (var kv in sections) p.sections[kv.Key] = kv.Value;
+            foreach (var kv in texts) p.texts[kv.Key] = kv.Value;
+            foreach (var kv in lists) p.lists[kv.Key] = new KitStringList { items = kv.Value?.items?.ToList() ?? new List<string>() };
+            foreach (var key in p.Store.Keys.Where(x => x.StartsWith(KitMod.CompatKeyPrefix)).ToList()) p.Store.Remove(key);   // template only
             return p;
         }
 
@@ -110,10 +152,18 @@ namespace JBFramework
                 next.freeText.Remove(s.Key);
                 if (Store.freeText.TryGetValue(s.Key, out bool f)) next.freeText[s.Key] = f;
             }
+            // compat switches live in the template only: keep this profile's, never take the source's
+            foreach (var key in next.Keys.Where(x => x.StartsWith(KitMod.CompatKeyPrefix)).ToList()) next.Remove(key);
+            foreach (var key in Store.Keys.Where(x => x.StartsWith(KitMod.CompatKeyPrefix)).ToList()) if (Store.TryGet(key, out float cv)) next.Set(key, cv);
             var before = Owner.Sections.All.ToDictionary(x => x.Id, x => SectionOn(x.Id));
             var changedKeys = reg.All.Where(s => !s.Global && Math.Abs(reg.Value(s, this) - (s.StoredIn(next) ?? s.Clamp(s.Default))) > 1e-7f).Select(s => s.Key).ToList();
             Store = next;
             sections = new Dictionary<string, bool>(src.sections);
+            var freeChanged = src.texts.Keys.Union(texts.Keys).Where(x => src.GetText(x) != GetText(x))
+                .Concat(src.lists.Keys.Union(lists.Keys).Where(x => !src.GetList(x).SequenceEqual(GetList(x)))).Distinct().ToList();
+            texts = new Dictionary<string, string>(src.texts);
+            lists = src.lists.ToDictionary(kv => kv.Key, kv => new KitStringList { items = kv.Value?.items?.ToList() ?? new List<string>() });
+            foreach (var k in freeChanged) Owner.MarkChanged(k);
             foreach (var k in changedKeys) Owner.MarkChanged(k);
             foreach (var kv in before)
             {
@@ -124,7 +174,7 @@ namespace JBFramework
             }
         }
 
-        List<string> tmpK; List<bool> tmpV;
+        List<string> tmpK; List<bool> tmpV; List<string> tmpTK, tmpTV, tmpLK; List<KitStringList> tmpLV;
         /// <summary>Saves and loads the profile (plain values only).</summary>
         public void ExposeData()
         {
@@ -132,10 +182,14 @@ namespace JBFramework
             Scribe_Collections.Look(ref sections, "sections", LookMode.Value, LookMode.Value, ref tmpK, ref tmpV);
             Scribe_Values.Look(ref FirstStartCardDone, "firstStartCardDone");
             Scribe_Deep.Look(ref Store, "settings");
+            if (Scribe.mode != LoadSaveMode.Saving || texts.Count > 0) Scribe_Collections.Look(ref texts, "texts", LookMode.Value, LookMode.Value, ref tmpTK, ref tmpTV);
+            if (Scribe.mode != LoadSaveMode.Saving || lists.Count > 0) Scribe_Collections.Look(ref lists, "lists", LookMode.Value, LookMode.Deep, ref tmpLK, ref tmpLV);
             if (Scribe.mode == LoadSaveMode.PostLoadInit || Scribe.mode == LoadSaveMode.LoadingVars)
             {
                 if (sections == null) sections = new Dictionary<string, bool>();
                 if (Store == null) Store = new KitStore();
+                if (texts == null) texts = new Dictionary<string, string>();
+                if (lists == null) lists = new Dictionary<string, KitStringList>();
             }
         }
     }

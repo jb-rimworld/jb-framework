@@ -163,4 +163,12 @@
   <JBF.Section.NeedsMod>Needs {0}.</JBF.Section.NeedsMod>
   <JBF.Page.Failed>This page ran into an error and is not drawn: {0}\n\nDetails are in {1}. The rest of {2} keeps working.</JBF.Page.Failed>
   <JBF.Page.Retry>Retry</JBF.Page.Retry>
+  <!-- steward pass 24.11.2026 -->
+  <JBF.Row.RequiresSettingOn>Only while "{0}" is on.</JBF.Row.RequiresSettingOn>
+  <JBF.Row.RequiresSettingOff>Only while "{0}" is off.</JBF.Row.RequiresSettingOff>
+  <JBF.Compat.SwitchedOff>installed, integration switched off</JBF.Compat.SwitchedOff>
+  <JBF.Compat.SwitchTip>Use this integration. Applies to every game (a preference of this installation).</JBF.Compat.SwitchTip>
+  <JBF.Card.Actions>Right now</JBF.Card.Actions>
+  <JBF.Card.ActionDone>done</JBF.Card.ActionDone>
+  <JBF.Removal.Components>{0} components removed ({1})</JBF.Removal.Components>
 </LanguageData>

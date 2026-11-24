@@ -52,8 +52,21 @@ namespace JBFramework.Testing
             return Framework.AllContexts().FirstOrDefault(k => Plain(k.PackageId) == want);
         }
 
-        /// <summary>The context of the mod under test: JB_TEST_MOD, or the framework itself when unset.</summary>
+        /// <summary>The context of the mod under test: JB_TEST_MOD, or the framework itself when unset. Null for a mod without a framework context.</summary>
         public static KitMod Target => Find(Get(Mod)) ?? (Get(Mod) == null ? Framework.Self : null);
+
+        /// <summary>The content pack of the mod under test (JB_TEST_MOD), also for a mod that does not use the framework; null if not loaded.</summary>
+        public static ModContentPack TargetContent
+        {
+            get
+            {
+                var k = Target;
+                if (k?.Content != null) return k.Content;
+                string want = Get(Mod) == null ? null : Plain(Get(Mod));
+                if (want == null) return null;
+                try { return LoadedModManager.RunningMods.FirstOrDefault(m => m != null && Plain(m.PackageId) == want); } catch { return null; }
+            }
+        }
     }
 
     /// <summary>The test mod's Mod class: starts recording red errors as early as possible. No settings entry.</summary>
@@ -176,27 +189,34 @@ namespace JBFramework.Testing
         int LogErrors() => (Framework.Self?.Log.ErrorCount ?? 0) + (target != null && !target.IsFramework ? target.Log.ErrorCount : 0);
 
         /// <summary>Suites in the harness and in the assemblies of the mod under test.</summary>
-        static List<Assembly> SuiteAssemblies(KitMod k)
+        static List<Assembly> SuiteAssemblies(KitMod k, ModContentPack content)
         {
             var list = new List<Assembly> { typeof(KitTestRunner).Assembly };
-            if (k == null || k.IsFramework) return list;
-            foreach (var a in k.Content?.assemblies?.loadedAssemblies ?? new List<Assembly>()) if (a != null && !list.Contains(a)) list.Add(a);
-            if (k.Mod != null && !list.Contains(k.Mod.GetType().Assembly)) list.Add(k.Mod.GetType().Assembly);
+            if (k != null && k.IsFramework) return list;
+            foreach (var a in (k?.Content ?? content)?.assemblies?.loadedAssemblies ?? new List<Assembly>())
+                if (a != null && a != typeof(Framework).Assembly && !list.Contains(a)) list.Add(a);
+            if (k?.Mod != null && !list.Contains(k.Mod.GetType().Assembly)) list.Add(k.Mod.GetType().Assembly);
             return list;
         }
+
+        /// <summary>Built-in suites that need a framework context (skipped for a mod without one; kit.smoke has a reduced form).</summary>
+        static bool NeedsContext(KitTestSuite s) => s.GetType().Assembly == typeof(KitTestRunner).Assembly && s.Name != "kit.smoke";
 
         void SelectSuites()
         {
             var wanted = (KitTestEnv.Get(KitTestEnv.Test) ?? "").Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
             var all = new List<KitTestSuite>();
-            if (target == null) unknownSuites.Add("mod under test '" + KitTestEnv.Get(KitTestEnv.Mod) + "' is not loaded (no framework context)");
-            foreach (var a in SuiteAssemblies(target))
+            var content = KitTestEnv.TargetContent;
+            if (target == null && content == null) unknownSuites.Add("mod under test '" + KitTestEnv.Get(KitTestEnv.Mod) + "' is not loaded");
+            else if (target == null) Log.Message("[JBTEST] " + content.Name + " has no framework context: its own suites and kit.smoke run, the other kit.* suites are skipped");
+            foreach (var a in SuiteAssemblies(target, content))
                 foreach (var t in KitPatches.SafeTypes(a).Where(t => typeof(KitTestSuite).IsAssignableFrom(t) && !t.IsAbstract))
                 {
                     try { all.Add((KitTestSuite)Activator.CreateInstance(t, true)); }
                     catch (Exception e) { unknownSuites.Add(t.Name + " (could not be created: " + e.Message + ")"); }
                 }
             all = all.GroupBy(s => s.Name).Select(g => g.First()).OrderBy(s => s.Name, StringComparer.Ordinal).ToList();
+            if (target == null && content != null) all = all.Where(s => !NeedsContext(s)).ToList();
             bool Picked(KitTestSuite s)
             {
                 if (wanted.Contains(s.Name)) return true;
@@ -206,7 +226,10 @@ namespace JBFramework.Testing
                 if (wanted.Contains("all")) return true;
                 return wanted.Any(w => w.StartsWith("section:") && s.Section == w.Substring(8));
             }
-            foreach (var s in all.Where(Picked)) runs.Add(new RunState { Suite = s, Ctx = new TestContext(s.Name, target) });
+            // suites named explicitly run in the order given ("lo.saveprep,kit.saveload": the preparation before the save), the rest by name
+            int Pos(KitTestSuite s) { int i = wanted.IndexOf(s.Name); return i < 0 ? int.MaxValue : i; }
+            foreach (var s in all.Where(Picked).OrderBy(Pos).ThenBy(s => s.Name, StringComparer.Ordinal))
+                runs.Add(new RunState { Suite = s, Ctx = new TestContext(s.Name, target, content) });
             // a misspelled suite name must fail the run, not silently pass with fewer suites
             foreach (var w in wanted)
                 if (w != "all" && !w.EndsWith(".*") && !w.StartsWith("section:") && !all.Any(s => s.Name == w)) unknownSuites.Add(w + " (unknown suite name)");
@@ -243,8 +266,8 @@ namespace JBFramework.Testing
             int newLogErrors = LogErrors() - logErrorsAtStart;
             var oursRed = KitTestLog.Since(redMarkAtStart, true);
             bool pass = fails == 0 && runs.Count > 0 && newLogErrors == 0 && oursRed.Count == 0;
-            sb.AppendLine($"RESULT {(pass ? "PASS" : "FAIL")} mod={target?.PackageId} suites={runs.Count} checks={checks} failures={fails} logErrors={newLogErrors} ourRedErrors={oursRed.Count} unknownSuites={unknownSuites.Count}");
-            sb.AppendLine($"{Framework.Name} {Framework.Version} (API level {Framework.ApiLevel}) · {target?.Name} {target?.Version} · tenants: {string.Join(", ", Framework.Mods.Select(m => m.Name))}");
+            sb.AppendLine($"RESULT {(pass ? "PASS" : "FAIL")} mod={target?.PackageId ?? KitTestEnv.TargetContent?.PackageId} suites={runs.Count} checks={checks} failures={fails} logErrors={newLogErrors} ourRedErrors={oursRed.Count} unknownSuites={unknownSuites.Count}");
+            sb.AppendLine($"{Framework.Name} {Framework.Version} (API level {Framework.ApiLevel}) · {target?.Name ?? KitTestEnv.TargetContent?.Name + " (no framework context)"} {target?.Version} · tenants: {string.Join(", ", Framework.Mods.Select(m => m.Name))}");
             foreach (var u in unknownSuites) sb.AppendLine($"## {u}: FAIL");
             foreach (var e in oursRed.Take(30)) sb.AppendLine("  our red error during the suites: " + KitTestLog.Format(e));
             if (newLogErrors > 0)

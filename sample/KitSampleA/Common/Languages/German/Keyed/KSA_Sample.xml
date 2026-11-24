@@ -45,4 +45,10 @@
   <KSA.Setting.ksa.uiPref.Desc>Global: in jedem Spielstand gleich, zeigt die Markierung „alle Spiele“.</KSA.Setting.ksa.uiPref.Desc>
   <KSA.Page.notes>Notizen</KSA.Page.notes>
   <KSA.Compat.ImaginaryConflict.Why>Würde um dieselbe Einstellung streiten. Nutze nur eine der beiden.</KSA.Compat.ImaginaryConflict.Why>
+  <KSA.FirstStartPitch>Ein Beispiel für das Fenster des JB Framework. Wähle unten einen Start; alles lässt sich später in den Mod-Einstellungen ändern.</KSA.FirstStartPitch>
+  <KSA.Setting.ksa.price.Requires>Braucht den Bereich Alpha.</KSA.Setting.ksa.price.Requires>
+  <KSA.Setting.ksa.flagBoost>Schalter-Verstärkung</KSA.Setting.ksa.flagBoost>
+  <KSA.Setting.ksa.flagBoost.Desc>Wirkt nur, solange „Ein Schalter“ an ist.</KSA.Setting.ksa.flagBoost.Desc>
+  <KSA.Card.mark>Diese Kolonie markieren</KSA.Card.mark>
+  <KSA.Card.mark.Tip>Fügt der Liste dieses Spielstands eine Zeile hinzu (auf der Seite Notizen zu sehen).</KSA.Card.mark.Tip>
 </LanguageData>

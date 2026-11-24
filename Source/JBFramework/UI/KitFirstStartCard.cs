@@ -63,6 +63,8 @@ namespace JBFramework
                 if (s != null) { self.SettingsReg.Set(s, self.Template, 0f); self.WriteSettings(); }
             }
             k.Log.Info("UI", $"First-start card done: preset {preset?.Id ?? "custom"}, forAll {useForAll}, neverAgain {neverAgain}, joined {JoinedExisting}");
+            var closed = k.Card?.Closed;
+            if (closed != null) { bool joined = JoinedExisting; k.Guard.Run(KitMod.Core, "Card.WhenClosed", () => closed(joined)); }
         }
 
         public override void PreClose() { base.PreClose(); Finish(); }
@@ -92,7 +94,7 @@ namespace JBFramework
             var mark = KitIcons.Mark(k);
             float tx = 20f + (mark != null ? 76f : 0f);
             string title = JoinedExisting ? KitText.K("Card.TitleJoined", "{0} joined this colony", name) : KitText.K("Card.Title", "Welcome to {0}", name);
-            string sub = k.Cfg?.FirstStartPitch ?? "";
+            string sub = k.PitchText;
             float tw = inRect.width - tx - 20f;
             float th = KitUI.TextH(title, tw, GameFont.Medium), sh = KitUI.TextH(sub, tw);
             float headH = Mathf.Max(mark != null ? 96f : 80f, 16f + th + 6f + sh + 16f);
@@ -138,7 +140,16 @@ namespace JBFramework
         float DrawBody(float w)
         {
             float y = 0f;
-            var ps = k.Presets.All;
+            var card = k.Card;
+            if (card != null)
+                for (int i = 0; i < card.Parts.Count; i++)
+                {
+                    var part = card.Parts[i]; int idx = i; float yy = y;
+                    float used = k.Guard.Run(KitMod.Core, "Card.Draw", () => part(new Rect(0f, yy, w, card.PartHeights[idx])), 0f);
+                    card.PartHeights[idx] = Mathf.Max(0f, used);
+                    y += card.PartHeights[idx] + (used > 0f ? 8f : 0f);
+                }
+            var ps = card != null && card.NoPresets ? new List<KitPreset>() : k.Presets.All;
             if (ps.Count > 0)
             {
                 y += KitStyle.Section(0f, y, w, KitText.K("Card.Presets", "Pick a start"));
@@ -164,7 +175,32 @@ namespace JBFramework
                 y += ((ps.Count + perRow - 1) / perRow) * (cardH + gap) + 4f;
             }
 
-            var secs = k.Sections.All.Where(s => k.Sections.Available(s.Id)).ToList();
+            if (card != null && card.Actions.Count > 0)
+            {
+                y += KitStyle.Section(0f, y, w, KitText.K("Card.Actions", "Right now"));
+                float x = 0f, bh = 34f;
+                foreach (var a in card.Actions)
+                {
+                    bool done = false;
+                    if (a.Done != null) { var f = a.Done; done = k.Guard.Run(KitMod.Core, "Card.Done." + a.Id, f, false); }
+                    string label = card.Label(a);
+                    float bw = Mathf.Clamp(KitUI.TextW(label) + (done ? 70f : 40f), 140f, Mathf.Min(w, 420f));
+                    if (x > 0f && x + bw > w) { x = 0f; y += bh + 8f; }
+                    var r = new Rect(x, y, bw, bh);
+                    if (done)
+                    {
+                        Widgets.DrawBoxSolid(r, new Color(KitStyle.Good.r, KitStyle.Good.g, KitStyle.Good.b, 0.18f));
+                        KitStyle.LabelColored(r, label + " · " + KitText.K("Card.ActionDone", "done"), KitStyle.Good, TextAnchor.MiddleCenter);
+                    }
+                    else if (Widgets.ButtonText(r, label)) { var act = a.Act; k.Guard.Run(KitMod.Core, "Card.Action." + a.Id, act); }
+                    string tip = card.Tip(a);
+                    if (!string.IsNullOrEmpty(tip)) TooltipHandler.TipRegion(r, tip);
+                    x += bw + 10f;
+                }
+                y += bh + 10f;
+            }
+
+            var secs = card != null && card.NoSections ? new List<KitSection>() : k.Sections.All.Where(s => k.Sections.Available(s.Id)).ToList();
             if (secs.Count > 0)
             {
                 y += KitStyle.Section(0f, y, w, KitText.K("Card.Sections", "What is switched on"));
@@ -199,7 +235,7 @@ namespace JBFramework
 
         internal static void ResetForGame() { shown.Clear(); readySince = -1f; }
 
-        static bool Wants(KitMod k) => !k.Blocked && k.Cfg.PerSave && !string.IsNullOrEmpty(k.Cfg.FirstStartPitch);
+        static bool Wants(KitMod k) => !k.Blocked && k.Cfg.PerSave && (!string.IsNullOrEmpty(k.Cfg.FirstStartPitch) || k.Card != null);
 
         /// <summary>The first mod whose card would open now if the delay had passed, or null.</summary>
         public static KitMod Due()

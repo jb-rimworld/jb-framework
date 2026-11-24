@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    In-game test suites for a mod that does NOT use JB Framework (Mud and Plasteel Floor, Pawn Compatibility Global Adjuster,
+    Rimling, QualityBuilder x Misc. Robots). SPDX-License-Identifier: MIT
+
+    The release build stays free of the framework: this file adds something ONLY when JBTests=true (tools/jbmod passes it for test runs).
+    Import it at the end of the mod's own csproj (adjust ../ to reach the framework):
+
+      <Import Project="$(MSBuildProjectDirectory)/../../../JBFramework/build/JBTests.props" />
+
+    Test builds then define JB_TESTS and reference JBFramework.dll and JBFramework.Testing.dll (Private=false: never copied). Write the
+    suites under #if JB_TESTS deriving from JBFramework.Testing.KitTestSuite. No stand-in KitModBase/KitSettingsBase is needed: the harness
+    finds the suites of the mod named by JB_TEST_MOD through its content pack. In such a mod TestContext.Mod is null; use
+    TestContext.Content (the mod's ModContentPack) instead. kit.smoke checks what applies to a mod without a framework context.
+
+    Framework checkout: -p:JBFrameworkRoot=DIR/ (tools/jbmod passes its own repo), else the environment JB_FRAMEWORK_DIR, else the repo
+    of this file. -p:JBRelease=true together with JBTests=true fails the build (test code must never ship).
+  -->
+  <PropertyGroup Condition="'$(JBTests)' == 'true'">
+    <DefineConstants>$(DefineConstants);JB_TESTS</DefineConstants>
+    <JBFrameworkRoot Condition="'$(JBFrameworkRoot)' == '' and '$(JB_FRAMEWORK_DIR)' != ''">$([MSBuild]::NormalizeDirectory('$(JB_FRAMEWORK_DIR)'))</JBFrameworkRoot>
+    <JBFrameworkRoot Condition="'$(JBFrameworkRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBFrameworkRoot>
+    <JBFrameworkRoot>$([MSBuild]::EnsureTrailingSlash('$(JBFrameworkRoot)'))</JBFrameworkRoot>
+    <_JBTestsRimVersion Condition="'$(RimVersion)' != ''">$(RimVersion)</_JBTestsRimVersion>
+    <_JBTestsRimVersion Condition="'$(RimVersion)' == ''">1.7</_JBTestsRimVersion>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(JBTests)' == 'true'">
+    <Reference Include="JBFramework"><HintPath>$(JBFrameworkRoot)$(_JBTestsRimVersion)/Assemblies/JBFramework.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="JBFramework.Testing"><HintPath>$(JBFrameworkRoot)TestMod/$(_JBTestsRimVersion)/Assemblies/JBFramework.Testing.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+  <Target Name="JBTestsGuard" BeforeTargets="CoreCompile;BeforeBuild" Condition="'$(JBTests)' == 'true'">
+    <Error Condition="'$(JBRelease)' == 'true'" Text="Release build with JBTests=true: test code must never ship." />
+    <Error Condition="!Exists('$(JBFrameworkRoot)TestMod/$(_JBTestsRimVersion)/Assemblies/JBFramework.Testing.dll')"
+           Text="Test build: the harness $(JBFrameworkRoot)TestMod/$(_JBTestsRimVersion)/Assemblies/JBFramework.Testing.dll is missing. Build it first: dotnet build $(JBFrameworkRoot)TestMod/Source -c Release (tools/jbmod does this)." />
+  </Target>
+</Project>

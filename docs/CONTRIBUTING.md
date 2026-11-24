@@ -75,29 +75,46 @@ csproj `TestMod/Source/JBFramework.Testing.csproj`, RimWorld 1.7 only, output `T
 and never shipped: `tools/jbmod` puts it into test runs only, `tools/release.py` refuses it and every harness string in a release DLL.
 - **Mod suites**: a dependent mod writes `sealed class X : JBFramework.Testing.KitTestSuite` under `#if JB_TESTS`; `-p:JBTests=true`
   (build/JBMod.props) defines `JB_TESTS` and references the harness DLL (Private=false). `TestContext t` gives `t.Mod` (the `KitMod`
-  under test), `t.Check/Note`, `t.Map`, `t.Center`, `t.FreeCellNearCenter()`, `TestCells.*`. Selection `JB_TEST=all | a,b | prefix.* |
-  section:<id>`; `ExplicitOnly` suites run only when named or by a non-`kit.` prefix (`fw.*`).
+  under test), `t.Content` (its content pack), `t.Check/Note`, `t.Map`, `t.Center`, `t.FreeCellNearCenter()`, `TestCells.*`; red errors
+  `t.Mark()`, `t.RedErrorsSince(mark)`, `t.CheckNoRedErrors(mark, what)`, `t.ExpectRedError(fragment)`; UI `t.Frames(n)`, `t.Shot(name)`
+  (JB_UI_SHOTS), `t.ScreenHeight(h)` (a real virtual screen through Prefs.UIScale; dispose restores); saves `t.Phase` (1 new game, 2
+  loaded), `t.LoadedSave`, `t.SaveGame(name)` (with fingerprint, harness left out), `t.CheckSaveFingerprint()`,
+  `t.DeclareTransient(pattern, why)` (and `[KitTransient("why")]` on fields in release code). Selection `JB_TEST=all | a,b | prefix.* |
+  section:<id>`; names listed explicitly run in the order given, the rest by name; `ExplicitOnly` suites run only when named or by a
+  non-`kit.` prefix (`fw.*`).
+- **Mods without the framework** (Mud and Plasteel Floor, Pawn Compatibility, Rimling, QualityBuilder x Misc. Robots): import
+  `build/JBTests.props` at the end of the csproj (adds `JB_TESTS` and the two references only when `JBTests=true`). The runner finds the
+  mod by `JB_TEST_MOD` through its content pack (`t.Mod` is null, `t.Content` is the mod); `kit.smoke` runs a reduced form (load folders,
+  assemblies, red errors), the other built-in `kit.*`/`fw.*` suites are skipped. No stand-in `KitModBase`. Example: `sample/KitSampleC`.
 - **One runner** (`KitTestRunner : GameComponent`, `TestingMod : Mod` starts the red-error recorder before the mods under test): the mod
   under test is `JB_TEST_MOD` (packageId, slot suffix ignored; the framework's own id tests the framework itself); suites come from the
   harness and from that mod's assemblies. Result file `JB_TEST_OUT`, `RESULT PASS` only when every check passed, no log error of the
   framework or the mod, and no red error naming either (expected errors a suite provokes carry `[JBTEST-EXPECTED]`/`jbtest_expected`).
   Runner components are left out of every save the harness makes.
-- **Built-in suites per tenant** (`TestMod/Source/KitSuites.cs`, `KitWindowSuite.cs`): `kit.smoke`, `kit.settings`, `kit.window` (settings
-  window at 1280x720, 1920x1080, 2560x1440 via `KitUI.TestScreen`; every page in "this save" and "template", a search; fits the screen,
+- **Built-in suites per tenant** (`TestMod/Source/KitSuites.cs`, `KitWindowSuite.cs`): `kit.smoke` (loaded folders = LoadFolders.xml v1.7
+  with `IfModActive`/`IfModActiveAll`/`IfModNotActive` evaluated like the game), `kit.settings`, `kit.window` (settings window on real
+  virtual screens of 1280x720, 1920x1080, 2560x1440: Prefs.UIScale 1.5 / 1 / 0.75 on the offscreen 1920x1080; every page in "this save" and "template", a search; fits the screen,
   keeps its minimum, parts inside the window and not overlapping, nothing threw; `JB_UI_SHOTS` leaves `kit_window_<id>_<size>_<page>.png`),
-  `kit.defs`, `kit.migration`, `kit.saveload` (two phases, fingerprint of the mod's and the framework's save state), `kit.addition`
-  (explicit), `kit.settingsdump`.
+  `kit.defs`, `kit.migration` (an old file without fields is "nothing to migrate": the template must hold only defaults),
+  `kit.saveload` (two phases, fingerprint of the mod's and the framework's save state; notes every class of the mod named in the save),
+  `kit.addition` (explicit), `kit.settingsdump`.
 - **Framework suites** (`TestMod/Source/FrameworkSuites.cs`, explicit): `fw.tenants` (A and B together: separate contexts, no value leaks,
   both windows open and drawn at once, a throwing page of B is fenced on B while A keeps drawing, both per-save profiles and B's SaveData
   survive save/load), `fw.removal` (save with A+B, load with A only: zero red errors of the framework, B's profile kept, its data node
-  kept raw and still there after a new save; phase 3 loads that save with B again and finds B's SaveData), `fw.apilevel` (A built with `-p:JBMinApiLevel=99`: blocked with the plain-words message, registers nothing,
+  kept raw and still there after a new save, the same for B's per-map node, and no class of B in any save; phase 3 loads that save with
+  B again and finds B's SaveData, per-map data and its cross-reference), `fw.steward` (A with B: the members added in the steward pass),
+  `fw.apilevel` (A built with `-p:JBMinApiLevel=99`: blocked with the plain-words message, registers nothing,
   writes nothing, B unaffected), `fw.alone` (no tenant: one Mod settings entry, no red error). Agent 2's `fw.known/adapters/random/shared`
   live in `TestMod/Source/Suites/`.
 - **jbmod**: every run gets a slot copy of the framework (`<fw>.slotN`; dependents' About files are pointed at it, so the player's Mods
   folder never holds a framework), the harness when suites run, extra mods (packageIds, or local folders built and copied like the mod
-  under test) and the mod under test; the probe loads first. Commands: `build` (1.7, then 1.6 compile-only), `test`, `plain`, `saveload`,
-  `removal` (the framework stays), `addition` (vanilla save without mod and framework), `compat`, `migrate-test`, `lang`, `release`,
-  `desc-lint`, `freeze16`, and `fw tenants|removal|apilevel|alone|all`. `release.py` adds for the framework the 1.6 build,
+  under test) and the mod under test; the probe loads first. Commands: `build` (1.7, then 1.6 compile-only), `test`, `plain`
+  (`--days N`, `--no-day`), `play <days>`, `saveload` (`--suites/--build/--load`), `twophase <label> <suites>`, `removal` (the framework
+  and the extras stay; `--build`), `addition` (vanilla save without mod and framework; extras in both phases; `--suites`), `compat`,
+  `migrate-test`, `lang`, `release`, `desc-lint`, `freeze16`, and `fw tenants|removal|apilevel|alone|all`. Env `JB_DLCS`, `GAME_LANG`
+  (folder or first word), `JB_FRAMEWORK_DIR` (default: the script's repo, so a git worktree tests its own framework; every mod build gets
+  `-p:JBFrameworkRoot=<that repo>/`). Build output per mod, kind and run label (`BUILDKEY` shared by the phases of one round trip) and
+  one machine-wide build lock (`hh_tests/jbbuildlock`) around builds and slot copies. `release.py` adds for the framework the 1.6 build,
   `public_api.py check` and a copy without `sample/ build/ api/ TestMod/ API.md`; for dependents "no `JBFramework.dll`, no type defined in
   the `JBFramework` namespace" (tools/PublicApi `--types`).
 
@@ -142,3 +159,25 @@ and never shipped: `tools/jbmod` puts it into test runs only, `tools/release.py`
    then stored in the save (never a constant).
 18. **jbmod locks** carry the PID and a heartbeat (touch every 60 s): stale only when that process is gone; other tools' locks keep the
    25-minute rule. Acquiring a slot removes `_jb_*` links a hard-killed run left in that slot.
+
+### Decisions of the steward pass (24.11.2026, requests of the seven adopting mods; still API level 1, the published baseline)
+19. **Per-map data lives in a framework MapComponent** (`FrameworkMap`, one node per mod and map, raw XML kept for absent mods) instead of
+   map-keyed entries in `FrameworkGame`: the map's Scribe pass hands the mod its `Map`, references resolve, and a removed map takes its
+   data with it. Its name is in saves: never renamed.
+20. **Legacy components are stripped, not converted**: the mod keeps its old class to read old saves; the framework removes instances of
+   registered types while the game, the world and each map write their components (prefix + finalizer, the finalizer also drops the
+   fresh copy that `FillComponents` makes while saving) and drops them from the running game after a load. Reading old saves stays the
+   mod's own ExposeData (only it knows the fields). The same strip set serves `KitRemoval.RemoveComponents` for the rest of a session.
+21. **Compat switches are installation preferences** (template store key `compat:<packageId>`, never in a save's profile, kept through
+   "Save as template"), not per save: an integration is a property of the mod list, which is the same for every save.
+22. **Text/list values are free keys** on the profile (no registration, no row): mods show them on their own pages. A text-field row
+   (`r.Text`) was declined: every requesting mod already has a custom page for its lists.
+23. **The welcome card stays the framework's** (once per colony/join, global off switch, header, footer); mods add parts (`WithDraw`),
+   actions (`WithAction`) and a close callback, and may hide presets or sections. Replacing the whole card was declined (it would bypass
+   the global switch and the done flag).
+24. **`.slotN` is ignored by every id check** (`KitCompat.Strip`): jbmod renames slot copies of local mods so parallel slots never see
+   duplicate packageIds in the shared Mods folder; keeping the real id was declined for that reason. `kit.smoke` still evaluates
+   LoadFolders conditions exactly like the game (no suffix magic), so a conditional folder that names a local extra mod is not loaded in
+   a test slot (the game's rule, documented).
+25. **Testing API on `TestContext`**, not by making `KitUiTest`/`KitTestLog`/`SaveLoadKit` public: one discoverable object, internals free
+   to change.

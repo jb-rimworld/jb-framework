@@ -87,7 +87,7 @@
   <JBF.Side.ApplyTemplateTip>Ersetzt die Einstellungen dieses Spielstands durch die Vorlage. Vorlieben, die für alle Spiele gelten, bleiben.</JBF.Side.ApplyTemplateTip>
   <JBF.Header.Nerd>Technische Einstellungen</JBF.Header.Nerd>
   <JBF.Header.SearchResults>Suchergebnisse</JBF.Header.SearchResults>
-  <JBF.Header.Search>Alle Einstellungen durchsuchen...</JBF.Header.Search>
+  <JBF.Header.Search>Einstellungen suchen...</JBF.Header.Search>
   <JBF.Header.NerdTip>Zeigt die technischen Einstellungen, die die meisten Spieler nie brauchen. Alles andere bleibt unverändert.</JBF.Header.NerdTip>
   <JBF.Header.EditingTemplate>Du bearbeitest die Vorlage für neue Spiele. Das laufende Spiel bleibt unverändert.</JBF.Header.EditingTemplate>
   <JBF.Page.CustomOff>Der Bereich „{0}“ ist ausgeschaltet. Diese Seite wirkt erst, wenn er eingeschaltet ist.</JBF.Page.CustomOff>
@@ -158,4 +158,12 @@
   <JBF.Section.NeedsMod>Braucht {0}.</JBF.Section.NeedsMod>
   <JBF.Page.Failed>Diese Seite ist auf einen Fehler gestoßen und wird nicht gezeichnet: {0}\n\nDetails stehen in {1}. Der Rest von {2} arbeitet weiter.</JBF.Page.Failed>
   <JBF.Page.Retry>Erneut versuchen</JBF.Page.Retry>
+  <!-- steward pass 24.11.2026 -->
+  <JBF.Row.RequiresSettingOn>Nur wenn „{0}“ an ist.</JBF.Row.RequiresSettingOn>
+  <JBF.Row.RequiresSettingOff>Nur wenn „{0}“ aus ist.</JBF.Row.RequiresSettingOff>
+  <JBF.Compat.SwitchedOff>installiert, Zusammenspiel ausgeschaltet</JBF.Compat.SwitchedOff>
+  <JBF.Compat.SwitchTip>Dieses Zusammenspiel nutzen. Gilt für alle Spiele (eine Einstellung dieser Installation).</JBF.Compat.SwitchTip>
+  <JBF.Card.Actions>Gleich jetzt</JBF.Card.Actions>
+  <JBF.Card.ActionDone>erledigt</JBF.Card.ActionDone>
+  <JBF.Removal.Components>{0} Komponenten entfernt ({1})</JBF.Removal.Components>
 </LanguageData>

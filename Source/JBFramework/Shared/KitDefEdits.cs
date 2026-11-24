@@ -35,8 +35,10 @@ namespace JBFramework
         }
 
         /// <summary>
-        /// Sets a field of a def (dotted path for nested objects: "building.bed_defaultMedical", "race.baseBodySize"). The original is
-        /// recorded on the first edit of that field by any mod. Returns false when the path does not exist or the value does not fit.
+        /// Sets a field of a def. The path is dotted for nested objects ("building.bed_defaultMedical", "race.baseBodySize") and takes
+        /// list indices for values inside list elements ("stages.0.painFactor", "stages.1.capMods.0.offset"; elements must be classes).
+        /// The original is recorded on the first edit of that field by any mod. Returns false when the path does not exist or the value
+        /// does not fit. A whole list can be replaced too ("stages.0.capMods" = a modified copy); restore puts the original list back.
         /// </summary>
         public bool Set(Def def, string fieldPath, object value) => Set(def, fieldPath, value, null);
 
@@ -44,20 +46,49 @@ namespace JBFramework
         public bool Set(Def def, string fieldPath, object value, string group)
         {
             if (def == null || string.IsNullOrEmpty(fieldPath)) return false;
+            var d = def;
+            return SetIn(def, () => d, def.GetType().FullName + ":" + def.defName + ":" + fieldPath, def.GetType().Name, fieldPath, value, group);
+        }
+
+        /// <summary>
+        /// Sets a field of the first <typeparamref name="TProps"/> in a ThingDef's comps (<c>SetComp&lt;CompProperties_Glower&gt;(lamp,
+        /// "glowRadius", 12f)</c>; nested paths and list indices as in <see cref="Set(Def, string, object)"/>), in the same shared ledger
+        /// with the same restore. False when the def has no such comp or the path does not fit.
+        /// </summary>
+        public bool SetComp<TProps>(ThingDef def, string fieldPath, object value) where TProps : CompProperties => SetComp<TProps>(def, fieldPath, value, null);
+
+        /// <summary>Like <see cref="SetComp{TProps}(ThingDef, string, object)"/>, in a named group.</summary>
+        public bool SetComp<TProps>(ThingDef def, string fieldPath, object value, string group) where TProps : CompProperties
+        {
+            if (def == null || string.IsNullOrEmpty(fieldPath)) return false;
+            var d = def;
+            Func<object> root = () => d.comps?.FirstOrDefault(c => c is TProps);
+            if (root() == null) { Warn("comp:" + def.defName + ":" + typeof(TProps).Name, "Def edit: " + def.defName + " has no " + typeof(TProps).Name); return false; }
+            return SetIn(def, root, def.GetType().FullName + ":" + def.defName + ":comp:" + typeof(TProps).FullName + ":" + fieldPath, def.defName + "." + typeof(TProps).Name, fieldPath, value, group);
+        }
+
+        /// <summary>Did this mod edit the comp field (and not restore it yet)?</summary>
+        public bool IsEditedComp<TProps>(ThingDef def, string fieldPath) where TProps : CompProperties
+        {
+            if (def == null) return false;
+            lock (Gate) return fieldLedger.TryGetValue(def.GetType().FullName + ":" + def.defName + ":comp:" + typeof(TProps).FullName + ":" + fieldPath, out var slot) && slot.Has(this);
+        }
+
+        bool SetIn(Def def, Func<object> root, string key, string where, string fieldPath, object value, string group)
+        {
             try
             {
-                if (!Resolve(def, fieldPath, out object holder, out FieldInfo f)) { Warn("field:" + def.GetType().Name + "." + fieldPath, "Def edit: " + def.GetType().Name + "." + fieldPath + " not found"); return false; }
+                if (!Resolve(root(), fieldPath, out object holder, out FieldInfo f)) { Warn("field:" + where + "." + fieldPath, "Def edit: " + where + "." + fieldPath + " not found"); return false; }
                 if (value != null && !f.FieldType.IsInstanceOfType(value))
                 {
                     try { value = Convert.ChangeType(value, Nullable.GetUnderlyingType(f.FieldType) ?? f.FieldType, System.Globalization.CultureInfo.InvariantCulture); }
                     catch { Warn("type:" + fieldPath, "Def edit: value " + value + " does not fit " + f.FieldType.Name + " " + fieldPath); return false; }
                 }
-                string key = def.GetType().FullName + ":" + def.defName + ":" + fieldPath;
                 lock (Gate)
                 {
                     if (!fieldLedger.TryGetValue(key, out var slot))
                     {
-                        slot = new FieldSlot { Def = def, Path = fieldPath, Original = CopyIfList(f.GetValue(holder)) };
+                        slot = new FieldSlot { Def = def, Root = root, Path = fieldPath, Original = CopyIfList(f.GetValue(holder)) };
                         fieldLedger[key] = slot;
                     }
                     slot.Put(this, group, value);
@@ -155,11 +186,11 @@ namespace JBFramework
 
         sealed class FieldSlot : Slot
         {
-            public Def Def; public string Path; public object Original;
+            public Def Def; public Func<object> Root; public string Path; public object Original;
             public override Def DefOf => Def;
             public override void ApplyTop()
             {
-                if (!Resolve(Def, Path, out object holder, out FieldInfo f)) return;
+                if (!Resolve(Root != null ? Root() : Def, Path, out object holder, out FieldInfo f)) return;
                 f.SetValue(holder, Edits.Count > 0 ? Edits[Edits.Count - 1].Value : CopyIfList(Original));
             }
         }
@@ -214,12 +245,31 @@ namespace JBFramework
             for (int i = 0; i < parts.Length; i++)
             {
                 if (holder == null) return false;
-                var f = holder.GetType().GetField(parts[i], BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (int.TryParse(parts[i], out int index))
+                {
+                    // a list element ("stages.0"): the next part is a field of that element (a list element itself cannot be set)
+                    if (i == parts.Length - 1 || !(holder is IList list) || index < 0 || index >= list.Count) return false;
+                    holder = list[index];
+                    if (holder != null && holder.GetType().IsValueType) return false;
+                    continue;
+                }
+                var f = FindField(holder.GetType(), parts[i]);
                 if (f == null) return false;
                 if (i == parts.Length - 1) { field = f; return true; }
                 holder = f.GetValue(holder);
             }
             return false;
+        }
+
+        /// <summary>The instance field <paramref name="name"/> of a type or of one of its base types (private fields of a base are found too).</summary>
+        static FieldInfo FindField(Type t, string name)
+        {
+            for (var x = t; x != null; x = x.BaseType)
+            {
+                var f = x.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                if (f != null) return f;
+            }
+            return null;
         }
 
         /// <summary>Lists are copied (shallow) so in-place changes of the live list cannot change the recorded original.</summary>
@@ -234,13 +284,16 @@ namespace JBFramework
             return v;
         }
 
-        // ThingDefCountClass and StatModifier are mutable classes that mods edit in place: copy those two kinds
+        // ThingDefCountClass, StatModifier and PawnCapacityModifier are mutable classes that mods edit in place: copy those kinds
         static object CopyElement(object x)
         {
             if (x is ThingDefCountClass c) return new ThingDefCountClass(c.thingDef, c.count);
             if (x is StatModifier s) return new StatModifier { stat = s.stat, value = s.value };
+            if (x is PawnCapacityModifier) return ShallowClone.Invoke(x, null);   // every field (it differs between game versions)
             return x;
         }
+
+        static readonly MethodInfo ShallowClone = typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic);
 
         static IEnumerable<ThingDef> BuildAux(ThingDef def)
         {

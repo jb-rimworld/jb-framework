@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="ResourceBase">
+    <defName>KSC_BiotechPebble</defName>
+    <label>sample C biotech pebble</label>
+    <description>Loaded only with Biotech (a conditional LoadFolders entry; kit.smoke expects this folder exactly then).</description>
+    <graphicData><texPath>Things/Item/Resource/Chemfuel</texPath><graphicClass>Graphic_Single</graphicClass></graphicData>
+    <stackLimit>75</stackLimit>
+    <statBases><MarketValue>1</MarketValue><Mass>0.1</Mass></statBases>
+    <thingCategories><li>ResourcesRaw</li></thingCategories>
+  </ThingDef>
+</Defs>

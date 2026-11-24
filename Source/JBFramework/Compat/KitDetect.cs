@@ -7,7 +7,8 @@ using Verse;
 namespace JBFramework
 {
     /// <summary>
-    /// Which DLCs and mods are active. Every check accepts a packageId in any case, with or without the Workshop "_steam" postfix, and
+    /// Which DLCs and mods are active. Every check accepts a packageId in any case, with or without the Workshop "_steam" postfix (a
+    /// jbmod test slot's ".slotN" copy of a local mod counts as that mod), and
     /// never throws (false when the game is not ready). The active-mod list cannot change while the game runs, so results are cached
     /// after the first call; <see cref="Refresh"/> clears the cache (only tests need it).
     /// </summary>
@@ -62,7 +63,13 @@ namespace JBFramework
         public static string ActiveName(string packageId)
         {
             if (!IsActive(packageId)) return null;
-            try { return ModLister.GetActiveModWithIdentifier(KitCompat.Strip(packageId), ignorePostfix: true)?.Name; }
+            try
+            {
+                var m = ModLister.GetActiveModWithIdentifier(KitCompat.Strip(packageId), ignorePostfix: true);
+                if (m != null) return m.Name;
+                string want = Normalize(packageId);
+                return ModsConfig.ActiveModsInLoadOrder.FirstOrDefault(x => x != null && Normalize(x.PackageId) == want)?.Name;
+            }
             catch { return null; }
         }
 
@@ -85,7 +92,7 @@ namespace JBFramework
         }
 
         /// <summary>Clears the cached answers.</summary>
-        public static void Refresh() { lock (cache) cache.Clear(); activeIds = null; }
+        public static void Refresh() { lock (cache) cache.Clear(); activeIds = null; KitCompat.ClearCache(); }
 
         static readonly Dictionary<string, bool> cache = new Dictionary<string, bool>();
         static List<string> activeIds;
@@ -96,10 +103,10 @@ namespace JBFramework
             get { try { return LoadedModManager.RunningModsListForReading.Count > 0; } catch { return false; } }
         }
 
-        /// <summary>packageId without the Workshop "_steam" postfix, trimmed, lower case ("" for null).</summary>
+        /// <summary>packageId without the Workshop "_steam" postfix and without a test-slot suffix ".slotN" (tools/jbmod), trimmed, lower case ("" for null).</summary>
         public static string Normalize(string packageId) => KitCompat.Strip(packageId).ToLowerInvariant();
 
-        /// <summary>The two ids name the same mod (case and "_steam" ignored).</summary>
+        /// <summary>The two ids name the same mod (case, "_steam" and a test slot's ".slotN" ignored).</summary>
         public static bool Same(string a, string b) => KitCompat.Same(a, b);
     }
 }

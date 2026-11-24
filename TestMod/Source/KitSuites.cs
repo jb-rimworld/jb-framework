@@ -91,6 +91,7 @@ namespace JBFramework.Testing
             var list = new List<KeyValuePair<string, string>>();
             var seen = new HashSet<string>();
             void Add(string suffix, string en) { if (string.IsNullOrEmpty(en)) return; var key = k.Key(suffix); if (seen.Add(key)) list.Add(new KeyValuePair<string, string>(key, en)); }
+            Add("FirstStartPitch", k.Cfg.FirstStartPitch);
             foreach (var sec in k.Sections.All)
             {
                 Add("Section." + sec.Id, sec.LabelEn ?? sec.Id);
@@ -102,12 +103,14 @@ namespace JBFramework.Testing
                 if (!string.IsNullOrEmpty(s.Category)) Add("SettingCat." + KitSetting.CatKey(s.Category), s.Category);
                 Add("Setting." + s.Key, s.LabelEn ?? s.Key);
                 Add("Setting." + s.Key + ".Desc", s.DescEn);
+                Add("Setting." + s.Key + ".Requires", s.RequiresText);
                 if (s.Kind == KitSettingKind.Enum && s.EnumType != null)
                     foreach (var n in System.Enum.GetNames(s.EnumType)) Add("Enum." + s.EnumType.Name + "." + n, GenText.SplitCamelCase(n));
             }
             foreach (var p in k.Presets.All) { Add("Preset." + p.Id, p.LabelEn ?? p.Id); Add("Preset." + p.Id + ".Desc", p.DescEn); }
             foreach (var p in k.Pages.All) Add("Page." + p.Id, p.LabelEn ?? p.Id);
             foreach (var c in k.Compat.All) Add("Compat." + KitSetting.CatKey(c.Name) + (c.Incompatible ? ".Why" : ".What"), c.WhatEn);
+            if (k.Card != null) foreach (var a in k.Card.Actions) { Add("Card." + a.Id, a.LabelEn ?? a.Id); Add("Card." + a.Id + ".Tip", a.TipEn); }
             return list;
         }
 
@@ -164,6 +167,7 @@ namespace JBFramework.Testing
         public override IEnumerable<int> Run(TestContext t)
         {
             var k = t.Mod;
+            if (k == null && t.Content != null) { foreach (var y in RunWithoutContext(t)) yield return y; yield break; }
             t.Check(k != null && k.Mod != null, "context of the mod under test: " + k?.Name + " " + k?.Version + " (" + k?.PackageId + ") on " + Framework.Name + " " + Framework.Version + " (API level " + Framework.ApiLevel + ")");
             if (k == null) yield break;
             t.Check(!k.Blocked, "not blocked by the API-level check" + (k.Blocked ? ": " + k.BlockedReason : ""));
@@ -197,6 +201,8 @@ namespace JBFramework.Testing
             var badSec = k.Sections.All.Where(s => string.IsNullOrWhiteSpace(s.Label) || string.IsNullOrWhiteSpace(s.Desc)).Select(s => s.Id).ToList();
             t.Check(badSec.Count == 0, "every section (" + k.Sections.All.Count + ") has a label and a description" + (badSec.Count > 0 ? ": missing " + string.Join(", ", badSec) : ""));
             t.Check(k.Presets.All.All(p => !string.IsNullOrWhiteSpace(p.Label) && !string.IsNullOrWhiteSpace(p.Desc)), "every preset (" + k.Presets.All.Count + ") has a label and a description");
+            var badReq = k.SettingsReg.All.Where(s => s.RequiresKey != null && k.SettingsReg.Find(s.RequiresKey)?.Kind != KitSettingKind.Bool).Select(s => s.Key + " → " + s.RequiresKey).ToList();
+            t.Check(badReq.Count == 0, "every RequiresSetting names a Bool setting of the mod" + (badReq.Count > 0 ? ": " + string.Join(", ", badReq) : ""));
             t.Check(k.Compat.All.All(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.What)), "every compat entry (" + k.Compat.All.Count + ") says what it does");
             t.Check(k.Pages.All.All(p => !string.IsNullOrWhiteSpace(p.Label)), "every custom page (" + k.Pages.All.Count + ") has a label");
             t.Check(k.Patches.Failures.Count == 0, "no patch class skipped (" + k.Patches.Applied + " applied, " + k.Patches.SkippedInactive.Count + " soft integrations inactive" + (k.Patches.Failures.Count > 0 ? "; " + string.Join("; ", k.Patches.Failures) : "") + ")");
@@ -225,13 +231,54 @@ namespace JBFramework.Testing
             t.Check(!k.Guard.Paused.Any() && KitTestLog.Since(0, true).Count == 0, "still nothing paused and no red error of ours after 600 ticks");
         }
 
+        static List<string> Ids(XmlNode li, string attr)
+        {
+            var a = li.Attributes?[attr];
+            return a == null ? null : a.Value.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0).ToList();
+        }
+
+        static bool ShouldLoad(XmlNode li)
+        {
+            var any = Ids(li, "IfModActive"); var all = Ids(li, "IfModActiveAll"); var none = Ids(li, "IfModNotActive");
+            if (any != null && any.Count > 0 && !ModLister.AnyModActiveNoSuffix(any)) return false;
+            if (all != null && all.Count > 0 && !ModLister.AllModsActiveNoSuffix(all)) return false;
+            if (none != null && none.Count > 0 && ModLister.AnyModActiveNoSuffix(none)) return false;
+            return true;
+        }
+
+        /// <summary>kit.smoke for a mod that does not use the framework (build/JBTests.props): what applies without a context.</summary>
+        static IEnumerable<int> RunWithoutContext(TestContext t)
+        {
+            var c = t.Content;
+            t.Check(true, "mod under test without a framework context: " + c.Name + " (" + c.PackageId + ") on " + Framework.Name + " " + Framework.Version);
+            t.Check(!Framework.AllContexts().Any(x => x.Content == c), "no framework context registered for it (no stand-in needed)");
+            var loaded = KitReport.LoadFolders(c);
+            t.Note("load folders: " + string.Join(", ", loaded));
+            t.Check(!loaded.Any(f => f == "1.6" || f.StartsWith("1.6/")), "no 1.6 folder loaded on 1.7");
+            var expected = ExpectedFolders(c.RootDir);
+            if (expected != null)
+            {
+                var a = new HashSet<string>(loaded.Select(Norm)); var b = new HashSet<string>(expected.Select(Norm));
+                t.Check(a.SetEquals(b), "loaded folders = LoadFolders.xml v1.7 (" + string.Join(", ", expected) + ")");
+            }
+            else t.Note("no LoadFolders.xml with a v1.7 entry");
+            t.Check(c.assemblies?.loadedAssemblies?.Any() == true, "assemblies loaded: " + string.Join(", ", c.assemblies?.loadedAssemblies?.Select(a => a.GetName().Name) ?? new string[0]));
+            KitSuiteUtil.NoRedErrors(t, 0, "no red error of the mod since start");
+            int tick0 = Find.TickManager.TicksGame;
+            yield return 600;
+            t.Check(Find.TickManager.TicksGame > tick0, "the game ticks");
+            KitSuiteUtil.NoRedErrors(t, 0, "still no red error of the mod after 600 ticks");
+        }
+
         static string Norm(string f) { f = (f ?? "").Replace('\\', '/').Trim('/'); return f.Length == 0 ? "/" : f; }
 
-        static List<string> ExpectedFolders(KitMod k)
+        static List<string> ExpectedFolders(KitMod k) => ExpectedFolders(k.Content?.RootDir);
+
+        static List<string> ExpectedFolders(string root)
         {
             try
             {
-                var root = k.Content?.RootDir; if (root == null) return null;
+                if (root == null) return null;
                 var path = Path.Combine(root, "LoadFolders.xml"); if (!File.Exists(path)) return null;
                 var doc = new XmlDocument(); doc.Load(path);
                 var v = doc.DocumentElement?.SelectSingleNode("v1.7"); if (v == null) return null;
@@ -240,8 +287,10 @@ namespace JBFramework.Testing
                 {
                     var f = li.InnerText.Trim();
                     if (f.Length == 0) continue;
-                    var attrs = li.Attributes;   // IfModActive / IfModNotActive entries depend on the mod list: not expected unconditionally
-                    if (attrs != null && attrs.Count > 0) continue;
+                    // conditional entries: the same rule as Verse.LoadFolder.ShouldLoad (any of IfModActive, all of IfModActiveAll,
+                    // none of IfModNotActive; comma lists, ids compared without the Workshop postfix)
+                    if (!ShouldLoad(li)) continue;
+                    if (f == "/" || f == "\\") { list.Add("/"); continue; }
                     if (Directory.Exists(Path.Combine(root, f.Trim('/')))) list.Add(f);
                 }
                 return list;
@@ -487,7 +536,13 @@ namespace JBFramework.Testing
                 bool ok = k.Template.sections.TryGetValue(sec.Id, out bool got) && got == want;
                 t.Check(ok, "section " + sec.Id + " = " + want + " (from " + sec.LegacyEnabledField + ")");
             }
-            t.Check(expected > 0 || oldHadKit, "the old file had values to migrate (" + expected + ")");
+            if (expected == 0 && !oldHadKit)
+            {
+                // a legitimate case: the player never changed a value, so the old file holds no field (<ModSettings Class="..."/>)
+                t.Note("nothing to migrate: the old file has no value of a legacy field (" + old.Count + " fields)");
+                var notDefault = k.SettingsReg.All.Where(s => k.Template.Store.Has(s.Key) && !KitSuiteUtil.Near(k.SettingsReg.Value(s, k.Template), s.Clamp(s.Default))).Select(s => s.Key).ToList();
+                t.Check(notDefault.Count == 0, "the template holds only defaults" + (notDefault.Count > 0 ? " (differs: " + string.Join(", ", notDefault.Take(10)) + ")" : ""));
+            }
             if (!oldHadKit) t.Check(k.Settings.MigratedThisSession == (expected > 0), "migration ran this session (" + k.Settings.Migrated.Count + " values)");
 
             string file = KitSettingsBase.SettingsFilePath(k);
@@ -585,6 +640,19 @@ namespace JBFramework.Testing
                     if (!k.IsFramework) t.Check(KitSuiteUtil.SaveHasEntry(text, k), "the save holds the mod's entry (" + FrameworkGame.SaveKey(k) + ")");
                     if (sp != null) t.Check(text.Contains("<profile>"), "the save holds the per-save profile");
                     if (k.SaveExpose != null) t.Check(text.Contains("<data>"), "the save holds the mod's SaveData node");
+                    if (k.MapExpose != null) t.Check(text.Contains("\"" + typeof(FrameworkMap).FullName + "\"") && text.Contains("<id>" + FrameworkGame.SaveKey(k) + "</id>"), "the save holds the mod's per-map node in " + typeof(FrameworkMap).FullName);
+                    if (!k.IsFramework)
+                    {
+                        // no class of the mod in the save: removing the mod then leaves no "Could not find class"
+                        var asmNames = (k.Content?.assemblies?.loadedAssemblies ?? new List<Assembly>()).Select(a => a.GetName().Name).ToList();
+                        var own = new List<string>();
+                        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, "Class=\"([^\"]+)\""))
+                        {
+                            var ty = GenTypes.GetTypeInAnyAssembly(m.Groups[1].Value);
+                            if (ty != null && asmNames.Contains(ty.Assembly.GetName().Name) && !own.Contains(ty.FullName)) own.Add(ty.FullName);
+                        }
+                        t.Note("classes of the mod in the save: " + (own.Count == 0 ? "none" : string.Join(", ", own)));
+                    }
                     t.Check(!text.Contains(typeof(KitTestRunner).Namespace + "."), "nothing of the test harness in the save");
                 }
             }

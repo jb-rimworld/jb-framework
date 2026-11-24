@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>JB Framework Sample C</name>
+  <author>Julius Berger</author>
+  <packageId>juliusberger00.jbkitsamplec</packageId>
+  <modVersion>1.0.0</modVersion>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+  <description>Test and example mod for JB Framework: a mod that does NOT use the framework but runs its in-game suites on the framework's harness (build/JBTests.props). Not for players. Built and tested on RimWorld 1.7.</description>
+</ModMetaData>

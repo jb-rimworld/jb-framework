@@ -42,6 +42,10 @@ namespace KitSampleA
 
             // one setting of every kind: section, key, default, (slider range,) label, description; then modifiers
             r.Bool("alpha", "ksa.flag", true, "A flag", "A plain on/off value.").InGroup("Switches").Legacy("oldFlag");
+            // a value that only matters while another one is on (greyed with "Only while ... is on."), with a live preview line under it
+            r.Float("alpha", "ksa.flagBoost", 2f, 1f, 10f, "Flag boost", "Only used while \"A flag\" is on.").InGroup("Switches")
+                .RequiresSetting("ksa.flag", true)
+                .WithPreview(p => "Result: " + (p.Get("ksa.count") * p.Get("ksa.flagBoost")).ToString("0.#") + " (count × boost)");
             r.Int("alpha", "ksa.count", 5, 0, 20, "A count", "Whole numbers from 0 to 20 on the slider, up to 1000 typed.").InGroup("Numbers").HardLimits(0, 1000);
             r.Float("alpha", "ksa.speed", 1f, 0.1f, 5f, "A speed", "A plain decimal number.").InGroup("Numbers").Legacy("oldSpeed");
             r.Percent("alpha", "ksa.chance", 0.25f, 0f, 1f, "A chance", "Stored as 0..1, shown as percent.").InGroup("Numbers").Legacy("oldChancePercent", v => v / 100f);
@@ -56,12 +60,23 @@ namespace KitSampleA
             r.Preset("calm", "Calm", "Low numbers, gentle mode, Beta off.", p => { p.Set("ksa.count", 2f); p.Set("ksa.speed", 0.5f); p.Set("ksa.mode", (float)(int)SampleMode.Gentle); p.SetSection("beta", false); });
             r.Preset("loud", "Loud", "High numbers, wild mode, Beta on.", p => { p.Set("ksa.count", 15f); p.Set("ksa.speed", 3f); p.Set("ksa.mode", (float)(int)SampleMode.Wild); p.SetSection("beta", true); });
 
-            r.Compat("Biotech", "ludeon.rimworld.biotech", "Unlocks the Beta section.");
+            r.Compat("Biotech", "ludeon.rimworld.biotech", "Unlocks the Beta section. Can be switched off here.").Switchable();
             r.Compat("Missing Sample Mod", "juliusberger00.jbkit.missing", "Patch class Patch_MissingMod is applied only when this mod is active.").HealthyWhen(() => true);
             r.Incompatible("Imaginary Conflict", "juliusberger00.jbkit.conflict", "Would fight over the same setting. Use only one of the two.");
 
             r.Page("notes", "Notes", NotesPage.Draw).WithOrder(50).InSection("alpha");
+
+            // the welcome card: a drawn part above the presets and a one-click action (save state, not a setting)
+            r.WelcomeCard()
+                .WithDraw(rect => KitStyle.Paragraph(rect.x, rect.y, rect.width, "This line is drawn by the sample itself (KitCard.WithDraw).", KitStyle.Grey))
+                .WithAction("mark", "Mark this colony", "Adds a line to this save's list (shown on the Notes page).",
+                    () => Kit.GetList("ksa.marks").Count > 0, () => Kit.SetList("ksa.marks", new[] { "marked at tick " + Find.TickManager.TicksGame }))
+                .WhenClosed(joined => Kit.Log.Info("Sample", "welcome card closed (joined " + joined + ")"));
         }
+
+        /// <summary>Counts how often the settings window closed (fw.steward checks the hook).</summary>
+        internal static int WindowClosedCount;
+        protected override void OnSettingsWindowClosed() => WindowClosedCount++;
 
         protected override void OnSettingsChanged(string key) => Kit.Log.Debug("Sample", "Changed: " + key);
 
@@ -80,6 +95,10 @@ namespace KitSampleA
             if (st == null) return;
             Widgets.Label(new Rect(r.x, r.y, r.width, 26f), "A custom page. This note is saved in the settings file (ExposeExtra):");
             st.note = Widgets.TextArea(new Rect(r.x, r.y + 30f, r.width, Mathf.Min(200f, r.height - 34f)), st.note ?? "");
+            // a per-save list value (KitMod.GetList/SetList): plain strings in the save's profile
+            var k = Framework.Of<KitSampleAMod>();
+            var marks = k?.GetList("ksa.marks");
+            if (marks != null) KitStyle.Paragraph(r.x, r.y + Mathf.Min(240f, r.height - 30f), r.width, "Marks of this save: " + (marks.Count == 0 ? "none" : string.Join(", ", marks)), KitStyle.Grey);
         }
     }
 

@@ -23,21 +23,39 @@ namespace JBFramework
 
         public static float LabelWidth(float width) => Mathf.Clamp(width * 0.46f, 180f, 430f);
 
-        public static float Height(KitSetting s, float width)
+        public static float Height(KitSetting s, float width) => Height(s, width, null);
+
+        /// <summary>Row height including the preview line (text of <see cref="KitSetting.PreviewIn"/>, or null).</summary>
+        static float Height(KitSetting s, float width, string preview)
         {
             float lw = LabelWidth(width) - 4f;
             float h = KitStyle.CachedHeight(s.Label, lw, GameFont.Small);
             string d = s.Desc;
             if (!d.NullOrEmpty()) h += KitStyle.CachedHeight(d, lw, GameFont.Tiny);
-            return Mathf.Max(40f, h + 12f);
+            h = Mathf.Max(40f, h + 12f);
+            if (!string.IsNullOrEmpty(preview)) h += PreviewH(preview, width);
+            return h;
         }
+
+        static float PreviewH(string preview, float width) => KitStyle.CachedHeight(preview, Mathf.Max(60f, width - LabelWidth(width) - 12f), GameFont.Tiny) + 4f;
 
         /// <summary>Draws the row at (x,y) if it intersects <paramref name="visible"/>; always returns its height.</summary>
         public static float Draw(float x, float y, float width, KitSetting s, KitProfile target, Rect visible)
         {
-            float h = Height(s, width);
+            string preview = s.PreviewIn(target);
+            float h = Height(s, width, preview);
             if (!ForceDrawAll && (y + h < visible.yMin || y > visible.yMax)) return h;
-            s.Owner.Guard.Run(KitMod.Core, "UI.Row." + s.Key, () => DrawRow(new Rect(x, y, width, h), s, target));
+            s.Owner.Guard.Run(KitMod.Core, "UI.Row." + s.Key, () =>
+            {
+                float ph = string.IsNullOrEmpty(preview) ? 0f : PreviewH(preview, width);
+                DrawRow(new Rect(x, y, width, h - ph), s, target);
+                // preview: grey, under the control column (the label column keeps the description)
+                if (ph > 0f)
+                {
+                    float lw = LabelWidth(width);
+                    KitStyle.LabelColored(new Rect(x + lw + 8f, y + h - ph, width - lw - 12f, ph), preview, KitStyle.Grey, TextAnchor.UpperLeft, GameFont.Tiny);
+                }
+            });
             return h;
         }
 
@@ -47,6 +65,9 @@ namespace JBFramework
             s.Owner.SettingsReg.Reset(s, target);
             buffers.Remove(BufKey(s));
         }
+
+        /// <summary>Width of the per-row reset button: its label in the small font plus padding, 46 to 130 px.</summary>
+        internal static float ResetWidth(string label) => Mathf.Clamp(KitUI.TextW(label) + 16f, 46f, 130f);
 
         static string BufKey(KitSetting s) => s.Owner.PackageId + "|" + s.Key;
 
@@ -64,7 +85,7 @@ namespace JBFramework
 
         static void DrawRow(Rect row, KitSetting s, KitProfile target)
         {
-            string reason = s.RequiresReason;
+            string reason = s.RequiresReasonIn(target);
             bool enabled = reason == null;
             if (Mouse.IsOver(row)) Widgets.DrawHighlight(row);
 
@@ -95,14 +116,17 @@ namespace JBFramework
                 KitStyle.LabelColored(new Rect(tx, lab.y + 2f, tagW, 20f), tags, KitStyle.DimGrey, TextAnchor.MiddleLeft, GameFont.Tiny);
             }
 
-            float x0 = row.x + lw + 8f, x1 = row.xMax - 52f;
+            // the reset button is as wide as its (translated) label: German "zurücksetzen" no longer clips
+            string resetLabel = KitText.K("Row.Reset", "reset");
+            float resetW = ResetWidth(resetLabel);
+            float x0 = row.x + lw + 8f, x1 = row.xMax - resetW - 6f;
             float cy = row.y + row.height / 2f;
             float val = reg.Value(s, target);
 
             if (!enabled)
             {
                 KitStyle.LabelColored(new Rect(x0, cy - 11f, 110f, 22f), s.Format(val), KitStyle.DimGrey, TextAnchor.MiddleLeft);
-                KitStyle.LabelColored(new Rect(x0 + 116f, row.y + 4f, x1 - x0 - 116f + 48f, row.height - 8f), reason, KitStyle.DimGrey, TextAnchor.MiddleLeft, GameFont.Tiny);
+                KitStyle.LabelColored(new Rect(x0 + 116f, row.y + 4f, x1 - x0 - 116f + resetW, row.height - 8f), reason, KitStyle.DimGrey, TextAnchor.MiddleLeft, GameFont.Tiny);
                 return;
             }
 
@@ -130,7 +154,7 @@ namespace JBFramework
             }
             else DrawNumber(s, target, val, x0, x1, cy);
 
-            if (over && Widgets.ButtonText(new Rect(row.xMax - 48f, cy - 11f, 46f, 22f), KitText.K("Row.Reset", "reset")))
+            if (over && Widgets.ButtonText(new Rect(row.xMax - resetW - 2f, cy - 11f, resetW, 22f), resetLabel))
                 Reset(s, target);
         }
 
@@ -187,7 +211,7 @@ namespace JBFramework
             q = q.ToLowerInvariant();
             bool Has(string t) => !string.IsNullOrEmpty(t) && t.ToLowerInvariant().Contains(q);
             var secs = s.Owner.Sections;
-            return Has(s.Label) || Has(s.Desc) || Has(s.Key) || Has(s.Category) || Has(s.CategoryLabel) || Has(secs.LabelOf(s.SectionId))
+            return Has(s.Label) || Has(s.Desc) || Has(s.Key) || Has(s.Category) || Has(s.CategoryLabel) || Has(secs.LabelOf(s.SectionId)) || Has(s.PreviewIn(null))
                 || (s.SectionId != KitMod.Core && Has(secs.Find(s.SectionId)?.LabelEn));
         }
     }

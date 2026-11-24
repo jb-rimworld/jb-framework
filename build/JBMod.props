@@ -20,6 +20,9 @@
       -p:JBRelease=true        fails when JBTests=true
       -p:JBModRoot=DIR         mod folder (default: the parent of the "Source" folder above the csproj)
       -p:JBFrameworkDll=FILE   reference this JBFramework.dll instead of the one next to this file (<framework>/<RimVersion>/Assemblies)
+      JB_FRAMEWORK_DIR=DIR     (environment) or -p:JBFrameworkRoot=DIR/: build against that framework checkout (DLL and test harness)
+                               instead of the one this file belongs to. tools/jbmod sets both to its own repo, so a git worktree of
+                               the framework builds every mod against the worktree's framework.
       -p:JBMinApiLevel=N       API level stamped into the mod (default 1). Raise it (or set <JBMinApiLevel> in the csproj) when the mod
                                uses a member added in a later level; `tools/public_api.py uses <mod.dll>` and tools/release.py tell you.
                                Never default to the newest level: every rebuilt mod would then demand the newest framework.
@@ -31,7 +34,9 @@
   <Import Project="$(MSBuildThisFileDirectory)Identity.props" />
   <Import Project="$(MSBuildThisFileDirectory)JBCommon.props" />
   <PropertyGroup>
-    <JBFrameworkRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBFrameworkRoot>
+    <JBFrameworkRoot Condition="'$(JBFrameworkRoot)' == '' and '$(JB_FRAMEWORK_DIR)' != ''">$([MSBuild]::NormalizeDirectory('$(JB_FRAMEWORK_DIR)'))</JBFrameworkRoot>
+    <JBFrameworkRoot Condition="'$(JBFrameworkRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBFrameworkRoot>
+    <JBFrameworkRoot>$([MSBuild]::EnsureTrailingSlash('$(JBFrameworkRoot)'))</JBFrameworkRoot>
     <JBFrameworkDll Condition="'$(JBFrameworkDll)' == ''">$(JBFrameworkRoot)$(RimVersion)/Assemblies/$(JBFrameworkAssemblyName).dll</JBFrameworkDll>
     <JBMinApiLevel Condition="'$(JBMinApiLevel)' == ''">1</JBMinApiLevel>
 

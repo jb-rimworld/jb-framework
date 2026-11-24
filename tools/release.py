@@ -45,8 +45,8 @@ FORBIDDEN_STRINGS = ["JBFramework.Testing", "KitTestRunner", "KitTestSuite", "Ki
                      "HearthTestRunner"]
 # the framework DLL names its test assembly in [InternalsVisibleTo("JBFramework.Testing")]: that one string is allowed there
 FRAMEWORK_ALLOWED_STRINGS = {"JBFramework.Testing"}
-FRAMEWORK_EXCLUDES = ["/sample/", "/build/", "/api/", "/TestMod/", "/src/", "/API.md"]
-FRAMEWORK_ROOT_ALLOWED = {"sample", "build", "api", "TestMod", "API.md"}
+FRAMEWORK_EXCLUDES = ["/sample/", "/build/", "/api/", "/TestMod/", "/src/", "/docs/", "/API.md"]
+FRAMEWORK_ROOT_ALLOWED = {"sample", "build", "api", "TestMod", "docs", "API.md"}
 RSYNC_EXCLUDES = ["/Source/", "/Workshop/", "/tools/", "obj/", "bin/", ".git/", "*.csproj", "_frozen16/", "*.pre-kit", "*.pdb", ".DS_Store",
                   ".gitignore", ".gitattributes"]
 TEX_TAGS = {"texPath", "uiIconPath", "iconPath"}
@@ -260,8 +260,10 @@ def step_layout(mod, about, version, R):
         d = os.path.join(mod, c)
         if os.path.isdir(d) and any(files for _, _, files in os.walk(d)):
             R.err(f"content in the mod root: {c}/ (loaded by no version once LoadFolders.xml exists; move it to Common/)")
+    # a root folder that LoadFolders.xml names (also in a conditional <li IfModActive=…> entry, e.g. Areas/<Id>) is mod content
+    named = {f.replace("\\", "/").split("/")[0] for fs in (lf or {}).values() for f in fs if f}
     for n in sorted(os.listdir(mod)):
-        if n in ROOT_ALLOWED or n in ROOT_FORBIDDEN or re.fullmatch(r"\d+\.\d+", n): continue
+        if n in ROOT_ALLOWED or n in ROOT_FORBIDDEN or re.fullmatch(r"\d+\.\d+", n) or n in named: continue
         if is_framework(mod) and n in FRAMEWORK_ROOT_ALLOWED: continue
         R.warn(f"unexpected entry in the mod root: {n}")
     a = about

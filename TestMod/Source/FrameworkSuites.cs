@@ -59,6 +59,15 @@ namespace JBFramework.Testing
         }
 
         public static List<string> Values(KitMod k) => KitSuiteUtil.ValueLines(k, k.SaveProfile);
+
+        /// <summary>The &lt;li&gt; of the first map component's &lt;mods&gt; list for a save key, or null.</summary>
+        public static XmlNode MapEntry(string saveText, string key)
+        {
+            var doc = new XmlDocument(); doc.LoadXml(saveText);
+            foreach (XmlNode li in doc.SelectNodes("//li[@Class='" + typeof(FrameworkMap).FullName + "']/mods/li"))
+                if (li["id"]?.InnerText == key) return li;
+            return null;
+        }
     }
 
     /// <summary>
@@ -214,6 +223,7 @@ namespace JBFramework.Testing
                 t.Note("phase 1: with A and B → save " + Save);
                 t.Check(b != null, "sample B is loaded in phase 1");
                 if (b == null) yield break;
+                yield return 2600;   // B's per-map data gets a visit and its first colonist (a reference)
                 a.Set("ksa.count", 11f); b.Set("ksb.dailyBonus", 6f);
                 FwUtil.Field(b, "KitSampleB.SampleBData", "counter")?.SetValue(null, 777);
                 a.FlushChanges(); b.FlushChanges();
@@ -224,6 +234,10 @@ namespace JBFramework.Testing
                     var eb = FwUtil.Entry(text, keyB);
                     t.Check(eb?["profile"] != null && eb?["data"]?["counter"]?.InnerText == "777", "the save holds B's profile and data (counter 777)");
                     SaveLoadKit.WriteSide(Save, "profileB", new[] { eb?["profile"]?.OuterXml ?? "" });
+                    var mb = FwUtil.MapEntry(text, keyB);
+                    t.Check(mb?["data"]?["visits"] != null, "the save holds B's per-map node (visits " + mb?["data"]?["visits"]?.InnerText + ")");
+                    t.Check(!text.Contains("\"KitSampleB."), "the save names no class of B (no legacy component, no own map component)");
+                    SaveLoadKit.WriteSide(Save, "mapB", new[] { mb?["data"]?.OuterXml ?? "" });
                 }
                 yield return 60;
                 yield break;
@@ -238,6 +252,15 @@ namespace JBFramework.Testing
                 t.Check(counter is int c && c == 777, "B's SaveData survived a save without B: counter " + counter);
                 t.Check(b.GetInt("ksb.dailyBonus") == 6, "B's per-save value survived: dailyBonus " + b.GetInt("ksb.dailyBonus"));
                 t.Check(FrameworkGame.Instance != null && !FrameworkGame.Instance.AbsentMods.Contains(keyB), "B is no longer an absent mod");
+                var mapB = SaveLoadKit.ReadSide(Save, "mapB")?.FirstOrDefault();
+                var byMap = FwUtil.Field(b, "KitSampleB.SampleBMaps", "byMap")?.GetValue(null) as System.Collections.IDictionary;
+                object dB = byMap != null && t.Map != null && byMap.Contains(t.Map.uniqueID) ? byMap[t.Map.uniqueID] : null;
+                var visits = dB?.GetType().GetField("visits")?.GetValue(dB);
+                string wantVisits = null;
+                try { var x = new XmlDocument(); x.LoadXml(mapB ?? "<data/>"); wantVisits = x.DocumentElement?["visits"]?.InnerText; } catch { }
+                t.Check(visits != null && wantVisits != null && visits.ToString() == wantVisits, "B's per-map data survived a save without B: visits " + visits + " (saved " + wantVisits + ")");
+                var pawn = dB?.GetType().GetField("firstColonist")?.GetValue(dB) as Pawn;
+                t.Check(pawn != null && pawn.Spawned, "B's per-map cross-reference resolved after the round trip (" + pawn?.LabelShort + ")");
                 yield return 600;
                 KitSuiteUtil.NoRedErrors(t, 0, "B returned: no red error of the framework or the mods");
                 yield break;
@@ -268,6 +291,9 @@ namespace JBFramework.Testing
                 t.Check(eb?["profile"] != null, "B's profile is still in the new save (it comes back when B returns)");
                 t.Check(eb != null && before != null && eb["profile"].OuterXml == before, "B's profile is unchanged (plain values)");
                 t.Check(eb?["data"]?["counter"]?.InnerText == "777", "B's data node is kept unchanged in the new save (counter " + eb?["data"]?["counter"]?.InnerText + ")");
+                var mb = FwUtil.MapEntry(FwUtil.SaveText(resave), keyB);
+                var mapBefore = SaveLoadKit.ReadSide(Save, "mapB")?.FirstOrDefault();
+                t.Check(mb?["data"] != null && mapBefore != null && mb["data"].OuterXml == mapBefore, "B's per-map node is kept unchanged (raw XML) in the new save");
             }
             KitSuiteUtil.NoRedErrors(t, 0, "whole run without sample B: no red error of the framework or A");
         }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="ResourceBase">
+    <defName>KSC_Pebble</defName>
+    <label>sample C pebble</label>
+    <description>A test item of JB Framework sample C (a mod without the framework).</description>
+    <graphicData><texPath>Things/Item/Resource/Chemfuel</texPath><graphicClass>Graphic_Single</graphicClass></graphicData>
+    <stackLimit>75</stackLimit>
+    <statBases><MarketValue>1</MarketValue><Mass>0.1</Mass></statBases>
+    <thingCategories><li>ResourcesRaw</li></thingCategories>
+  </ThingDef>
+</Defs>

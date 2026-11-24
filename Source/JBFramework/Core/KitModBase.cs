@@ -51,6 +51,11 @@ namespace JBFramework
         protected virtual void OnTick(int ticksGame) { }
         /// <summary>Extra lines for the mod's diagnosis page and report.</summary>
         protected virtual IEnumerable<string> Diagnosis() { yield break; }
+        /// <summary>
+        /// The mod's settings window closed (after the last pending OnSettingsChanged was delivered and before the file is written). The
+        /// place for heavy work that should not run per slider frame (re-applying hundreds of defs). Not called for blocked mods.
+        /// </summary>
+        protected virtual void OnSettingsWindowClosed() { }
 
         /// <summary>The name in the mod settings list: <see cref="KitInfo.Name"/>.</summary>
         public override string SettingsCategory() => Kit?.Cfg?.Name ?? Content?.Name ?? "";
@@ -70,6 +75,7 @@ namespace JBFramework
             if (Kit == null) return;
             try { Kit.Window.OnClosed(); } catch (Exception e) { Kit.Log.Warn("Core", "Closing the window threw: " + e.Message); }
             Kit.FlushChanges();
+            if (!Kit.Blocked) Kit.Guard.Run(KitMod.Core, "OnSettingsWindowClosed", OnSettingsWindowClosed);
             if (Kit.Settings != null && !Kit.Blocked)
             {
                 try { base.WriteSettings(); }

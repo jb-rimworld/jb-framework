@@ -52,17 +52,19 @@ namespace JBFramework.Testing
         }
 
         /// <summary>Markers of a dependent mod: namespaces of its types, assembly names, log prefix, packageId (loaded and published).</summary>
-        internal static string[] ModMarkers(KitMod k)
+        internal static string[] ModMarkers(KitMod k) => k == null ? new string[0] : ModMarkers(k.Content, k);
+
+        /// <summary>Markers of a mod by its content pack (also a mod without a framework context): name, packageId, assemblies, namespaces.</summary>
+        internal static string[] ModMarkers(ModContentPack content, KitMod k)
         {
             var m = new List<string>();
-            if (k == null) return m.ToArray();
+            if (content == null && k == null) return m.ToArray();
             try
             {
-                m.Add("[" + k.Name + "]");
-                m.Add(k.PackageId);
-                m.Add(FrameworkGame.SaveKey(k));
-                var asms = k.Content?.assemblies?.loadedAssemblies?.ToList() ?? new List<System.Reflection.Assembly>();
-                if (k.Mod != null && !asms.Contains(k.Mod.GetType().Assembly)) asms.Add(k.Mod.GetType().Assembly);
+                if (k != null) { m.Add("[" + k.Name + "]"); m.Add(k.PackageId); m.Add(FrameworkGame.SaveKey(k)); }
+                if (content != null) { m.Add("[" + content.Name + "]"); m.Add(content.PackageId); m.Add(KitTestEnv.Plain(content.PackageId)); }
+                var asms = content?.assemblies?.loadedAssemblies?.ToList() ?? new List<System.Reflection.Assembly>();
+                if (k?.Mod != null && !asms.Contains(k.Mod.GetType().Assembly)) asms.Add(k.Mod.GetType().Assembly);
                 foreach (var a in asms)
                 {
                     if (a == null || a == typeof(Framework).Assembly || a == typeof(KitTestLog).Assembly) continue;
@@ -82,8 +84,9 @@ namespace JBFramework.Testing
             {
                 if (defaultMarkers != null) return defaultMarkers;
                 var k = KitTestEnv.Target;
-                if (k == null) return FrameworkMarkers();
-                var m = FrameworkMarkers().Concat(ModMarkers(k)).Distinct().ToArray();
+                var content = KitTestEnv.TargetContent;
+                if (k == null && content == null) return FrameworkMarkers();
+                var m = FrameworkMarkers().Concat(ModMarkers(content, k)).Distinct().ToArray();
                 if (Current.ProgramState == ProgramState.Playing) defaultMarkers = m;
                 return m;
             }

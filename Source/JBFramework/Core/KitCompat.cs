@@ -19,7 +19,7 @@ namespace JBFramework
         public string PackageId { get; }
     }
 
-    internal enum KitCompatState { NotInstalled, Active, Failed, Unhealthy, IncompatiblePresent, IncompatibleAbsent }
+    internal enum KitCompatState { NotInstalled, Active, Failed, Unhealthy, IncompatiblePresent, IncompatibleAbsent, SwitchedOff }
 
     /// <summary>One line of a mod's Compatibility page: an integration or a known incompatibility.</summary>
     public sealed class KitCompatEntry
@@ -41,6 +41,19 @@ namespace JBFramework
         /// <summary>A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced.</summary>
         public KitCompatEntry HealthyWhen(Func<bool> healthy) { Healthy = healthy; return this; }
 
+        /// <summary>
+        /// The player can switch this integration off on the Compatibility page (PLAN G13c; on by default). The switch is a preference
+        /// of the installation (settings file, the same in every save). The mod asks <see cref="KitMod.CompatOn"/> in the integration's
+        /// code (its [KitCompat] patch classes are still applied: they must check it); a change arrives as OnSettingsChanged("compat:&lt;packageId&gt;").
+        /// </summary>
+        public KitCompatEntry Switchable() { CanSwitch = true; return this; }
+
+        internal bool CanSwitch;
+        /// <summary>Store key of the switch in the template: "compat:" + the normalized packageId (never clashes with a setting key).</summary>
+        internal string SwitchKey => KitMod.CompatKeyPrefix + KitDetect.Normalize(PackageId);
+        /// <summary>Switched on (true unless the player switched a switchable entry off).</summary>
+        internal bool SwitchedOn => !CanSwitch || Owner == null || !Owner.Template.Store.TryGet(SwitchKey, out float v) || v >= 0.5f;
+
         internal string What => Owner.Key("Compat." + KitSetting.CatKey(Name) + (Incompatible ? ".Why" : ".What")).TranslateOr(WhatEn ?? "");
 
         internal KitCompatState State
@@ -51,6 +64,7 @@ namespace JBFramework
                 if (Incompatible) return active ? KitCompatState.IncompatiblePresent : KitCompatState.IncompatibleAbsent;
                 if (!active) return KitCompatState.NotInstalled;
                 if (Failures.Count > 0) return KitCompatState.Failed;
+                if (!SwitchedOn) return KitCompatState.SwitchedOff;
                 if (Healthy != null)
                 {
                     try { if (!Healthy()) return KitCompatState.Unhealthy; }
@@ -71,6 +85,7 @@ namespace JBFramework
                     case KitCompatState.Failed: return KitText.K("Compat.Failed", "failed: {0}", string.Join("; ", Failures));
                     case KitCompatState.Unhealthy: return KitText.K("Compat.Unhealthy", "installed, but the integration reports a problem");
                     case KitCompatState.IncompatiblePresent: return KitText.K("Compat.IncompatiblePresent", "installed: known conflict");
+                    case KitCompatState.SwitchedOff: return KitText.K("Compat.SwitchedOff", "installed, integration switched off");
                     default: return KitText.K("Compat.IncompatibleAbsent", "not installed (good)");
                 }
             }
@@ -122,22 +137,40 @@ namespace JBFramework
 
         internal static bool Same(string a, string b) => string.Equals(Strip(a), Strip(b), StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>packageId without the Workshop "_steam" postfix, trimmed.</summary>
+        static readonly System.Text.RegularExpressions.Regex SlotSuffix = new System.Text.RegularExpressions.Regex(@"\.slot\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// packageId without the Workshop "_steam" postfix and without a test-slot suffix ".slotN" (tools/jbmod renames the slot copies of
+        /// local mods; no real packageId ends that way), trimmed.
+        /// </summary>
         internal static string Strip(string id)
         {
             if (id == null) return "";
             id = id.Trim();
-            return id.EndsWith("_steam", StringComparison.OrdinalIgnoreCase) ? id.Substring(0, id.Length - 6) : id;
+            if (id.EndsWith("_steam", StringComparison.OrdinalIgnoreCase)) id = id.Substring(0, id.Length - 6);
+            return SlotSuffix.Replace(id, "");
         }
 
-        /// <summary>Is a mod or DLC active? Accepts packageIds with or without the "_steam" postfix, any case. Never throws.</summary>
+        static readonly Dictionary<string, bool> activeCache = new Dictionary<string, bool>();
+        internal static void ClearCache() { lock (activeCache) activeCache.Clear(); }
+
+        /// <summary>Is a mod or DLC active? Accepts packageIds with or without the "_steam" postfix, any case; a test slot's ".slotN" copy counts. Never throws.</summary>
         public static bool IsModActive(string packageId)
         {
             if (string.IsNullOrEmpty(packageId)) return false;
             try
             {
                 if (ModsConfig.IsActive(packageId)) return true;
-                return ModLister.GetActiveModWithIdentifier(Strip(packageId), ignorePostfix: true) != null;
+                if (ModLister.GetActiveModWithIdentifier(Strip(packageId), ignorePostfix: true) != null) return true;
+                // slow path (a jbmod slot copy "<id>.slotN"): once per id, the mod list is final once the mod classes exist
+                string want = Strip(packageId).ToLowerInvariant();
+                lock (activeCache) if (activeCache.TryGetValue(want, out bool hit)) return hit;
+                bool found = false;
+                foreach (var m in ModsConfig.ActiveModsInLoadOrder)
+                    if (m != null && Strip(m.PackageId).Equals(want, StringComparison.OrdinalIgnoreCase)) { found = true; break; }
+                bool ready; try { ready = LoadedModManager.RunningModsListForReading.Count > 0; } catch { ready = false; }
+                if (ready) lock (activeCache) activeCache[want] = found;
+                return found;
             }
             catch { return false; }
         }

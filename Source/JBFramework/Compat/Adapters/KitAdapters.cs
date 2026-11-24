@@ -194,14 +194,25 @@ namespace JBFramework
         static void Resolve()
         {
             if (resolved) return;
-            if (!KitDetect.AnyActive(ids)) { resolved = KitDetectReady; return; }
+            // found by its type, not by packageId: Nice Bill Tab's 1.6 build runs on 1.7 as an "incompatible version" mod, and then
+            // ModsConfig.IsActive and ModLister both say false for it (Set my Defaults request 6)
+            if (!KitDetectReady) return;
             resolved = true;
             try
             {
-                var drawer = AccessTools.TypeByName("NiceBillTab.TabBillsDrawer");
+                Type drawer = null;
+                foreach (var mcp in LoadedModManager.RunningMods)
+                {
+                    foreach (var a in mcp?.assemblies?.loadedAssemblies ?? new List<Assembly>())
+                    {
+                        try { drawer = a?.GetType("NiceBillTab.TabBillsDrawer", false); } catch { drawer = null; }
+                        if (drawer != null) break;
+                    }
+                    if (drawer != null) break;
+                }
                 var f = drawer != null ? AccessTools.Field(drawer, "shouldRefreshFilter") : null;
                 if (f != null && f.IsStatic && f.FieldType == typeof(bool)) flag = f;
-                else KitAdapterLog.Once("nbt.resolve", "Nice Bill Tab is active, but NiceBillTab.TabBillsDrawer.shouldRefreshFilter was not found (new version?): bills added from code appear after reopening the tab.");
+                else if (drawer != null || KitDetect.AnyActive(ids)) KitAdapterLog.Once("nbt.resolve", "Nice Bill Tab is active, but NiceBillTab.TabBillsDrawer.shouldRefreshFilter was not found (new version?): bills added from code appear after reopening the tab.");
             }
             catch (Exception e) { KitAdapterLog.Once("nbt.resolve", "Nice Bill Tab: lookup failed (" + e.Message + ")."); }
         }

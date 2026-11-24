@@ -13,7 +13,11 @@ A RimWorld mod that other mods list as a dependency. It gives your mod, for free
 - **shared functions**: material menu after an architect dropdown pick, one architect entry per building family, a "change tier"
   gizmo, reversible def edits, removal preparation;
 - **save-stable random streams** (same roll after a reload, independent named streams, fair shuffle bags);
-- per-save data storage that never breaks a save when your mod is removed.
+- per-save and per-map data storage that never breaks a save when your mod is removed, and a way to retire your old
+  Game-/World-/MapComponent classes without breaking old saves;
+- a welcome card for new colonies that your mod can extend (own drawn parts, one-click actions);
+- an in-game **test harness** and one command per mod (`tools/jbmod`) for builds, tests, save round trips, removal and addition, also for
+  mods that do not use the framework.
 
 On its own it adds nothing to a game except one entry in Mod settings. MIT licence. Author: Julius Berger.
 
@@ -56,9 +60,10 @@ public sealed class MyModSettings : KitSettingsBase { }
 
 Everything optional is a chained modifier on what a registration returns, so the API can grow without breaking a call:
 `.Describe()`, `.InGroup()`, `.AsNerd()`, `.AsGlobal()`, `.HardLimits()`, `.Legacy("oldField")`, `.Legacy("oldPct", v => v / 100f)`,
-`.RequiresOn()`, `.NeedsRestart()`, `.OnChange()` on settings; `.OffByDefault()`, `.OnlyWith("ludeon.rimworld.biotech")`,
-`.WhenSwitched()`, `.WithRemoval()`, `.WithDiagnosis()`, `.LegacyEnabled()` on sections; `.WithOrder()`, `.InSection()` on pages;
-`.HighlightWhen()` on presets; `.HealthyWhen()` on compat entries. Full reference: **[API.md](API.md)**; every public member has an XML
+`.RequiresOn()`, `.RequiresSetting("mm.useX", true)`, `.WithPreview(p => …)`, `.NeedsRestart()`, `.OnChange()` on settings;
+`.OffByDefault()`, `.OnlyWith("ludeon.rimworld.biotech")`, `.WhenSwitched()`, `.WithRemoval()`, `.WithDiagnosis()`, `.LegacyEnabled()` on
+sections; `.WithOrder()`, `.InSection()` on pages; `.HighlightWhen()` on presets; `.HealthyWhen()`, `.Switchable()` on compat entries;
+`.WithDraw()`, `.WithAction()`, `.WhenClosed()` on the welcome card (`r.WelcomeCard()`). Full reference: **[API.md](API.md)**; every public member has an XML
 doc comment (`JBFramework.xml` next to the DLL, so your IDE shows it).
 
 ### Names and keys
@@ -74,11 +79,21 @@ doc comment (`JBFramework.xml` next to the DLL, so your IDE shows it).
 With `PerSave = true` every setting value and section switch lives in each save; the settings file holds the **template** that a new
 colony (or a save the mod joins later) starts from. The window offers "This save" and "Template". `k.On(section)` and `k.Get(key)`
 always read the running save's values (the template in the main menu). Global preferences (`.AsGlobal()`) live only in the settings file.
+Text and list values that belong to a save (exclusion lists, names) go through `k.GetText/SetText/GetList/SetList` (no registration;
+show them on a custom page).
+
+### Your own save data
+`r.SaveData(expose, reset)` (per save) and `r.MapData(map => …, map => …)` (per map) store your data inside the framework's own
+components, under your packageId: a save made with your mod then names none of your classes, loads cleanly after your mod was removed,
+and your data comes back when it returns. Old saves that still hold your former GameComponent/MapComponent: keep that class, let it read
+its old fields into the new data, and register it with `r.LegacyComponent(typeof(OldComponent))`: it is read, never written again.
+"Prepare for removal" steps can take your remaining components out of the running game with `KitRemoval.RemoveComponents(...)`.
 
 ### Soft integrations
 Register the entry with `r.Compat(name, packageId, what)` and put `[KitCompat("their.packageid")]` on the Harmony patch classes of that
 integration: they are applied only while that mod is active (no error otherwise), and a failed one shows "failed: reason" on your
-Compatibility page instead of breaking your mod. `KitDetect.IsActive(id)` and `KitKnown` answer the rest.
+Compatibility page instead of breaking your mod. `.Switchable()` gives the entry a switch on that page; ask `k.CompatOn(packageId)` in
+the integration's code. `KitDetect.IsActive(id)` and `KitKnown` answer the rest.
 
 ## Depend on it
 
@@ -122,8 +137,10 @@ the framework for every mod; the framework reports such a copy in the log.
   The framework DLL must be built first (`dotnet build Source/JBFramework -c Release [-p:RimVersion=1.6]`), or pass
   `-p:JBFrameworkDll=<path>`.
 
-Working examples: **[sample/KitSampleA](sample/KitSampleA/Source/SampleMod.cs)** (every feature) and
-**[sample/KitSampleB](sample/KitSampleB/Source/SampleB.cs)** (per-save data, migration, an own test suite).
+Working examples: **[sample/KitSampleA](sample/KitSampleA/Source/SampleMod.cs)** (every feature),
+**[sample/KitSampleB](sample/KitSampleB/Source/SampleB.cs)** (per-save and per-map data, legacy components, migration, an own test
+suite) and **[sample/KitSampleC](sample/KitSampleC/Source/SampleC.cs)** (a mod WITHOUT the framework that runs its in-game suites on the
+framework's harness: import `build/JBTests.props`, which adds the harness to test builds only).
 
 ## Versioning promise
 

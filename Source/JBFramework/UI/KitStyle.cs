@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Lifted from Hearth & Harbor Hearth/UI/UiCore.cs (UiStyle, UiProbe). Amber → the mod's accent colour (KitInfo.Theme).
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -22,8 +23,27 @@ namespace JBFramework
     public static class KitStyle
     {
         static readonly Color DefaultAccent = new Color(0.95f, 0.72f, 0.30f);
-        /// <summary>The accent of the mod whose settings window is drawing right now, else Hearth &amp; Harbor amber.</summary>
+        /// <summary>
+        /// The accent of the mod drawing right now (its settings window, its welcome card, or a <see cref="Using"/> scope), else Hearth
+        /// &amp; Harbor amber.
+        /// </summary>
         public static Color Accent => KitMod.Drawing?.Cfg?.Theme?.Accent ?? DefaultAccent;
+
+        /// <summary>A mod's accent colour (<see cref="KitTheme.Accent"/>), Hearth &amp; Harbor amber for null.</summary>
+        public static Color AccentOf(KitMod k) => k?.Cfg?.Theme?.Accent ?? DefaultAccent;
+
+        /// <summary>
+        /// Draws as mod <paramref name="k"/> until disposed: <see cref="Accent"/>, <see cref="Section"/>, <see cref="Chip(Rect, string, bool)"/> and
+        /// <see cref="Banner"/> use its accent in the mod's own windows. <c>using (KitStyle.Using(Kit)) { … }</c> inside DoWindowContents.
+        /// </summary>
+        public static IDisposable Using(KitMod k) => new DrawingScope(k);
+
+        sealed class DrawingScope : IDisposable
+        {
+            readonly KitMod prev; bool done;
+            public DrawingScope(KitMod k) { prev = KitMod.Drawing; KitMod.Drawing = k; }
+            public void Dispose() { if (done) return; done = true; KitMod.Drawing = prev; }
+        }
         /// <summary>The accent at low alpha: backgrounds of selected rows, chips and banners.</summary>
         public static Color AccentSoft { get { var a = Accent; return new Color(a.r, a.g, a.b, 0.18f); } }
         /// <summary>Secondary text.</summary>

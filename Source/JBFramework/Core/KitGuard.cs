@@ -120,7 +120,7 @@ namespace JBFramework
         public void Fixed(string checkName, string what)
         {
             TotalFixes++; runFixed++;
-            k.Log.Warn("Caretaker", checkName + ": repaired " + what);
+            k.Log.Info("Caretaker", checkName + ": repaired " + what);
         }
 
         void RunCheck(Check c)

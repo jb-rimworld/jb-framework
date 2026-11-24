@@ -131,8 +131,11 @@ namespace JBFramework
         internal static bool VerboseLog;
         /// <summary>Show nerd settings in every JB settings window.</summary>
         internal static bool ShowNerd => Pref(ShowNerdKey, 0f) >= 0.5f;
-        /// <summary>Show the welcome card when a mod meets a new colony.</summary>
-        internal static bool WelcomeCards => Pref(WelcomeCardsKey, 1f) >= 0.5f;
+        /// <summary>
+        /// The player's global "Show welcome cards" preference (Mod settings, JB Framework): false = no mod shows its welcome card, new
+        /// colonies start from the templates silently. A mod that draws its own start screen respects it too.
+        /// </summary>
+        public static bool WelcomeCards => Pref(WelcomeCardsKey, 1f) >= 0.5f;
 
         internal static void RefreshGlobals()
         {

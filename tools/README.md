@@ -11,7 +11,7 @@ Run every tool as `python3 -I tools/<tool>.py ...` (`-I`: no stray modules from 
 | `desc_lint.py <file>... [--mod M]` | description vs `_Planung_Marketing_2026-11-24/desc/STYLE.md` | 4.2 |
 | `kit_lang.py <Mod> [--check]` | `<Prefix>_Settings.xml` from the settings dump, missing-key check | 1.5.12, 4.3 |
 | `public_api.py generate\|check\|show\|uses <dll>` | public API snapshot `api/PublicApi.txt` (additive-only check, no optional parameters, `api/Since.txt` levels); `uses` = what a dependent DLL binds to and the API level that needs | FRAMEWORK.md 2.2 |
-| `jbmod <Mod> …` | build / in-game tests / release per mod (bash; usage at the top of the file) | SharedKit 3.2 |
+| `jbmod <Mod> …` | build / in-game tests / save round trips / release per mod (bash; usage at the top of the file). Env `JB_DLCS`, `GAME_LANG`, `JB_FRAMEWORK_DIR` | SharedKit 3.2 |
 | `api_scan.sh [1.6\|1.7] [dlls]` | every Harmony target of the framework (and given DLLs) exists in that RimWorld version | FRAMEWORK.md 5 |
 | `i18n_delta.py <Mod> extract\|plan\|apply` | incremental translation, deletes only known keys | 1.5.12 |
 
@@ -34,6 +34,8 @@ Each tool prints its full usage with no arguments (module docstring). Exit 0 = p
   (= `<Mod>/Workshop/description.bbcode`, linted first). `--gallery` adds `preview`, `images`, `visibility` and `--title` adds `title`, all read
   from the optional `<Mod>/Workshop/job_extra.json`: `{"title": "...", "preview": "p.png", "images": [{"key": "art", "path": "a.jpg"}], "visibility": "public"}`
   (relative paths resolve against `Workshop/`).
+- **Mod root**: besides About/Common/Source/Workshop/tools, version folders and the usual files, every folder that LoadFolders.xml names
+  (also in a conditional `<li IfModActive=…>` entry, e.g. `Areas/<Id>`) is content, not an "unexpected entry".
 - **Copy excludes**: `/Source /Workshop /tools`, `obj/ bin/ .git/ _frozen16/`, `*.csproj *.pre-kit *.pdb .DS_Store .gitignore .gitattributes`. The
   copy is verified (no excluded names, every `1.6/` file hash-identical, DLL scan again).
 - **DLL scan** of `1.7/`, `1.6/` and `Common/Assemblies`; strings (ASCII and UTF-16): JBFramework.Testing, KitTestRunner, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST, JB_UI_SHOTS, JB_PROBE, HearthTestRunner.

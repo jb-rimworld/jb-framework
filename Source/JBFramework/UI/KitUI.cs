@@ -56,8 +56,8 @@ namespace JBFramework
         /// <summary>Size of this mod's settings window (Dialog_ModSettings, patched by KitWindowPatches).</summary>
         internal static Vector2 SettingsSize() => Size(SettingsW, SettingsH, SettingsMinW, SettingsMinH, 0.95f, 0.92f);
 
-        /// <summary>Splits a rect horizontally by fractions (e.g. 0.3f, 0.7f); a gap sits between columns.</summary>
-        internal static Rect[] Cols(Rect r, float gap, params float[] fractions)
+        /// <summary>Splits a rect horizontally by fractions (<c>KitUI.Cols(r, 8f, 0.3f, 0.7f)</c>); <paramref name="gap"/> px sit between columns.</summary>
+        public static Rect[] Cols(Rect r, float gap, params float[] fractions)
         {
             var res = new Rect[fractions.Length];
             float total = 0f; foreach (var f in fractions) total += f;
@@ -71,15 +71,21 @@ namespace JBFramework
             return res;
         }
 
+        /// <summary>Height of a wrapped text in the small font at <paramref name="width"/> (cached; 0 for empty text). Lay rows out with it: no clipping in German.</summary>
+        public static float TextH(string text, float width) => TextH(text, width, GameFont.Small);
+
         /// <summary>Height of a wrapped text at the given font and width (cached; 0 for empty text).</summary>
-        internal static float TextH(string text, float width, GameFont font = GameFont.Small)
+        public static float TextH(string text, float width, GameFont font)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
             return KitStyle.CachedHeight(text, Mathf.Max(20f, width), font);
         }
 
+        /// <summary>Width of one line of text in the small font (size buttons to their translated label).</summary>
+        public static float TextW(string text) => TextW(text, GameFont.Small);
+
         /// <summary>Width of one line of text at the given font.</summary>
-        internal static float TextW(string text, GameFont font = GameFont.Small)
+        public static float TextW(string text, GameFont font)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
             var f = Text.Font; Text.Font = font;

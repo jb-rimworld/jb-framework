@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
 using UnityEngine;
+using Verse;
 
 namespace JBFramework
 {
@@ -145,6 +146,17 @@ namespace JBFramework
                 HardMin = Math.Min(0f, min), HardMax = Math.Max(hardMaxDefault, max), LabelEn = label, DescEn = desc,
             };
 
+        // Welcome card ---------------------------------------------------------------------------------------------------------
+        /// <summary>
+        /// The mod's parts of its welcome card (drawn areas, actions, a close callback, hiding presets or sections); every call returns the
+        /// same object. A per-save mod with a <see cref="KitInfo.FirstStartPitch"/> or with this registration gets the card.
+        /// </summary>
+        public KitCard WelcomeCard()
+        {
+            if (k.Card == null) k.Card = new KitCard { Owner = k };
+            return k.Card;
+        }
+
         // Presets, compatibility, pages, caretaker, per-save data -------------------------------------------------------------
         /// <summary>
         /// A named set of values shown as a chip on the Overview page and the welcome card. <paramref name="apply"/> changes only what it
@@ -196,6 +208,48 @@ namespace JBFramework
         {
             k.SaveExpose = exposeData;
             k.SaveReset = reset;
+        }
+
+        /// <summary>
+        /// The mod's own per-map data, stored in the framework's map component (<see cref="FrameworkMap"/>) under the mod's packageId: a
+        /// mod needs no MapComponent class of its own, so removing it leaves no missing-class error, and the node comes back with the mod.
+        /// <paramref name="exposeData"/> runs in every Scribe pass of each map, inside the mod's own node, with that map: Scribe_Values /
+        /// Collections / Deep / References as usual (references to things and pawns of any map resolve).
+        /// <code>r.MapData(m =&gt; { var d = Marks.For(m); Scribe_Values.Look(ref d.count, "count"); Scribe_References.Look(ref d.pawn, "pawn"); });</code>
+        /// </summary>
+        public void MapData(Action<Map> exposeData) => MapData(exposeData, null);
+
+        /// <summary>
+        /// Per-map data with a reset: <paramref name="reset"/> runs for a map when its component is created (new map, or before the map is
+        /// loaded) and when the map is removed, so state keyed by that map is forgotten (static dictionaries!).
+        /// </summary>
+        public void MapData(Action<Map> exposeData, Action<Map> reset)
+        {
+            k.MapExpose = exposeData;
+            k.MapReset = reset;
+        }
+
+        /// <summary>
+        /// An OLD Game-, World- or MapComponent class of this mod that existing saves contain: keep the class (same name; its ExposeData
+        /// reads the old fields), move what it read into <see cref="SaveData(Action)"/> / <see cref="MapData(Action{Map})"/> while
+        /// loading (in its ExposeData at PostLoadInit, or its FinalizeInit / LoadedGame). The framework never writes it into a save again
+        /// and drops its instances once a load or a new game finished, so old saves keep loading and new saves name no class of the mod.
+        /// Returns false (logged) for a type that is not such a component of this mod.
+        /// </summary>
+        public bool LegacyComponent(Type componentType)
+        {
+            bool isComp = componentType != null && !componentType.IsAbstract && (typeof(GameComponent).IsAssignableFrom(componentType)
+                || typeof(RimWorld.Planet.WorldComponent).IsAssignableFrom(componentType) || typeof(MapComponent).IsAssignableFrom(componentType));
+            bool own = componentType != null && (k.Mod == null || componentType.Assembly == k.Mod.GetType().Assembly
+                || (k.Content?.assemblies?.loadedAssemblies?.Contains(componentType.Assembly) ?? false));
+            if (!isComp || !own || componentType.Assembly == typeof(Framework).Assembly)
+            {
+                k.Log.Warn("Core", "LegacyComponent(" + componentType?.FullName + "): not a GameComponent, WorldComponent or MapComponent of this mod; ignored");
+                return false;
+            }
+            KitComponentStrip.Add(componentType);
+            k.Log.Info("Core", "Legacy component " + componentType.FullName + ": read from old saves, never written again");
+            return true;
         }
     }
 }

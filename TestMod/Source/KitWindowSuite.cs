@@ -51,6 +51,24 @@ namespace JBFramework.Testing
             while (Time.frameCount < until && guard++ < 3000) yield return 1;
         }
 
+        /// <summary>
+        /// Real layout for a virtual screen <paramref name="height"/> px high: Prefs.UIScale = physical height / height (vanilla
+        /// UI.ApplyUIScale divides every frame). Dispose puts the scale back. Takes effect from the next frame.
+        /// </summary>
+        public static IDisposable AtScreenHeight(int height)
+        {
+            float was = Prefs.UIScale;
+            float phys = Screen.height > 0 ? Screen.height : 1080f;
+            Prefs.UIScale = Mathf.Clamp(phys / Math.Max(240, height), 0.25f, 4f);
+            return new Restore(() => Prefs.UIScale = was);
+        }
+
+        sealed class Restore : IDisposable
+        {
+            Action a; public Restore(Action a) { this.a = a; }
+            public void Dispose() { var x = a; a = null; try { x?.Invoke(); } catch (Exception e) { Log.Warning("[JBTEST] restoring the UI scale failed: " + e.Message); } }
+        }
+
         public static bool Inside(Rect inner, Rect outer, float slack = 0.5f)
             => inner.xMin >= outer.xMin - slack && inner.yMin >= outer.yMin - slack && inner.xMax <= outer.xMax + slack && inner.yMax <= outer.yMax + slack;
 
@@ -60,8 +78,8 @@ namespace JBFramework.Testing
     }
 
     /// <summary>
-    /// kit.window: opens the mod's settings window at 1280x720, 1920x1080 and 2560x1440 (KitUI.TestScreen pretends the screen; sizes that are
-    /// larger than the real screen are only measured), draws every page (in a game with a per-save profile: for this save and for the
+    /// kit.window: opens the mod's settings window on real virtual screens of 1280x720, 1920x1080 and 2560x1440 (Prefs.UIScale 1.5 / 1 /
+    /// 0.75 on the 1920x1080 test screen: the game lays out and draws at that size), draws every page (in a game with a per-save profile: for this save and for the
     /// template) and a search, and checks that the window fits the screen, keeps its minimum, is resizable, that the parts of each page lie
     /// inside the window without overlapping, and that nothing threw. With JB_UI_SHOTS it leaves kit_window_&lt;id&gt;_&lt;size&gt;_&lt;page&gt;.png.
     /// </summary>
@@ -81,8 +99,7 @@ namespace JBFramework.Testing
             var k = t.Mod;
             if (k?.Mod == null) { t.Check(false, "no mod under test"); yield break; }
             var screens = new[] { new Vector2(1280f, 720f), new Vector2(1920f, 1080f), new Vector2(2560f, 1440f) };
-            var real = new Vector2(UI.screenWidth, UI.screenHeight);
-            t.Note("real screen " + real.x + "x" + real.y + ", window size preference " + Framework.WindowScale.ToString("0.00") + ", screenshots " + (KitUiTest.ShotDir != null ? "on" : "off"));
+            t.Note("test screen " + Screen.width + "x" + Screen.height + ", window size preference " + Framework.WindowScale.ToString("0.00") + ", screenshots " + (KitUiTest.ShotDir != null ? "on" : "off"));
             int guard0 = k.Guard.TotalFailures, selfGuard0 = Framework.Self?.Guard.TotalFailures ?? 0;
             int log0 = k.Log.ErrorCount, selfLog0 = Framework.Self?.Log.ErrorCount ?? 0, red0 = KitTestLog.Mark();
             bool suppressed = KitFirstStartCard.Suppressed;
@@ -92,10 +109,16 @@ namespace JBFramework.Testing
             string sid = KitUiTest.Safe(k.Info.ShortId);
             try
             {
-                foreach (var scr in screens)
+                foreach (var want in screens)
                 {
-                    KitUI.TestScreen = scr;
-                    string tag = (int)scr.x + "x" + (int)scr.y;
+                    // a real virtual screen of that height (Prefs.UIScale on the test screen): real layout, real screenshots
+                    using (KitUiTest.AtScreenHeight((int)want.y))
+                    {
+                    foreach (var y in KitUiTest.Frames(3)) yield return y;
+                    var scr = new Vector2(UI.screenWidth, UI.screenHeight);
+                    var real = scr;
+                    string tag = (int)want.x + "x" + (int)want.y;
+                    t.Note(tag + ": UI scale " + Prefs.UIScale.ToString("0.###") + " gives a virtual screen of " + scr.x + "x" + scr.y);
                     var size = new Dialog_ModSettings(k.Mod).InitialSize;
                     t.Check(InsideScreen(size, scr), tag + ": settings window " + size.x.ToString("0") + "x" + size.y.ToString("0") + " inside the screen");
                     t.Check(size.x >= Mathf.Min(KitUI.SettingsMinW, scr.x - 20f) - 0.5f && size.y >= Mathf.Min(KitUI.SettingsMinH, scr.y - 55f) - 0.5f, tag + ": keeps its minimum size");
@@ -103,8 +126,6 @@ namespace JBFramework.Testing
                     t.Check(new Dialog_ModSettings(k.Mod).resizeable, tag + ": resizable");
                     var otherMod = LoadedModManager.ModHandles.FirstOrDefault(m => !(m is KitModBase));
                     if (otherMod != null) t.Check(new Dialog_ModSettings(otherMod).InitialSize == new Vector2(900f, 700f), tag + ": other mods' settings windows stay vanilla (" + otherMod.GetType().Name + ")");
-
-                    if (scr.x > real.x + 0.5f || scr.y > real.y + 0.5f) { t.Note(tag + ": larger than the real screen, the window is only measured"); continue; }
 
                     var dlg = KitUiTest.NoPause(new Dialog_ModSettings(k.Mod));
                     Find.WindowStack.Add(dlg);
@@ -164,6 +185,7 @@ namespace JBFramework.Testing
                     }
                     dlg.Close(false);
                     foreach (var y in KitUiTest.Frames(2)) yield return y;
+                    }
                 }
 
                 // the global "Window size" preference never pushes the window off a small screen

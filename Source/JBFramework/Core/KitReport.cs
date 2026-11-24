@@ -15,12 +15,14 @@ namespace JBFramework
     internal static class KitReport
     {
         /// <summary>The folders a mod loaded, relative to its root, highest priority first (proves the 1.6/1.7 layout).</summary>
-        public static List<string> LoadFolders(KitMod k)
+        public static List<string> LoadFolders(KitMod k) => LoadFolders(k?.Content);
+
+        /// <summary>The folders RimWorld loaded for a content pack, relative to its root ("/" = the root).</summary>
+        public static List<string> LoadFolders(ModContentPack c)
         {
             var list = new List<string>();
             try
             {
-                var c = k?.Content;
                 if (c?.foldersToLoadDescendingOrder == null) return list;
                 string root = c.RootDir.TrimEnd('/', '\\');
                 foreach (var f in c.foldersToLoadDescendingOrder)

@@ -31,6 +31,10 @@ namespace JBFramework
         internal readonly KitWindowState Window = new KitWindowState();
         /// <summary>Per-save expose callback (<see cref="KitRegistry.SaveData(System.Action, System.Action)"/>) and its reset.</summary>
         internal Action SaveExpose, SaveReset;
+        /// <summary>Per-map expose callback (<see cref="KitRegistry.MapData(Action{Map})"/>) and its reset.</summary>
+        internal Action<Map> MapExpose, MapReset;
+        /// <summary>The mod's welcome-card parts (<see cref="KitRegistry.WelcomeCard"/>), or null.</summary>
+        internal KitCard Card;
         internal readonly bool IsFramework;
         readonly KitProfile fallbackTemplate;
         readonly List<string> clashes = new List<string>();
@@ -147,6 +151,47 @@ namespace JBFramework
         /// <summary>Resets a setting in <see cref="Current"/> to its default.</summary>
         public void Reset(string key) => SettingsReg.Reset(key);
 
+        /// <summary>Text value of a free key in <see cref="Current"/> (per save when the mod is per-save), or null. See <see cref="KitProfile.GetText"/>.</summary>
+        public string GetText(string key) => Current.GetText(key);
+        /// <summary>Sets a text value in <see cref="Current"/> (null removes it). OnSettingsChanged(key) follows.</summary>
+        public void SetText(string key, string value) => Current.SetText(key, value);
+        /// <summary>List value of a free key in <see cref="Current"/> (a copy; empty when unset). See <see cref="KitProfile.GetList"/>.</summary>
+        public IReadOnlyList<string> GetList(string key) => Current.GetList(key);
+        /// <summary>Sets a list value in <see cref="Current"/> (null removes it). OnSettingsChanged(key) follows.</summary>
+        public void SetList(string key, IEnumerable<string> values) => Current.SetList(key, values);
+
+        // Presets and compatibility switches ------------------------------------------------------------------------------
+        /// <summary>The first preset that matches <see cref="Current"/> (applying it would change nothing, or its HighlightWhen says so), or null ("Custom").</summary>
+        public KitPreset MatchingPreset() => Presets.Matching(Current);
+        /// <summary>Applies the preset <paramref name="id"/> to <see cref="Current"/> (changes only what it names; callbacks follow). False for an unknown id.</summary>
+        public bool ApplyPreset(string id) => Presets.Apply(Presets.Find(id), Current);
+
+        /// <summary>
+        /// Is the integration with <paramref name="packageIdOrDlc"/> on? True when that mod or DLC is active and, for an entry marked
+        /// <see cref="KitCompatEntry.Switchable"/>, the player did not switch it off on the Compatibility page. Without a compat entry
+        /// for that packageId: whether the mod is active. Cheap; ask it in the integration's patches.
+        /// </summary>
+        public bool CompatOn(string packageIdOrDlc)
+        {
+            if (Blocked || !KitCompat.IsModActive(packageIdOrDlc)) return false;
+            var e = Compat.Find(packageIdOrDlc);
+            return e == null || e.SwitchedOn;
+        }
+
+        /// <summary>Switches a switchable integration (template, written with the settings file). False when there is no such switchable entry.</summary>
+        internal bool SetCompat(string packageIdOrDlc, bool on)
+        {
+            var e = Compat.Find(packageIdOrDlc);
+            if (e == null || !e.CanSwitch) return false;
+            bool was = e.SwitchedOn;
+            if (on) Template.Store.Remove(e.SwitchKey); else Template.Store.Set(e.SwitchKey, 0f);
+            if (was != on) { MarkChanged(e.SwitchKey); Log.Info("Compat", e.Name + " integration switched " + (on ? "on" : "off")); }
+            return true;
+        }
+
+        /// <summary>Prefix of the compat switch keys in the template store and of their change keys.</summary>
+        internal const string CompatKeyPrefix = "compat:";
+
         // Templates and window ---------------------------------------------------------------------------------------------
         /// <summary>Copies the save's switches and values into the template (global values stay) and writes the settings file.</summary>
         public void SaveAsTemplate()
@@ -205,7 +250,21 @@ namespace JBFramework
         public bool IsPaused(string section) => Guard.IsPaused(section);
         /// <summary>Un-pauses a section and forgets its failure counters.</summary>
         public void Resume(string section) => Guard.Resume(section);
-        /// <summary>Call from a caretaker check (<see cref="KitRegistry.Caretaker"/>) for every repair: counted and logged as a warning.</summary>
+        /// <summary>
+        /// Runs a section's "Prepare for removal" on the running game, as the button does but without the dialogs (tests, own UI): its
+        /// <see cref="KitSection.WithRemoval"/> steps, then the section is switched off in <see cref="Current"/>. Returns the report lines
+        /// (empty without a game or for an unknown section).
+        /// </summary>
+        public IReadOnlyList<string> PrepareRemoval(string sectionId)
+        {
+            if (Blocked || Verse.Current.Game == null || Sections.Find(sectionId) == null) return new List<string>();
+            return Sections.PrepareRemoval(sectionId);
+        }
+
+        /// <summary>
+        /// Call from a caretaker check (<see cref="KitRegistry.Caretaker"/>) for every repair: counted (Diagnosis page and report) and
+        /// logged at Info level (the mod's own log file; the game log only with "Detailed log"). Routine repairs never fill the log with warnings.
+        /// </summary>
         public void CaretakerFixed(string checkName, string what) => Caretaker.Fixed(checkName, what);
 
         // Reports ----------------------------------------------------------------------------------------------------------
@@ -218,6 +277,9 @@ namespace JBFramework
         public override string ToString() => Name + " (" + PackageId + ")";
 
         // internal ---------------------------------------------------------------------------------------------------------
+        /// <summary>The welcome-card pitch in the game's language (key &lt;Prefix&gt;.FirstStartPitch), else <see cref="KitInfo.FirstStartPitch"/>; "" when none.</summary>
+        internal string PitchText => string.IsNullOrEmpty(Cfg.FirstStartPitch) ? "" : Key("FirstStartPitch").TranslateOr(Cfg.FirstStartPitch);
+
         /// <summary>Translation key of the mod's own registrations: Key("Setting.x") → "LO.Setting.x".</summary>
         internal string Key(string suffix) => Cfg.KeyPrefix + "." + suffix;
 
@@ -314,8 +376,8 @@ namespace JBFramework
             try { Patches.ApplyAll(asms, Cfg.HarmonyId); }
             catch (Exception e) { Log.Error("Core", "Patch application failed", e); }
 
-            if (!string.IsNullOrEmpty(Cfg.FirstStartPitch) && !Cfg.PerSave)
-                Log.Warn("Core", "FirstStartPitch is set but PerSave is off: the welcome card needs a per-save profile and is not shown.");
+            if ((!string.IsNullOrEmpty(Cfg.FirstStartPitch) || Card != null) && !Cfg.PerSave)
+                Log.Warn("Core", "A welcome card (FirstStartPitch or WelcomeCard()) is set but PerSave is off: the card needs a per-save profile and is not shown.");
             KitHooks.Each(KitHooks.ModBooted, this, "ModBooted", h => h(this));
         }
 

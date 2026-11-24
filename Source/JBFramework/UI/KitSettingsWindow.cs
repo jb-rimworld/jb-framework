@@ -215,7 +215,12 @@ namespace JBFramework
             if (searchable)
             {
                 k.Window.Search = Widgets.TextField(sr, k.Window.Search) ?? "";
-                if (k.Window.Search.NullOrEmpty()) KitStyle.LabelColored(new Rect(sr.x + 6f, sr.y, sr.width - 8f, sr.height), KitText.K("Header.Search", "Search all settings..."), KitStyle.DimGrey, TextAnchor.MiddleLeft);
+                if (k.Window.Search.NullOrEmpty())
+                {
+                    // one line only: a long translation is cut with "..." instead of wrapping to a second line
+                    var phR = new Rect(sr.x + 6f, sr.y, sr.width - 8f, sr.height);
+                    KitStyle.LabelColored(phR, KitText.K("Header.Search", "Search all settings...").Truncate(phR.width), KitStyle.DimGrey, TextAnchor.MiddleLeft);
+                }
                 else if (Widgets.ButtonText(new Rect(sr.x - 32f, sr.y, 28f, 30f), "x")) k.Window.Search = "";
                 if (nerdToggle)
                 {
@@ -375,8 +380,10 @@ namespace JBFramework
             float lw = Mathf.Clamp(w * 0.24f, 160f, 300f);
             bool hasPage = avail && SectionHasRows(k, s.Id);
             float rightW = (paused ? 96f : 0f) + (hasPage ? 34f : 0f);
+            // "(not installed)" only for a missing mod or DLC (OnlyWith); an AvailableWhen reason is shown as written
             string descText = avail ? s.Desc
-                : KitText.K("Overview.NotInstalled", "{0} (not installed)", s.RequiresLabel ?? KitText.K("Section.NotAvailable", "Not available in this game."));
+                : !string.IsNullOrEmpty(s.RequiresPackageId) ? KitText.K("Overview.NotInstalled", "{0} (not installed)", s.RequiresLabel ?? KitText.K("Section.NotAvailable", "Not available in this game."))
+                : s.RequiresLabel ?? KitText.K("Section.NotAvailable", "Not available in this game.");
             float descW = w - lw - 74f - rightW;
             float h = Mathf.Max(44f, KitStyle.CachedHeight(descText, descW, GameFont.Tiny) + 12f);
             var row = new Rect(x, y, w, h);
@@ -573,7 +580,7 @@ namespace JBFramework
             {
                 case KitCompatState.Active: case KitCompatState.IncompatibleAbsent: return KitStyle.Good;
                 case KitCompatState.Failed: case KitCompatState.IncompatiblePresent: return KitStyle.Bad;
-                case KitCompatState.Unhealthy: return KitStyle.Accent;
+                case KitCompatState.Unhealthy: case KitCompatState.SwitchedOff: return KitStyle.Accent;
                 default: return KitStyle.DimGrey;
             }
         }
@@ -590,7 +597,17 @@ namespace JBFramework
             var row = new Rect(0f, y, w, h);
             if (Mouse.IsOver(row)) Widgets.DrawHighlight(row);
             bool present = st != KitCompatState.NotInstalled && st != KitCompatState.IncompatibleAbsent;
-            KitStyle.LabelColored(new Rect(4f, y + 2f, nameW - 8f, 24f), c.Name, present ? Color.white : KitStyle.Grey, TextAnchor.UpperLeft);
+            float nx = 4f;
+            if (c.CanSwitch && !c.Incompatible)
+            {
+                // the integration's switch (PLAN G13c): a preference of the installation, greyed while the other mod is missing
+                bool on = c.SwitchedOn, nb = on;
+                Widgets.Checkbox(new Vector2(4f, y + 1f), ref nb, 24f, !present);
+                if (present && nb != on) k.SetCompat(c.PackageId, nb);
+                TooltipHandler.TipRegion(new Rect(4f, y + 1f, 24f, 24f), KitText.K("Compat.SwitchTip", "Use this integration. Applies to every game (a preference of this installation)."));
+                nx = 34f;
+            }
+            KitStyle.LabelColored(new Rect(nx, y + 2f, nameW - nx - 4f, 24f), c.Name, present ? Color.white : KitStyle.Grey, TextAnchor.UpperLeft);
             KitStyle.LabelColored(new Rect(nameW, y + 2f, w - nameW - 10f, stH), stateText, StateColor(st));
             if (whatH > 0f) KitStyle.LabelColored(new Rect(nameW, y + 2f + stH, w - nameW - 10f, whatH), what, KitStyle.Grey, TextAnchor.UpperLeft, GameFont.Tiny);
             TooltipHandler.TipRegion(row, c.PackageId + (c.PatchesApplied > 0 ? "\n" + KitText.K("Compat.Patches", "{0} patch classes applied", c.PatchesApplied) : ""));
@@ -610,7 +627,7 @@ namespace JBFramework
             KitStyle.LabelColored(new Rect(ax, y, w - ax, 24f), (info?.Version ?? "?") + "  ·  RimWorld " + rw, KitStyle.Grey);
             y += ax > 0 ? 34f : 30f;
             float bw = Mathf.Min(w, 700f);
-            if (!string.IsNullOrEmpty(info?.FirstStartPitch)) y += KitStyle.Paragraph(0f, y, bw, info.FirstStartPitch, Color.white) + 14f;
+            if (!string.IsNullOrEmpty(k.PitchText)) y += KitStyle.Paragraph(0f, y, bw, k.PitchText, Color.white) + 14f;
 
             float bx = 0f;
             if (!string.IsNullOrEmpty(info?.WorkshopId))

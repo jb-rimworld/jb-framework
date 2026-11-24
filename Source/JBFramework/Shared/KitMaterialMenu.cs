@@ -65,6 +65,25 @@ namespace JBFramework
         /// <summary>Is the designator a stuffed building (it needs a material)?</summary>
         public static bool IsStuffed(Designator d) => d is Designator_Build b && b.PlacingDef is ThingDef td && td.MadeFromStuff;
 
+        /// <summary>
+        /// True when the framework's patch on Designator_Dropdown.GetDesignatorSelectAction is in place (the menu really opens after a
+        /// dropdown pick). False when the game changed that method: a mod whose stuffed buildings sit in dropdowns should then fall back to
+        /// flat buttons, or a pick silently uses the default material. Never throws.
+        /// </summary>
+        public static bool Active
+        {
+            get
+            {
+                try
+                {
+                    var m = Patch_KitDropdownMaterialMenu.Target;
+                    var info = m == null ? null : Harmony.GetPatchInfo(m);
+                    return info != null && info.Postfixes.Any(p => p.PatchMethod?.DeclaringType == typeof(Patch_KitDropdownMaterialMenu));
+                }
+                catch { return false; }
+            }
+        }
+
         // internal -------------------------------------------------------------------------------------------------------
         sealed class Rule { public KitMod Owner; public Func<ThingDef, bool> Applies; public bool OfferAll; }
         static readonly List<Rule> rules = new List<Rule>();
@@ -154,6 +173,9 @@ namespace JBFramework
         }
 
         static MethodBase TargetMethod() => target;
+
+        /// <summary>The patched method (null when the game has none of that shape).</summary>
+        internal static MethodBase Target => target ?? AccessTools.Method(typeof(Designator_Dropdown), "GetDesignatorSelectAction", new[] { typeof(Event), typeof(Designator) });
 
         static void Postfix(Event __0, Designator __1, ref Action __result)   // by position: parameter names differ between builds
         {

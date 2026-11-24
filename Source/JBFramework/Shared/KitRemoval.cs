@@ -121,6 +121,37 @@ namespace JBFramework
             });
         }
 
+        /// <summary>
+        /// Takes the matching Game-, World- and MapComponents out of the running game (the mod's own component classes, e.g.
+        /// <c>t =&gt; t.Assembly == typeof(MyMod).Assembly</c>) and keeps them out of every save for the rest of the session, so the next
+        /// save loads without the mod and without "Could not find class". Move their data first (or accept losing it); the framework's own
+        /// components are never matched.
+        /// </summary>
+        public static void RemoveComponents(Func<Type, bool> which, List<string> report)
+        {
+            if (which == null) return;
+            Step(report, "components", () =>
+            {
+                var hit = new List<Type>();
+                void Scan<T>(IEnumerable<T> list) where T : class
+                {
+                    foreach (var c in list ?? Enumerable.Empty<T>())
+                    {
+                        var t = c?.GetType();
+                        if (t == null || t.Assembly == typeof(KitRemoval).Assembly || hit.Contains(t)) continue;
+                        bool m; try { m = which(t); } catch { m = false; }
+                        if (m) hit.Add(t);
+                    }
+                }
+                Scan(Current.Game.components);
+                if (Find.World != null) Scan(Find.World.components);
+                foreach (var map in Find.Maps) Scan(map.components);
+                foreach (var t in hit) KitComponentStrip.Add(t);
+                var dropped = KitComponentStrip.DropNow().Where(n => hit.Any(t => t.FullName == n)).ToList();
+                return KitText.K("Removal.Components", "{0} components removed ({1})", dropped.Count, string.Join(", ", hit.Select(t => t.Name)));
+            });
+        }
+
         // internal -------------------------------------------------------------------------------------------------------
         static bool Matches(ThingDef d, Func<ThingDef, bool> which)
         {

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- JB Framework sample C: a mod WITHOUT the framework whose test builds use the framework's harness. Build: dotnet build -c Release.
+       The game references come from the framework's JBCommon.props here only to keep the sample short; a real frameworkless mod keeps
+       its own references and adds just the JBTests.props import at the end. SPDX-License-Identifier: MIT -->
+  <Import Project="$(MSBuildProjectDirectory)/../../../build/JBCommon.props" />
+  <PropertyGroup>
+    <AssemblyName>KitSampleC</AssemblyName>
+    <RootNamespace>KitSampleC</RootNamespace>
+    <OutputPath>$(MSBuildProjectDirectory)/../$(RimVersion)/Assemblies/</OutputPath>
+  </PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)/../../../build/JBTests.props" />
+</Project>

@@ -27,15 +27,30 @@ namespace JBFramework.Testing
         static HashSet<Assembly> ours = new HashSet<Assembly>();
         /// <summary>A type of the mod under test or of the framework (FrameworkGame holds every mod's profile and SaveData).</summary>
         public static bool Ours(Type t) => t != null && ours.Contains(t.Assembly);
-        public static bool OurDef(Def d) => OurDef(d, mod);
+        public static bool OurDef(Def d) => d != null && content != null && d.modContentPack == content;
         public static bool OurDef(Def d, KitMod k) => d != null && k?.Content != null && d.modContentPack == k.Content;
 
+        static ModContentPack content;
         static void Use(KitMod k)
         {
             mod = k;
+            content = k?.Content ?? KitTestEnv.TargetContent;   // a mod without a framework context: its content pack
             ours = new HashSet<Assembly> { typeof(Framework).Assembly };
             if (k?.Mod != null) ours.Add(k.Mod.GetType().Assembly);
-            foreach (var a in k?.Content?.assemblies?.loadedAssemblies ?? new List<Assembly>()) if (a != null && a != typeof(SaveFingerprint).Assembly) ours.Add(a);
+            foreach (var a in content?.assemblies?.loadedAssemblies ?? new List<Assembly>()) if (a != null && a != typeof(SaveFingerprint).Assembly) ours.Add(a);
+        }
+
+        /// <summary>A transient field pattern declared by a mod's suite (TestContext.DeclareTransient). Kept for the rest of the run.</summary>
+        public static void Declare(string pattern, string why)
+        {
+            if (string.IsNullOrEmpty(pattern)) return;
+            lock (Transient) if (!Transient.Any(x => x.pattern == pattern)) Transient.Add((pattern, why ?? "declared by the mod's suite"));
+        }
+
+        /// <summary>[KitTransient] on a field (by name: the attribute lives in the framework, mods use it in release code).</summary>
+        static bool IsTransientField(FieldInfo f)
+        {
+            try { return f.GetCustomAttributesData().Any(a => a.AttributeType.Name == "KitTransientAttribute"); } catch { return false; }
         }
 
         /// <summary>Field paths (regex on the path, list indices stripped to []) that are rebuilt after a load, with the reason.</summary>
@@ -97,7 +112,7 @@ namespace JBFramework.Testing
             for (var ty = t; ty != null && Ours(ty); ty = ty.BaseType)
                 foreach (var f in ty.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
-                    if (typeof(Delegate).IsAssignableFrom(f.FieldType) || Skip(f.FieldType)) continue;
+                    if (typeof(Delegate).IsAssignableFrom(f.FieldType) || Skip(f.FieldType) || IsTransientField(f)) continue;
                     object v; try { v = f.GetValue(o); } catch (Exception e) { lines.Add(path + "." + f.Name + " = <" + e.GetType().Name + ">"); continue; }
                     Value(lines, path + "." + Clean(f.Name), v, depth + 1, seen);
                 }

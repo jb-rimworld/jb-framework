@@ -48,6 +48,11 @@ namespace JBFramework
         /// <summary>Section id or mod packageId that must be active, else the row is greyed with RequiresText.</summary>
         internal string Requires;
         internal string RequiresText;
+        /// <summary>Bool setting of this mod that must have the value <see cref="RequiresKeyOn"/>, else the row is greyed.</summary>
+        internal string RequiresKey;
+        internal bool RequiresKeyOn;
+        /// <summary>A computed line drawn in grey under the row (and searched), against the profile the window shows.</summary>
+        internal Func<KitProfile, string> Preview;
 
         /// <summary>The setting's key ("lo.regrowDays"): lower-case mod or area prefix, a dot, camelCase.</summary>
         public string Key { get; internal set; }
@@ -115,28 +120,53 @@ namespace JBFramework
             return v;
         }
 
-        /// <summary>True when <see cref="Requires"/> is met (or not set).</summary>
-        internal bool RequiresMet
+        /// <summary>True when the section/mod of <see cref="RequiresOn(string)"/> is active (or not set). A section is judged in <paramref name="target"/>.</summary>
+        bool OuterRequiresMet(KitProfile target)
         {
-            get
-            {
-                if (string.IsNullOrEmpty(Requires)) return true;
-                if (Owner.Sections.Find(Requires) != null) return Owner.On(Requires);
-                return KitCompat.IsModActive(Requires);
-            }
+            if (string.IsNullOrEmpty(Requires)) return true;
+            if (Owner.Sections.Find(Requires) != null)
+                return target == null || ReferenceEquals(target, Owner.Current) ? Owner.On(Requires) : Owner.Sections.Available(Requires) && target.SectionOn(Requires);
+            return KitCompat.IsModActive(Requires);
         }
 
-        /// <summary>Why the row is greyed (null when <see cref="RequiresMet"/>).</summary>
-        internal string RequiresReason
+        /// <summary>True when the Bool setting of <see cref="RequiresSetting"/> has the wanted value in <paramref name="target"/> (or none is set).</summary>
+        bool KeyRequiresMet(KitProfile target)
         {
-            get
+            if (string.IsNullOrEmpty(RequiresKey)) return true;
+            var other = Owner.SettingsReg.Find(RequiresKey);
+            if (other == null) return true;   // an unknown key is a programming error, logged at registration; never grey for good
+            return (Owner.SettingsReg.Value(other, target ?? Owner.Current) >= 0.5f) == RequiresKeyOn;
+        }
+
+        /// <summary>True when every requirement is met in <paramref name="target"/> (null = the current profile).</summary>
+        internal bool RequiresMetIn(KitProfile target) => OuterRequiresMet(target) && KeyRequiresMet(target);
+
+        /// <summary>Why the row is greyed in <paramref name="target"/>, translated (null when every requirement is met).</summary>
+        internal string RequiresReasonIn(KitProfile target)
+        {
+            if (!OuterRequiresMet(target))
             {
-                if (RequiresMet) return null;
-                if (!string.IsNullOrEmpty(RequiresText)) return RequiresText;
+                if (!string.IsNullOrEmpty(RequiresText)) return Owner.Key("Setting." + Key + ".Requires").TranslateOr(RequiresText);
                 var sec = Owner.Sections.Find(Requires);
                 if (sec != null) return KitText.K("Row.RequiresSection", "Needs the section \"{0}\" to be on.", sec.Label);
-                return KitText.K("Row.RequiresMod", "Needs {0}.", Requires);
+                return KitText.K("Row.RequiresMod", "Needs {0}.", KitDetect.ActiveName(Requires) ?? KitKnown.Note(Requires)?.label ?? Requires);
             }
+            if (!KeyRequiresMet(target))
+            {
+                var other = Owner.SettingsReg.Find(RequiresKey);
+                string label = other?.Label ?? RequiresKey;
+                return RequiresKeyOn ? KitText.K("Row.RequiresSettingOn", "Only while \"{0}\" is on.", label)
+                                     : KitText.K("Row.RequiresSettingOff", "Only while \"{0}\" is off.", label);
+            }
+            return null;
+        }
+
+        /// <summary>The preview line in <paramref name="target"/>, or null (none, or it threw: logged once).</summary>
+        internal string PreviewIn(KitProfile target)
+        {
+            if (Preview == null) return null;
+            try { return Preview(target ?? Owner.Current); }
+            catch (Exception e) { Owner.Log.Once("preview:" + Key, KitLogLevel.Warn, "UI", "Preview of " + Key + " threw: " + e.Message); return null; }
         }
 
         /// <summary>Player-facing value text (invariant culture numbers, translated On/Off and enum names).</summary>
@@ -205,8 +235,23 @@ namespace JBFramework
         public KitSetting OnChange(Action<float> onChanged) { OnChanged = onChanged; return this; }
         /// <summary>Greys the row unless a section of this mod is on or a mod/DLC is active.</summary>
         public KitSetting RequiresOn(string sectionOrPackageId) { Requires = sectionOrPackageId; RequiresText = null; return this; }
-        /// <summary>Greys the row unless a section of this mod is on or a mod/DLC is active; <paramref name="reasonEn"/> says why.</summary>
+        /// <summary>
+        /// Greys the row unless a section of this mod is on or a mod/DLC is active; <paramref name="reasonEn"/> says why (translation key
+        /// &lt;Prefix&gt;.Setting.&lt;Key&gt;.Requires).
+        /// </summary>
         public KitSetting RequiresOn(string sectionOrPackageId, string reasonEn) { Requires = sectionOrPackageId; RequiresText = reasonEn; return this; }
+        /// <summary>
+        /// The value only matters while the Bool setting <paramref name="boolKey"/> of this mod is <paramref name="on"/>: otherwise the row
+        /// is greyed with "Only while "&lt;label&gt;" is on." (or "off."), judged in the profile the window shows. Combines with
+        /// <see cref="RequiresOn(string)"/> (both must be met). The value itself is kept and still readable.
+        /// </summary>
+        public KitSetting RequiresSetting(string boolKey, bool on) { RequiresKey = boolKey; RequiresKeyOn = on; return this; }
+        /// <summary>
+        /// A computed line drawn in grey under the row, also matched by the search ("Mk. I 900 HP · Mk. II 3,000 · Mk. III 30,000").
+        /// <paramref name="preview"/> gets the profile the window shows (this save or the template) and runs every frame the row is
+        /// visible: keep it cheap. An exception hides the line (logged once).
+        /// </summary>
+        public KitSetting WithPreview(Func<KitProfile, string> preview) { Preview = preview; return this; }
     }
 
     /// <summary>Registry and value access of all settings of one mod.</summary>

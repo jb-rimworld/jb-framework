@@ -92,6 +92,7 @@ namespace JBFramework
                 catch (Exception ex) { try { kk.Guard.Fail(KitMod.Core, "GameInit", ex); } catch { } }
             }
             KitFirstStartCard.ResetForGame();
+            KitComponentStrip.DropSoon();   // legacy components were read by now; they never tick on and never reach a save
         }
 
         /// <summary>A new game: every per-save mod gets a copy of its template.</summary>
@@ -123,6 +124,7 @@ namespace JBFramework
         /// <summary>Delivers pending setting changes of every mod.</summary>
         public override void GameComponentUpdate()
         {
+            try { KitComponentStrip.DropPending(); } catch (Exception e) { Framework.Self?.Guard.Fail(KitMod.Core, "DropComponents", e); }
             foreach (var k in Framework.AllContexts())
             {
                 if (!k.HasPendingChanges) continue;
@@ -176,7 +178,7 @@ namespace JBFramework
             bool live = k != null && !k.Blocked && k.SaveExpose != null;
             if (!live)
             {
-                KeepRaw();
+                rawData = KitRawXml.Keep(rawData, "save data of absent mod " + id);
                 return;
             }
             rawData = null;
@@ -187,42 +189,6 @@ namespace JBFramework
             }
         }
 
-        /// <summary>Absent mod: remember its &lt;data&gt; node on load, write it back verbatim on save. Never throws.</summary>
-        void KeepRaw()
-        {
-            try
-            {
-                if (Scribe.mode == LoadSaveMode.LoadingVars)
-                    rawData = (Scribe.loader?.curXmlParent?["data"])?.OuterXml;
-                else if (Scribe.mode == LoadSaveMode.Saving && !string.IsNullOrEmpty(rawData))
-                    WriteRaw(rawData);
-            }
-            catch (Exception e) { Framework.Self?.Log.Warn("Core", "Could not keep the save data of absent mod " + id + ": " + e.Message); }
-        }
 
-        static System.Reflection.FieldInfo writerField;
-
-        static void WriteRaw(string xml)
-        {
-            if (writerField == null) writerField = HarmonyLib.AccessTools.Field(typeof(ScribeSaver), "writer");
-            if (writerField?.GetValue(Scribe.saver) is System.Xml.XmlWriter w) { w.WriteRaw(xml); return; }
-            // fallback without the private writer: rebuild the node with Scribe's public calls (elements, attributes, text leaves)
-            var doc = new System.Xml.XmlDocument(); doc.LoadXml(xml);
-            WriteNode(doc.DocumentElement);
-        }
-
-        static void WriteNode(System.Xml.XmlElement e)
-        {
-            bool hasChildElements = false;
-            foreach (System.Xml.XmlNode c in e.ChildNodes) if (c is System.Xml.XmlElement) { hasChildElements = true; break; }
-            if (!hasChildElements && e.Attributes.Count == 0) { Scribe.saver.WriteElement(e.Name, e.InnerText); return; }
-            Scribe.saver.EnterNode(e.Name);
-            try
-            {
-                foreach (System.Xml.XmlAttribute a in e.Attributes) Scribe.saver.WriteAttribute(a.Name, a.Value);
-                foreach (System.Xml.XmlNode c in e.ChildNodes) if (c is System.Xml.XmlElement ce) WriteNode(ce);
-            }
-            finally { Scribe.saver.ExitNode(); }
-        }
     }
 }

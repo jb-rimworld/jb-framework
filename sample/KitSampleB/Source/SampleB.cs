@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 // JB Framework sample B: per save, a counter stored through KitRegistry.SaveData (inside the framework's game component, so removing
-// the mod leaves no missing-class error), legacy migration of an old settings file, one own test suite.
+// the mod leaves no missing-class error), per-map data through KitRegistry.MapData (inside the framework's map component), two legacy
+// components (read from old saves, never written), legacy migration of an old settings file, one own test suite.
 // The test bed of the harness (JBFramework.Testing) and tools/jbmod (test, plain, saveload, removal, addition, migrate-test).
 using System.Collections.Generic;
+using System.Linq;
 using JBFramework;
 using Verse;
 
@@ -30,6 +32,11 @@ namespace KitSampleB
             r.Percent(KitMod.Core, "ksb.share", 0.5f, 0f, 1f, "A share", "Stored as 0..1, shown as percent (migrated from the old whole-number field 'sharePercent').").InGroup("General").Legacy("sharePercent", v => v / 100f);
             r.Preset("quiet", "Quiet", "Bonus 0, loud log off.", p => { p.Set("ksb.dailyBonus", 0f); p.Set("ksb.loud", false); });
             r.SaveData(SampleBData.Expose, SampleBData.Reset);
+            // per-map data in the framework's map component (no MapComponent class of the mod in a save)
+            r.MapData(SampleBMaps.Expose, SampleBMaps.Reset);
+            // the old components of "version 0": read from old saves, never written again, dropped after a load
+            r.LegacyComponent(typeof(LegacyCounterComponent));
+            r.LegacyComponent(typeof(LegacyMapMarks));
         }
 
         protected override void OnTick(int ticksGame)
@@ -39,6 +46,12 @@ namespace KitSampleB
             SampleBData.history.Add(ticksGame + ":" + SampleBData.counter);
             if (SampleBData.history.Count > 5) SampleBData.history.RemoveAt(0);
             if (Kit.GetBool("ksb.loud")) Kit.Log.Info("Sample", "counter " + SampleBData.counter);
+            foreach (var m in Find.Maps)
+            {
+                var d = SampleBMaps.For(m);
+                d.visits++;
+                if (d.firstColonist == null) d.firstColonist = m.mapPawns.FreeColonistsSpawned.FirstOrDefault();
+            }
         }
 
         protected override IEnumerable<string> Diagnosis()
@@ -63,6 +76,47 @@ namespace KitSampleB
             Scribe_Values.Look(ref counter, "counter");
             Scribe_Collections.Look(ref history, "history", LookMode.Value);
             if (Scribe.mode == LoadSaveMode.PostLoadInit && history == null) history = new List<string>();
+        }
+    }
+
+    /// <summary>Per-map data: a visit counter and the first colonist seen on the map (a cross-reference).</summary>
+    internal static class SampleBMaps
+    {
+        internal sealed class Data { public int visits; public Pawn firstColonist; }
+        public static readonly Dictionary<int, Data> byMap = new Dictionary<int, Data>();
+        public static Data For(Map m) { if (!byMap.TryGetValue(m.uniqueID, out var d)) byMap[m.uniqueID] = d = new Data(); return d; }
+
+        public static void Reset(Map m) => byMap.Remove(m.uniqueID);
+
+        public static void Expose(Map m)
+        {
+            var d = For(m);
+            Scribe_Values.Look(ref d.visits, "visits");
+            Scribe_References.Look(ref d.firstColonist, "firstColonist");
+        }
+    }
+
+    /// <summary>"Version 0" of sample B kept its counter in an own GameComponent. Old saves still hold it: read once, never written.</summary>
+    public sealed class LegacyCounterComponent : GameComponent
+    {
+        public LegacyCounterComponent(Game game) { }
+        public override void ExposeData()
+        {
+            int old = -1;
+            Scribe_Values.Look(ref old, "counter", -1);
+            if (Scribe.mode == LoadSaveMode.LoadingVars && old >= 0) SampleBData.counter = System.Math.Max(SampleBData.counter, old);
+        }
+    }
+
+    /// <summary>"Version 0" per-map marks in an own MapComponent: read once, never written.</summary>
+    public sealed class LegacyMapMarks : MapComponent
+    {
+        public LegacyMapMarks(Map map) : base(map) { }
+        public override void ExposeData()
+        {
+            int old = -1;
+            Scribe_Values.Look(ref old, "visits", -1);
+            if (Scribe.mode == LoadSaveMode.LoadingVars && old >= 0) SampleBMaps.For(map).visits += old;
         }
     }
 

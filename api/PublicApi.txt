@@ -15,6 +15,7 @@ JBFramework.Framework: method public static JBFramework.KitMod Find(System.Strin
 JBFramework.Framework: method public static JBFramework.KitMod Of<TMod : JBFramework.KitModBase>()
 JBFramework.Framework: method public static System.Boolean IsModActive(System.String packageIdOrDlc)
 JBFramework.Framework: method public static System.String DiagnosisReport()
+JBFramework.Framework: property static System.Boolean WelcomeCards { public get; }
 JBFramework.Framework: property static System.Collections.Generic.IReadOnlyList<JBFramework.KitMod> Mods { public get; }
 JBFramework.Framework: property static System.Int32 ApiLevel { public get; }
 JBFramework.Framework: property static System.String Name { public get; }
@@ -30,6 +31,11 @@ JBFramework.FrameworkGame: method public override System.Void GameComponentUpdat
 JBFramework.FrameworkGame: method public override System.Void LoadedGame()
 JBFramework.FrameworkGame: method public override System.Void StartedNewGame()
 JBFramework.FrameworkGame: type sealed class JBFramework.FrameworkGame : Verse.GameComponent
+JBFramework.FrameworkMap: method public .ctor(Verse.Map map)
+JBFramework.FrameworkMap: method public override System.Void ExposeData()
+JBFramework.FrameworkMap: method public override System.Void FinalizeInit()
+JBFramework.FrameworkMap: method public override System.Void MapRemoved()
+JBFramework.FrameworkMap: type sealed class JBFramework.FrameworkMap : Verse.MapComponent
 JBFramework.FrameworkMod: method public .ctor(Verse.ModContentPack content)
 JBFramework.FrameworkMod: type sealed class JBFramework.FrameworkMod : JBFramework.KitModBase
 JBFramework.FrameworkSettings: method public .ctor()
@@ -46,16 +52,26 @@ JBFramework.KitCE: method public static Verse.ThingDef DefaultAmmoFor(Verse.Thin
 JBFramework.KitCE: property static System.Boolean Active { public get; }
 JBFramework.KitCE: property static System.Collections.Generic.IReadOnlyList<System.String> PackageIds { public get; }
 JBFramework.KitCE: type static class JBFramework.KitCE
+JBFramework.KitCard: method public JBFramework.KitCard WhenClosed(System.Action<System.Boolean> closed)
+JBFramework.KitCard: method public JBFramework.KitCard WithAction(System.String id, System.String label, System.String tip, System.Func<System.Boolean> done, System.Action act)
+JBFramework.KitCard: method public JBFramework.KitCard WithDraw(System.Func<UnityEngine.Rect, System.Single> draw)
+JBFramework.KitCard: method public JBFramework.KitCard WithoutPresets()
+JBFramework.KitCard: method public JBFramework.KitCard WithoutSections()
+JBFramework.KitCard: type sealed class JBFramework.KitCard
 JBFramework.KitCompatAttribute: method public .ctor(System.String packageId)
 JBFramework.KitCompatAttribute: property System.String PackageId { public get; }
 JBFramework.KitCompatAttribute: type sealed class JBFramework.KitCompatAttribute : System.Attribute
 JBFramework.KitCompatEntry: method public JBFramework.KitCompatEntry HealthyWhen(System.Func<System.Boolean> healthy)
+JBFramework.KitCompatEntry: method public JBFramework.KitCompatEntry Switchable()
 JBFramework.KitCompatEntry: property System.String Name { public get; }
 JBFramework.KitCompatEntry: property System.String PackageId { public get; }
 JBFramework.KitCompatEntry: type sealed class JBFramework.KitCompatEntry
 JBFramework.KitDefEdits: method public System.Boolean IsEdited(Verse.Def def, System.String fieldPath)
+JBFramework.KitDefEdits: method public System.Boolean IsEditedComp<TProps : Verse.CompProperties>(Verse.ThingDef def, System.String fieldPath)
 JBFramework.KitDefEdits: method public System.Boolean Set(Verse.Def def, System.String fieldPath, System.Object value)
 JBFramework.KitDefEdits: method public System.Boolean Set(Verse.Def def, System.String fieldPath, System.Object value, System.String group)
+JBFramework.KitDefEdits: method public System.Boolean SetComp<TProps : Verse.CompProperties>(Verse.ThingDef def, System.String fieldPath, System.Object value)
+JBFramework.KitDefEdits: method public System.Boolean SetComp<TProps : Verse.CompProperties>(Verse.ThingDef def, System.String fieldPath, System.Object value, System.String group)
 JBFramework.KitDefEdits: method public System.Int32 Restore()
 JBFramework.KitDefEdits: method public System.Int32 Restore(System.String group)
 JBFramework.KitDefEdits: method public System.Int32 RestoreDef(Verse.Def def)
@@ -145,14 +161,21 @@ JBFramework.KitMaterialMenu: method public static System.Boolean IsStuffed(Verse
 JBFramework.KitMaterialMenu: method public static System.Void AfterDropdownPick(JBFramework.KitMod owner, System.Func<Verse.ThingDef, System.Boolean> applies)
 JBFramework.KitMaterialMenu: method public static System.Void AfterDropdownPick(JBFramework.KitMod owner, System.Func<Verse.ThingDef, System.Boolean> applies, System.Boolean offerAllMaterials)
 JBFramework.KitMaterialMenu: method public static System.Void Open(RimWorld.Designator_Build des)
+JBFramework.KitMaterialMenu: property static System.Boolean Active { public get; }
 JBFramework.KitMaterialMenu: type static class JBFramework.KitMaterialMenu
 JBFramework.KitMod: field public const System.String Core = "core"
+JBFramework.KitMod: method public JBFramework.KitPreset MatchingPreset()
+JBFramework.KitMod: method public System.Boolean ApplyPreset(System.String id)
+JBFramework.KitMod: method public System.Boolean CompatOn(System.String packageIdOrDlc)
 JBFramework.KitMod: method public System.Boolean GetBool(System.String key)
 JBFramework.KitMod: method public System.Boolean IsPaused(System.String section)
 JBFramework.KitMod: method public System.Boolean On(System.String section)
+JBFramework.KitMod: method public System.Collections.Generic.IReadOnlyList<System.String> GetList(System.String key)
+JBFramework.KitMod: method public System.Collections.Generic.IReadOnlyList<System.String> PrepareRemoval(System.String sectionId)
 JBFramework.KitMod: method public System.Int32 GetInt(System.String key)
 JBFramework.KitMod: method public System.Single Get(System.String key)
 JBFramework.KitMod: method public System.String DiagnosisReport()
+JBFramework.KitMod: method public System.String GetText(System.String key)
 JBFramework.KitMod: method public System.String WhyOff(System.String section)
 JBFramework.KitMod: method public System.Void ApplyTemplateToSave()
 JBFramework.KitMod: method public System.Void CaretakerFixed(System.String checkName, System.String what)
@@ -165,6 +188,8 @@ JBFramework.KitMod: method public System.Void Run(System.String section, System.
 JBFramework.KitMod: method public System.Void SaveAsTemplate()
 JBFramework.KitMod: method public System.Void Set(System.String key, System.Boolean value)
 JBFramework.KitMod: method public System.Void Set(System.String key, System.Single value)
+JBFramework.KitMod: method public System.Void SetList(System.String key, System.Collections.Generic.IEnumerable<System.String> values)
+JBFramework.KitMod: method public System.Void SetText(System.String key, System.String value)
 JBFramework.KitMod: method public System.Void WriteSettings()
 JBFramework.KitMod: method public T GetEnum<T : struct>(System.String key)
 JBFramework.KitMod: method public T Run<T>(System.String section, System.String site, System.Func<T> func, T fallback)
@@ -194,6 +219,7 @@ JBFramework.KitModBase: method protected virtual System.Void OnDefsLoaded()
 JBFramework.KitModBase: method protected virtual System.Void OnGameLoaded(System.Boolean joinedExistingSave)
 JBFramework.KitModBase: method protected virtual System.Void OnGameStarted()
 JBFramework.KitModBase: method protected virtual System.Void OnSettingsChanged(System.String key)
+JBFramework.KitModBase: method protected virtual System.Void OnSettingsWindowClosed()
 JBFramework.KitModBase: method protected virtual System.Void OnTick(System.Int32 ticksGame)
 JBFramework.KitModBase: method public override System.String SettingsCategory()
 JBFramework.KitModBase: method public sealed override System.Void DoSettingsWindowContents(UnityEngine.Rect inRect)
@@ -220,13 +246,17 @@ JBFramework.KitProfile: method public System.Boolean GetBool(System.String key)
 JBFramework.KitProfile: method public System.Boolean SectionOn(System.String id)
 JBFramework.KitProfile: method public System.Boolean SectionStored(System.String id)
 JBFramework.KitProfile: method public System.Boolean SetSection(System.String id, System.Boolean on)
+JBFramework.KitProfile: method public System.Collections.Generic.IReadOnlyList<System.String> GetList(System.String key)
 JBFramework.KitProfile: method public System.Int32 GetInt(System.String key)
 JBFramework.KitProfile: method public System.Single Get(System.String key)
+JBFramework.KitProfile: method public System.String GetText(System.String key)
 JBFramework.KitProfile: method public System.Void ExposeData()
 JBFramework.KitProfile: method public System.Void Reset(System.String key)
 JBFramework.KitProfile: method public System.Void ResetSection(System.String id)
 JBFramework.KitProfile: method public System.Void Set(System.String key, System.Boolean value)
 JBFramework.KitProfile: method public System.Void Set(System.String key, System.Single value)
+JBFramework.KitProfile: method public System.Void SetList(System.String key, System.Collections.Generic.IEnumerable<System.String> values)
+JBFramework.KitProfile: method public System.Void SetText(System.String key, System.String value)
 JBFramework.KitProfile: type sealed class JBFramework.KitProfile : Verse.IExposable
 JBFramework.KitRandom: method public static JBFramework.KitRandomStream Stream(JBFramework.KitMod owner, System.String name)
 JBFramework.KitRandom: method public static JBFramework.KitRandomStream Stream(JBFramework.KitMod owner, System.String name, JBFramework.KitRandomAlgorithm algorithm)
@@ -269,6 +299,7 @@ JBFramework.KitRandomStream: property System.UInt64 Counter { public get; public
 JBFramework.KitRandomStream: property System.UInt64 Seed { public get; }
 JBFramework.KitRandomStream: property System.UInt64 StreamId { public get; }
 JBFramework.KitRandomStream: type sealed class JBFramework.KitRandomStream
+JBFramework.KitRegistry: method public JBFramework.KitCard WelcomeCard()
 JBFramework.KitRegistry: method public JBFramework.KitCompatEntry Compat(System.String name, System.String packageIdOrDlc, System.String what)
 JBFramework.KitRegistry: method public JBFramework.KitCompatEntry Incompatible(System.String name, System.String packageId, System.String why)
 JBFramework.KitRegistry: method public JBFramework.KitPage Page(System.String id, System.String label, System.Action<UnityEngine.Rect> draw)
@@ -289,13 +320,17 @@ JBFramework.KitRegistry: method public JBFramework.KitSetting Percent(System.Str
 JBFramework.KitRegistry: method public JBFramework.KitSetting Percent(System.String section, System.String key, System.Single def, System.Single min, System.Single max, System.String label, System.String desc)
 JBFramework.KitRegistry: method public JBFramework.KitSetting Silver(System.String section, System.String key, System.Int32 def, System.Int32 min, System.Int32 max, System.String label)
 JBFramework.KitRegistry: method public JBFramework.KitSetting Silver(System.String section, System.String key, System.Int32 def, System.Int32 min, System.Int32 max, System.String label, System.String desc)
+JBFramework.KitRegistry: method public System.Boolean LegacyComponent(System.Type componentType)
 JBFramework.KitRegistry: method public System.Void Caretaker(System.String section, System.String name, System.Func<System.Int32> check)
+JBFramework.KitRegistry: method public System.Void MapData(System.Action<Verse.Map> exposeData)
+JBFramework.KitRegistry: method public System.Void MapData(System.Action<Verse.Map> exposeData, System.Action<Verse.Map> reset)
 JBFramework.KitRegistry: method public System.Void SaveData(System.Action exposeData)
 JBFramework.KitRegistry: method public System.Void SaveData(System.Action exposeData, System.Action reset)
 JBFramework.KitRegistry: property JBFramework.KitMod Kit { public get; }
 JBFramework.KitRegistry: type sealed class JBFramework.KitRegistry
 JBFramework.KitRemoval: method public static System.Boolean AddStep(JBFramework.KitMod k, System.String sectionId, System.Action<System.Collections.Generic.List<System.String>> step)
 JBFramework.KitRemoval: method public static System.Void RemoveBills(System.Func<Verse.RecipeDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
+JBFramework.KitRemoval: method public static System.Void RemoveComponents(System.Func<System.Type, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveDesignations(System.Func<Verse.DesignationDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveHediffs(System.Func<Verse.HediffDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveThings(System.Func<Verse.ThingDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
@@ -332,8 +367,10 @@ JBFramework.KitSetting: method public JBFramework.KitSetting NeedsRestart()
 JBFramework.KitSetting: method public JBFramework.KitSetting OnChange(System.Action<System.Single> onChanged)
 JBFramework.KitSetting: method public JBFramework.KitSetting RequiresOn(System.String sectionOrPackageId)
 JBFramework.KitSetting: method public JBFramework.KitSetting RequiresOn(System.String sectionOrPackageId, System.String reasonEn)
+JBFramework.KitSetting: method public JBFramework.KitSetting RequiresSetting(System.String boolKey, System.Boolean on)
 JBFramework.KitSetting: method public JBFramework.KitSetting WithLimit(System.String reasonEn)
 JBFramework.KitSetting: method public JBFramework.KitSetting WithLimit(System.String reasonEn, System.Func<System.Single> dynamicHardMax)
+JBFramework.KitSetting: method public JBFramework.KitSetting WithPreview(System.Func<JBFramework.KitProfile, System.String> preview)
 JBFramework.KitSetting: method public JBFramework.KitSetting WithStep(System.Single step)
 JBFramework.KitSetting: property System.String Desc { public get; }
 JBFramework.KitSetting: property System.String Key { public get; }
@@ -362,6 +399,7 @@ JBFramework.KitStyle: method public static System.Boolean Banner(System.Single x
 JBFramework.KitStyle: method public static System.Boolean Chip(UnityEngine.Rect r, System.String label, System.Boolean selected)
 JBFramework.KitStyle: method public static System.Boolean Chip(UnityEngine.Rect r, System.String label, System.Boolean selected, System.String tip)
 JBFramework.KitStyle: method public static System.Boolean Chip(UnityEngine.Rect r, System.String label, System.Boolean selected, System.String tip, System.Boolean enabled)
+JBFramework.KitStyle: method public static System.IDisposable Using(JBFramework.KitMod k)
 JBFramework.KitStyle: method public static System.Single Paragraph(System.Single x, System.Single y, System.Single w, System.String text, UnityEngine.Color c)
 JBFramework.KitStyle: method public static System.Single Paragraph(System.Single x, System.Single y, System.Single w, System.String text, UnityEngine.Color c, Verse.GameFont font)
 JBFramework.KitStyle: method public static System.Single Section(System.Single x, System.Single y, System.Single w, System.String text)
@@ -370,6 +408,7 @@ JBFramework.KitStyle: method public static System.Void Heading(UnityEngine.Rect 
 JBFramework.KitStyle: method public static System.Void LabelColored(UnityEngine.Rect r, System.String text, UnityEngine.Color c)
 JBFramework.KitStyle: method public static System.Void LabelColored(UnityEngine.Rect r, System.String text, UnityEngine.Color c, UnityEngine.TextAnchor anchor)
 JBFramework.KitStyle: method public static System.Void LabelColored(UnityEngine.Rect r, System.String text, UnityEngine.Color c, UnityEngine.TextAnchor anchor, Verse.GameFont font)
+JBFramework.KitStyle: method public static UnityEngine.Color AccentOf(JBFramework.KitMod k)
 JBFramework.KitStyle: property static UnityEngine.Color Accent { public get; }
 JBFramework.KitStyle: property static UnityEngine.Color AccentSoft { public get; }
 JBFramework.KitStyle: type static class JBFramework.KitStyle
@@ -414,6 +453,14 @@ JBFramework.KitTiers: method public static System.Void Family(JBFramework.KitMod
 JBFramework.KitTiers: method public static Verse.Thing Swap(Verse.Thing old, Verse.ThingDef to)
 JBFramework.KitTiers: method public static Verse.ThingDef SiblingAt(Verse.ThingDef def, System.Int32 tier)
 JBFramework.KitTiers: type static class JBFramework.KitTiers
+JBFramework.KitTransientAttribute: method public .ctor(System.String why)
+JBFramework.KitTransientAttribute: property System.String Why { public get; }
+JBFramework.KitTransientAttribute: type sealed class JBFramework.KitTransientAttribute : System.Attribute
+JBFramework.KitUI: method public static System.Single TextH(System.String text, System.Single width)
+JBFramework.KitUI: method public static System.Single TextH(System.String text, System.Single width, Verse.GameFont font)
+JBFramework.KitUI: method public static System.Single TextW(System.String text)
+JBFramework.KitUI: method public static System.Single TextW(System.String text, Verse.GameFont font)
+JBFramework.KitUI: method public static UnityEngine.Rect[] Cols(UnityEngine.Rect r, System.Single gap, System.Single[] fractions)
 JBFramework.KitUI: method public static UnityEngine.Vector2 Size(System.Single w, System.Single h)
 JBFramework.KitUI: method public static UnityEngine.Vector2 Size(System.Single w, System.Single h, System.Single minW, System.Single minH, System.Single maxFracW, System.Single maxFracH)
 JBFramework.KitUI: property static System.Single Scale { public get; }
