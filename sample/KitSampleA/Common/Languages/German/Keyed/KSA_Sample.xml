@@ -32,4 +32,15 @@
   <KSA.Preset.loud>Laut</KSA.Preset.loud>
   <KSA.Preset.loud.Desc>Große Zahlen, Beta an.</KSA.Preset.loud.Desc>
   <KSA.Compat.Biotech.What>Schaltet den Bereich Beta frei.</KSA.Compat.Biotech.What>
+  <KSA.Section.gamma>Gamma (Combat Extended)</KSA.Section.gamma>
+  <KSA.Section.gamma.Desc>Gibt es nur mit Combat Extended: zeigt die Zeile „braucht X (nicht installiert)“.</KSA.Section.gamma.Desc>
+  <KSA.Section.gamma.Requires>Braucht Combat Extended</KSA.Section.gamma.Requires>
+  <KSA.Section.delta>Delta</KSA.Section.delta>
+  <KSA.Section.delta.Desc>Ein Bereich mit einem Entfernen-Schritt und einer Diagnosezeile.</KSA.Section.delta.Desc>
+  <KSA.Setting.ksa.restartFlag>Ein Neustart-Schalter</KSA.Setting.ksa.restartFlag>
+  <KSA.Setting.ksa.restartFlag.Desc>Zeigt die Markierung „nach Neustart“.</KSA.Setting.ksa.restartFlag.Desc>
+  <KSA.Setting.ksa.uiPref>Eine globale Vorliebe</KSA.Setting.ksa.uiPref>
+  <KSA.Setting.ksa.uiPref.Desc>Global: in jedem Spielstand gleich, zeigt die Markierung „alle Spiele“.</KSA.Setting.ksa.uiPref.Desc>
+  <KSA.Page.notes>Notizen</KSA.Page.notes>
+  <KSA.Compat.ImaginaryConflict.Why>Würde um dieselbe Einstellung streiten. Nutze nur eine der beiden.</KSA.Compat.ImaginaryConflict.Why>
 </LanguageData>

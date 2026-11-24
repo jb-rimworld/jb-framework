@@ -16,7 +16,7 @@ src/UI/                  settings window, diagnosis, first-start card (tiers lit
 src/Testing/             in-game harness (only with -p:JBTests=true)                       — K4
 src/Gate/                optional gate (-p:JBKitGate=true), not in kit 1.0                 — K6
 Languages/<Lang>/JBKit.xml   keyed template with {P} = mod prefix (tools/kit_lang.py copies it into a mod)
-sample/KitSampleA        smallest complete adoption (tier core, per save); builds clean
+sample/KitSampleA        complete adoption (tier full, per save, theme, custom page, first-start card); builds clean
 tools/                   freeze16.py, jbmod, release/lint/lang tools (K5, other files)
 ```
 
@@ -109,8 +109,37 @@ the 1.7 `Assembly-CSharp.dll` with `ilspycmd` instead. Relevant facts:
 - `ScribeExtractor.CreateInstance` uses `BindingFlags.NonPublic`, so internal `IExposable`s (KitProfile, KitStore) load fine.
 - `Dialog_ModSettings(Mod)`, `PreClose` → `mod.WriteSettings()`; `ModsConfig.IsActive(string)` lower-cases; `ModLister.GetActiveModWithIdentifier(id, ignorePostfix)`.
 
-## Status (kit 1.0.0, K1 + K2)
+## Decisions in src/UI (K3) where the spec left a choice (simpler option taken)
 
-Done: repo, VERSION, props/targets, src/Core, sample A (builds clean, 0 warnings; type visibility checked in the DLL).
-Not yet: src/UI (K3), src/Testing (K4), tools jbmod/release (K5), KitSampleB + `kit.identity` (K7), KIT_ORIGIN.md, ADOPTION.md.
-**Nothing of the kit has run inside RimWorld yet**: load, settings file round trip, migration and per-save behaviour are unverified until K4.
+1. **Enum settings are a dropdown** (button + FloatMenu), not a slider; Bool a checkbox; numbers a slider with "Free" entry (H&H).
+   Free entry of a Percent setting is typed in percent (25 = 25 %).
+2. **Section pages** exist only for sections that are available here and have settings. Unavailable sections appear only on the
+   Overview, greyed, with "<requires text> (not installed)". A custom page with `section:` disappears when that section is unavailable
+   and is dimmed with a "Switch on" banner when it is off.
+3. **Custom pages draw into the whole main area** (below the header) and do their own scrolling; the header search still works there.
+4. **Icons:** an icon column is reserved in the page list as soon as any page has an icon (labels stay aligned); vanilla fallback icons
+   only for About (`TexButton.Info`) and Diagnosis (`TexButton.ToggleLog`). Missing textures draw nothing.
+5. **Presets:** chips on the Overview plus a non-clickable "Custom" chip that lights up when nothing matches. A preset applies at once;
+   a confirmation appears only when it would overwrite values the player changed (`KitPresets.WouldOverwrite`). Matching is recomputed
+   at most every 0.4 s (it applies every preset to a scratch copy).
+6. **"Reset section"** resets the section's values only (not its on/off switch, which lives on the Overview).
+7. **"Prepare for removal"** is offered on the section page and on the Diagnosis page, only while a game runs and only against the
+   running game's profile (not while editing the template); the result opens in the report dialog.
+8. **Diagnosis report** = `KitReport.Text()` + the last 60 log lines (first line of each); "Show report" opens `Dialog_KitReport`
+   (Copy button), "Copy report" copies directly. No personal paths (KitReport rule).
+9. **First-start card needs `PerSave`** (its "done" flag lives in the save profile). It opens 1.5 s after the map is shown, when no long
+   event runs and no `Page` window is open. "Don't show this card again" sets the global `kit.firstStartCard` off; "Use these choices for
+   all new colonies" calls `Kit.SaveAsTemplate()`. Escape does not close it (as H&H); Start or Open settings do; choices are live.
+10. **Nerd switch** in the header only when the mod has nerd settings; it writes the global `kit.showNerd`, which the General page also lists.
+11. **Window size** (`kit.windowScale`) applies the next time a window opens (the size is read in `InitialSize`); the General page says so.
+12. **Requires greying** (`KitSetting.RequiresOn`) is evaluated against the running profile (`Kit.Current`), also while the template is
+    edited. Known limitation, kept simple.
+13. **Glyphs:** only Latin-1 characters in code-side UI text (`»`, `·`), so every RimWorld font renders them.
+
+## Status (kit 1.0.0, K1 + K2 + K3)
+
+Done: repo, VERSION, props/targets, src/Core, src/UI (K3), sample A on tier full (builds clean in tiers core/lite/full and with tests,
+0 warnings; only the three bases are public in the DLL).
+Not yet: src/Testing (K4, other agent), tools jbmod/release (K5), KitSampleB + `kit.identity` (K7), KIT_ORIGIN.md, ADOPTION.md.
+**Nothing of the kit has run inside RimWorld yet**: load, settings file round trip, migration, per-save behaviour and every pixel of the
+window, diagnosis and first-start card are unverified until K4 (`kit.window` suite, screenshots).

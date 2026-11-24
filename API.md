@@ -1,4 +1,4 @@
-# JB.Kit 1.0 API (src/Core)
+# JB.Kit 1.0 API (src/Core, src/UI)
 
 Everything here is in namespace `JBKit`, compiled into each mod's own DLL. All types are `internal` except the three bases
 `KitModBase`, `KitSettingsBase`, `KitGameBase` (`public abstract`, internal constructors/hooks). src/UI (K3) and src/Testing (K4)
@@ -163,3 +163,55 @@ Constants `KitBuiltins.WindowScaleKey, VerboseLogKey, ShowNerdKey, FirstStartCar
 
 ## KitFallbackWindow (static)
 `Draw(Rect)` — tier core only (used when `KitHooks.DrawSettings` is null).
+
+---
+
+# src/UI (K3, tiers lite and full)
+
+Installed by `KitBoot.InstallUI()` (src/UI/KitBootUI.cs): `KitHooks.DrawSettings = KitSettingsWindow.Draw`, `KitHooks.SelectPage`,
+`KitHooks.WindowClosed += …`; with `KitInfo.FirstStartPitch` and `PerSave`: `KitHooks.GameOnGUI += …`, `KitHooks.GameInit += …`.
+**Hooks are multicast where several parts listen:** use `+=` for `WindowClosed`, `DefsLoaded`, `GameInit`, `GameOnGUI`; `=` only for
+`DrawSettings`, `SelectPage`. (`ExtraReportLines` is a `Func`: only one owner, src/UI does not use it.)
+
+## KitUI (static) — window sizing
+`Size(w, h, minW=0, minH=0, maxFracW=0.92, maxFracH=0.92)` (design size at a 900 px screen × auto factor 1–1.35 × `kit.windowScale`,
+clamped to the screen), `SettingsSize()` (1000×720 design, min 860×560), `Scale`, `Vector2? TestScreen` (tests), `ScreenW/H`,
+`Cols(r, gap, fractions…)`, `TextH(text, width, font)` (cached), `TextW(text, font)`, `FitsScreen(size)`.
+Mod windows: `public override Vector2 InitialSize => KitUI.Size(900f, 640f);`
+
+## KitWindowPatches
+`KitPatch_ModSettings_InitialSize` (getter postfix → `KitUI.SettingsSize()`), `KitPatch_ModSettings_Ctor` (resizeable + draggable);
+both only for `Dialog_ModSettings` whose `mod == Kit.Mod`. `KitPatch_ModSettings_InitialSize.IsOurs(dialog)`.
+
+## KitStyle (static) / KitUiProbe
+Colours `Accent` (theme), `AccentSoft`, `Grey`, `DimGrey`, `Good`, `Bad`, `Line`; consts `Pad, RowH, Gap`. `Solid(c)`, `Heading(r, t)`,
+`Section(x, y, w, text)` → height 30, `LabelColored(r, text, c, anchor, font)`, `Paragraph(x, y, w, text, c, font)` → height,
+`Bar`, `Heat(t)`, `Chip(r, label, selected, tip, enabled)` → clicked, `Banner(x, y, w, text, color, button, out h)` → clicked,
+`CachedHeight(text, width, font)`. `KitUiProbe.Hit/Count/Clear(name)`: names `settings`, `diagnosis`, `report`, `card`.
+
+## KitIcons (static)
+`Get(path)` (cached, null when missing), `Mark`, `Page(pageId)` (theme `Icons[pageId]` → section/page `Icon` → vanilla for about/diagnosis),
+`Section(id)`, `Draw(r, tex, dim)`, `AllPaths()` (tests: every path the theme/sections/pages name).
+
+## KitRow (static) — one setting row
+`Draw(x, y, w, setting, profile, visible)` → height (skips drawing outside `visible` unless `ForceDrawAll`), `Height(s, w)`,
+`LabelWidth(w)`, `Reset(s, profile)`, `ClearBuffers()`, `MatchesSearch(s, query)`, `bool ForceDrawAll` (tests).
+
+## KitSettingsWindow (static)
+`Draw(Rect)`, `SelectPage(id)`, `SelectedPage`, `Search` (get/set), `EditTemplate` (get/set), `Target` (profile being edited),
+`BuildPages(profile)` → `PageEntry { Id, Label, Dim, DimReason, Icon }`, `SideWidth(w)`.
+Page ids: `overview`, `general`, `section:<id>` (available sections with settings), `page:<id>` (custom), `compat`, `diagnosis`, `about`.
+
+## KitDiagnosis (static) / Dialog_KitReport (Window)
+`Draw(w)`, `BuildText(logLines=60)` (= `KitReport.Text()` + last log lines), `RecentLog(n)`, `Copy(text)`, `ShowReport()`,
+`RunPrepareRemoval(sectionId)`, `string LastRemovalReport`. `new Dialog_KitReport(title, text)` (`ReportText`).
+
+## KitFirstStartCard (static) / Dialog_KitFirstStartCard (Window)
+Opens once per new colony / once when the mod joins a save, 1.5 s after the map is shown (no long event, no `Page` window).
+Needs `FirstStartPitch` **and** `PerSave` (the done flag lives in the save profile; without PerSave a warning is logged and no card shows).
+`bool Suppressed` (tests set it), `Due()`, `OpenNow()` (tests), `Delay`. Card: `ApplyPreset(p)`, `Finish()`, `UseForAll`, `NeverAgain`,
+`Preset`, `JoinedExisting`, `static OpenedCount`.
+
+## Translation keys of src/UI
+`<P>.Kit.Page.*`, `Side.*`, `Header.*`, `Overview.*`, `Section.*`, `General.*`, `Search.*`, `Compat.*`, `Row.*`, `Diag.*`, `Card.*`,
+`About.*` — all in `Languages/{English,German}/JBKit.xml` (block "src/UI"), English fallback in code.

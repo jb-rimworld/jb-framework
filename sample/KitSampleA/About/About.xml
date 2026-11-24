@@ -17,5 +17,5 @@
   <loadAfter>
     <li>brrainz.harmony</li>
   </loadAfter>
-  <description>Test and example mod for JB.Kit (kit tier core). Not for players. Registers two sections, one setting of every kind, a preset and a compatibility entry, with per-save values.</description>
+  <description>Test and example mod for JB.Kit (kit tier full). Not for players. Registers sections (one per DLC/mod case), one setting of every kind, presets, compatibility entries, a custom page, a theme and the first-start card, with per-save values.</description>
 </ModMetaData>
