@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- JB.Kit sample B, tier core + test harness. Build: tools/jbmod sample/KitSampleB build (add tests: tests flag). Output: ../1.7/Assemblies/KitSampleB.dll -->
+  <PropertyGroup>
+    <AssemblyName>KitSampleB</AssemblyName>
+    <RootNamespace>KitSampleB</RootNamespace>
+    <JBKit>core</JBKit>
+  </PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)/../../../build/JBMod.props" />
+</Project>

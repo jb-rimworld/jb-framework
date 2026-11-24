@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <!-- One plain item so kit.defs has something of its own to check (label, description, texture). Never spawned by the sample. -->
+  <ThingDef ParentName="ResourceBase">
+    <defName>KSB_SampleToken</defName>
+    <label>sample token</label>
+    <description>A test item of JB.Kit Sample B. It looks like silver and does nothing.</description>
+    <graphicData>
+      <texPath>Things/Item/Resource/Silver</texPath>
+      <graphicClass>Graphic_StackCount</graphicClass>
+    </graphicData>
+    <statBases>
+      <MarketValue>1</MarketValue>
+      <Mass>0.01</Mass>
+    </statBases>
+    <thingCategories>
+      <li>ResourcesRaw</li>
+    </thingCategories>
+    <tradeability>None</tradeability>
+    <stackLimit>100</stackLimit>
+  </ThingDef>
+</Defs>

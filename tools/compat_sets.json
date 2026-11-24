@@ -1,0 +1,8 @@
+{
+  "_comment": "Named mod sets for `jbmod <Mod> compat <set>`: packageIds loaded next to the mod under test. A mod is taken from the game's Mods folder or the Workshop folder, else from the Rimling compat cache (~/Library/Caches/RimlingModCompat) as a temporary _jb_c<slot>_<n> symlink. packageIds of third-party mods are not verified here; a missing one stops the run with MISSING.",
+  "ce": ["CETeam.CombatExtended"],
+  "ve-core": ["OskarPotocki.VanillaFactionsExpanded.Core"],
+  "dbh": ["Dubwise.DubsBadHygiene"],
+  "hh": ["juliusberger00.hearthharbor"],
+  "har": ["erdelf.HumanoidAlienRaces"]
+}

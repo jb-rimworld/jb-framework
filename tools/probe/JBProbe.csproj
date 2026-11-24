@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Test-only helper mod for tools/jbmod (generalised from Hearth & Harbor tools/probe). RimWorld 1.7 only, never shipped.
+       SPDX-License-Identifier: MIT -->
+  <PropertyGroup>
+    <AssemblyName>JBProbe</AssemblyName>
+    <RootNamespace>JBProbe</RootNamespace>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutputPath>$(MSBuildProjectDirectory)/bin/1.7/Assemblies/</OutputPath>
+    <G17 Condition="'$(G17)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorld.app/Contents/MacOS</G17>
+    <NoWarn>$(NoWarn);CS0649;CA1416</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp"><HintPath>$(G17)/Assembly-CSharp.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityStubs"><HintPath>$(G17)/UnityStubs.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Waylith.UnityCompat"><HintPath>$(G17)/Waylith.UnityCompat.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+</Project>

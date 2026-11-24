@@ -136,6 +136,71 @@ the 1.7 `Assembly-CSharp.dll` with `ilspycmd` instead. Relevant facts:
     edited. Known limitation, kept simple.
 13. **Glyphs:** only Latin-1 characters in code-side UI text (`»`, `·`), so every RimWorld font renders them.
 
+## Testing (K4): in-game harness, probe, `tools/jbmod`
+
+Files: `src/Testing/*` (harness, compiled only with `-p:JBTests=true`), `tools/probe/` (test-only probe mod), `tools/jbmod`,
+`tools/compat_sets.json`, `sample/KitSampleB` (test bed: tier core + tests, per save, a GameComponent with saved fields, one item def,
+suite `ksb.counter`, an old settings file in `Source/fixtures/` for `migrate-test`).
+
+```csharp
+#if JB_TESTS   // only in builds with -p:JBTests=true; tools/release.py refuses a DLL that contains the harness
+public sealed class LOTests : JBKit.Testing.KitTestRunnerBase { public LOTests(Game game) : base(game) { } }   // required once per mod
+sealed class RegrowSuite : JBKit.Testing.KitTestSuite
+{
+    public override string Name => "lo.regrow";                 // <shortid>.<what>
+    public override string Section => "healing";                // optional (JB_TEST=section:healing)
+    public override IEnumerable<int> Run(JBKit.Testing.TestContext t) { …; yield return 2500; t.Check(ok, "limb regrew"); }
+}
+#endif
+```
+Built-in suites: `kit.smoke`, `kit.settings`, `kit.defs`, `kit.saveload` (two phases), `kit.settingsdump`, and explicit-only `kit.migration`,
+`kit.addition`, `kit.window` (stub until the UI integration; compiled only in tier lite/full). Helpers: `TestContext` (Check/Note/Center/
+FreeCellNearCenter), `TestCells` (Anchor, TryFindFreeRect, Reachable), `SaveFingerprint`, `SaveLoadKit`, `KitTestLog` (red errors, ours/all).
+
+```
+tools/jbmod sample/KitSampleB test kit.smoke,kit.settings,kit.saveload     # or: all · lo.* · section:<id>
+tools/jbmod <Mod> plain 300 · saveload · removal · addition · migrate-test [--from FILE] · compat <set> · lang --refresh
+```
+Env of a run (set by jbmod): `JB_TEST` (suites), `JB_TEST_OUT` (result file), `JB_TEST_MOD` (pre-slot packageId), `JB_TEST_LOAD` (loaded
+save), `JB_TEST_DUMP` (settings dump), `JB_TEST_MIGRATION` (old settings file), probe: `JB_PROBE_ERR`, `JB_PROBE_OUT`, `JB_PROBE_DAYS`,
+`JB_PROBE_SAVE`. All outputs land in `/private/tmp/claude-501/hh_tests/jb_*_<label>.*` (result, player log, probe errors split into
+`.ours/.others/.noise`, the mod's own log and settings files in `jb_logs_<label>/`).
+
+Decisions in src/Testing and tools/jbmod (simpler option taken):
+1. **Runner gate:** a runner acts when `JB_TEST` is set and `JB_TEST_MOD` is empty or equals its packageId with or without the `.slotN`
+   suffix. jbmod always sets `JB_TEST_MOD`, so two kit mods with tests in one game never both quit it.
+2. **Suites are found in the mod's own assembly only**, sorted by name. An unknown suite name fails the run. `section:<id>` selects the
+   non-explicit suites of a section ("module filter").
+3. **Red errors of ours fail a run.** `KitTestLog` (installed in the mod constructor) records every red error; "ours" = text or stack names
+   the mod's namespace, assembly, `[Name]` log prefix or packageId. The runner fails on any of ours while the suites run, kit.smoke on any
+   since start, and jbmod on any of ours in the probe file (load **or** play; stricter than the spec's "during play"). Removal runs only
+   report them (that is the measurement).
+4. **The probe always runs** (every jbmod game run) and records each red error as `phase, type, first line, up to 6 stack frames`;
+   jbmod splits these into ours / others / known vanilla noise (`Root level exception in OnGUI`, `Prefs.get_UIScale`).
+5. **Test DLLs never touch the mod folder:** test and plain builds go to `/private/tmp/claude-501/hh_tests/jbbuild_<Mod>_<tests|plain>/`
+   (`-p:OutputPath`, tests with `IntermediateOutputPath=obj/1.7jbtest/`) and are copied into the slot copy only. `jbmod build` without
+   `--tests` is the only command that writes `<Mod>/1.7/Assemblies`. Two parallel runs of the same mod share that scratch build folder.
+6. **Slot copy = symlink** `_jb_slotN` in the game's Mods folder → `hh_tests/slotN/mod` (rsync of the mod without Source/Workshop/tools/
+   .git/obj/bin/csproj), packageId renamed to `<id>.slotN`; probe `_jb_probeN`, compat mods `_jb_cN_*`; removed by trap. Same as H&H.
+7. **Test runners are left out of test saves** (`SaveLoadKit.SaveWithFingerprint` removes them from `Game.components` while saving):
+   release builds have no runner, so removal/addition measurements must not see one. The probe's own component stays in its saves.
+8. **kit.saveload is two-phase** (as H&H): in a new game it changes up to three per-save values and one switch, saves `jb_<shortid>_saveload`
+   with fingerprint and value list, and puts the live game back; loaded from that save it compares both and plays 2500 ticks. A single
+   `test kit.saveload` run therefore checks only the save side; `jbmod saveload` does both. Transient fingerprint fields: Scribe `tmp*`
+   lists and `KitGameBase.IsNewGame`.
+9. **kit.settings restores everything** (template and save stores, switches with callbacks) and re-delivers every key once to the mod.
+   Presets are checked for idempotence (applying twice changes nothing), not against expected values.
+10. **kit.defs** requires a label on every def of the mod except sound/effecter/fleck/rule-pack-like types and motes/ethereal things, a
+    description on items, buildings, terrain, research, genes, abilities, hediffs, precepts; textures: graphic/uiIcon not the bad texture,
+    and every `*icon*Path`/`*tex*Path` string field resolves (file, `_north` variant or folder). Registry keys are checked against the
+    **English** language (`jbmod <Mod> lang --refresh` writes `<P>_Settings.xml`); the kit's own `<P>.Kit.*` keys are checked statically by
+    `kit_lang.py --check`, not in game.
+11. **Test language is English** (`GAME_LANG` to change it); the player's Prefs.xml is only copied.
+12. **migrate-test** copies the old file into the slot profile as `Mod__jb_slotN_<ModClass>.xml` (ModClass from the code or `--class`) and a
+    pristine copy for the suite; default source is the player's `Config/Mod_*_<ModClass>.xml`, read only.
+13. **compat** takes mods from the game's Mods folder or the Workshop folder, else from the Rimling cache (symlinked); `tools/compat_sets.json`
+    holds the sets (packageIds of third-party mods there are unverified).
+
 ## Status (kit 1.0.0, K1 + K2 + K3)
 
 Done: repo, VERSION, props/targets, src/Core, src/UI (K3), sample A on tier full (builds clean in tiers core/lite/full and with tests,
