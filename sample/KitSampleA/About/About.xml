@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-  <name>JB.Kit Sample A</name>
-  <author>juliusberger00</author>
+  <name>JB Framework Sample A</name>
+  <author>Julius Berger</author>
   <packageId>juliusberger00.jbkitsamplea</packageId>
   <modVersion>1.0.0</modVersion>
   <supportedVersions>
+    <li>1.6</li>
     <li>1.7</li>
   </supportedVersions>
   <modDependencies>
@@ -13,9 +14,14 @@
       <displayName>Harmony</displayName>
       <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
     </li>
+    <li>
+      <packageId>juliusberger.jbframework</packageId>
+      <displayName>JB Framework</displayName>
+    </li>
   </modDependencies>
   <loadAfter>
     <li>brrainz.harmony</li>
+    <li>juliusberger.jbframework</li>
   </loadAfter>
-  <description>Test and example mod for JB.Kit (kit tier full). Not for players. Registers sections (one per DLC/mod case), one setting of every kind, presets, compatibility entries, a custom page, a theme and the first-start card, with per-save values.</description>
+  <description>Test and example mod for JB Framework (a dependent mod). Not for players. Registers sections (one per DLC/mod case), one setting of every kind, presets, compatibility entries, a custom page, a theme and the welcome card, with per-save values. Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested.</description>
 </ModMetaData>

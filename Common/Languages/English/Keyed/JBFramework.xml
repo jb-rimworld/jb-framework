@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework texts (English). One file for every mod built on the framework (no per-mod copies). The English text in code
+     is the fallback; keep both identical. A mod translates only its own labels (<Prefix>.Setting.*, .Section.*, .Preset.* ...). -->
+<LanguageData>
+  <!-- values -->
+  <JBF.On>On</JBF.On>
+  <JBF.Off>Off</JBF.Off>
+  <JBF.Silver>{0} silver</JBF.Silver>
+  <!-- error barrier -->
+  <JBF.Guard.PausedTitle>{0}: feature paused</JBF.Guard.PausedTitle>
+  <JBF.Guard.PausedText>A part of {0} ran into repeated errors and paused itself so your game keeps running.\n\n{1}\n\nYou can resume it in Mod settings → {0} (Resume button on the Overview page). Details are in {2}.</JBF.Guard.PausedText>
+  <!-- sections and rows -->
+  <JBF.Section.NotAvailable>Not available in this game.</JBF.Section.NotAvailable>
+  <JBF.Section.SwitchedOff>Switched off.</JBF.Section.SwitchedOff>
+  <JBF.Row.RequiresSection>Needs the section "{0}" to be on.</JBF.Row.RequiresSection>
+  <JBF.Row.RequiresMod>Needs {0}.</JBF.Row.RequiresMod>
+  <!-- compatibility states -->
+  <JBF.Compat.Active>active</JBF.Compat.Active>
+  <JBF.Compat.NotInstalled>not installed</JBF.Compat.NotInstalled>
+  <JBF.Compat.Failed>failed: {0}</JBF.Compat.Failed>
+  <JBF.Compat.Unhealthy>installed, but the integration reports a problem</JBF.Compat.Unhealthy>
+  <JBF.Compat.IncompatiblePresent>installed: known conflict</JBF.Compat.IncompatiblePresent>
+  <JBF.Compat.IncompatibleAbsent>not installed (good)</JBF.Compat.IncompatibleAbsent>
+  <!-- minimal window (tier core) -->
+  <!-- src/UI: settings window, rows, diagnosis, first-start card -->
+  <JBF.Diag.Lines>{0} lines</JBF.Diag.Lines>
+  <JBF.Diag.CopyShort>Copy to clipboard</JBF.Diag.CopyShort>
+  <JBF.Diag.Copied>Copied to the clipboard.</JBF.Diag.Copied>
+  <JBF.Diag.ReportTitle>{0}: diagnosis</JBF.Diag.ReportTitle>
+  <JBF.Diag.RemovalTitle>Prepare for removal</JBF.Diag.RemovalTitle>
+  <JBF.Diag.NeedsSave>Open a game first. Preparing removal works on a running game.</JBF.Diag.NeedsSave>
+  <JBF.Diag.NothingToDo>Nothing needed cleaning up.</JBF.Diag.NothingToDo>
+  <JBF.Diag.RemovalDone>Done. The section is switched off. Save the game before you remove the mod.</JBF.Diag.RemovalDone>
+  <JBF.Diag.Summary>{0} settings registered · {1} warnings · {2} errors in the log · log file {3}</JBF.Diag.Summary>
+  <JBF.Diag.Show>Show report</JBF.Diag.Show>
+  <JBF.Diag.Copy>Copy report to clipboard</JBF.Diag.Copy>
+  <JBF.Diag.CopyTip>For bug reports: versions, detected mods, what is on and off, and the latest log lines. No personal paths.</JBF.Diag.CopyTip>
+  <JBF.Diag.Folders>Loaded folders</JBF.Diag.Folders>
+  <JBF.Diag.Sections>Sections</JBF.Diag.Sections>
+  <JBF.Diag.Resume>Resume</JBF.Diag.Resume>
+  <JBF.Diag.PrepareRemovalShort>Prepare removal</JBF.Diag.PrepareRemovalShort>
+  <JBF.Section.PrepareRemovalConfirm>Prepare this game for living without {0}? The section is switched off and what it placed in the save is cleaned up. Save a backup first.</JBF.Section.PrepareRemovalConfirm>
+  <JBF.Section.PrepareRemovalTip>Switches the section off and removes what it put into this save, so the save also loads without it.</JBF.Section.PrepareRemovalTip>
+  <JBF.Diag.Caretaker>Caretaker (repairs so far: {0})</JBF.Diag.Caretaker>
+  <JBF.Diag.Fixes>runs {0} · last {1} · total {2}</JBF.Diag.Fixes>
+  <JBF.Diag.Patches>Patches ({0} applied, {1} skipped)</JBF.Diag.Patches>
+  <JBF.Diag.PatchesOk>All patch classes applied.</JBF.Diag.PatchesOk>
+  <JBF.Diag.NotNeeded>{0} integration patches not needed (their mod is not active).</JBF.Diag.NotNeeded>
+  <JBF.Diag.Log>Latest log lines</JBF.Diag.Log>
+  <JBF.Card.TitleJoined>{0} joined this colony</JBF.Card.TitleJoined>
+  <JBF.Card.Title>Welcome to {0}</JBF.Card.Title>
+  <JBF.Card.Start>Start</JBF.Card.Start>
+  <JBF.Card.OpenSettings>Open settings</JBF.Card.OpenSettings>
+  <JBF.Card.UseForAll>Use these choices for all new colonies</JBF.Card.UseForAll>
+  <JBF.Card.UseForAllTip>Also saves them as the template for new games (Mod settings, Template).</JBF.Card.UseForAllTip>
+  <JBF.Card.NeverAgain>Don't show welcome cards again</JBF.Card.NeverAgain>
+  <JBF.Card.NeverAgainTip>For every JB mod: new colonies then start from the templates without asking. You can switch the cards back on in Mod settings, {0}.</JBF.Card.NeverAgainTip>
+  <JBF.Card.Presets>Pick a start</JBF.Card.Presets>
+  <JBF.Card.Sections>What is switched on</JBF.Card.Sections>
+  <JBF.Card.Hint>Everything here can be changed later in Mod settings. Closing this card keeps your choices.</JBF.Card.Hint>
+  <JBF.Row.Nerd>nerd</JBF.Row.Nerd>
+  <JBF.Row.Restart>after restart</JBF.Row.Restart>
+  <JBF.Row.AllGames>all games</JBF.Row.AllGames>
+  <JBF.Row.RestartTip>Takes effect after restarting RimWorld.</JBF.Row.RestartTip>
+  <JBF.Row.AllGamesTip>A preference of this installation: the same in every save.</JBF.Row.AllGamesTip>
+  <JBF.Row.Range>Slider {0} to {1} · default {2}</JBF.Row.Range>
+  <JBF.Row.Limit>Technical limit</JBF.Row.Limit>
+  <JBF.Row.Reset>reset</JBF.Row.Reset>
+  <JBF.Row.Beyond>Beyond the slider range. Free entry allows this.</JBF.Row.Beyond>
+  <JBF.Row.Limited>limit {0}</JBF.Row.Limited>
+  <JBF.Row.LimitGeneric>The game cannot use this value, so the nearest possible one is used.</JBF.Row.LimitGeneric>
+  <JBF.Row.Free>Free</JBF.Row.Free>
+  <JBF.Row.FreeTip>Free entry: type any number up to the technical limit of the game.</JBF.Row.FreeTip>
+  <JBF.Page.Overview>Overview</JBF.Page.Overview>
+  <JBF.Page.General>General</JBF.Page.General>
+  <JBF.Side.Paused>paused</JBF.Side.Paused>
+  <JBF.Side.Off>off</JBF.Side.Off>
+  <JBF.Page.Compat>Compatibility</JBF.Page.Compat>
+  <JBF.Page.Diagnosis>Diagnosis</JBF.Page.Diagnosis>
+  <JBF.Page.About>About</JBF.Page.About>
+  <JBF.Side.ThisSave>This save</JBF.Side.ThisSave>
+  <JBF.Side.ThisSaveTip>Edit the settings of the running game. They are saved with it.</JBF.Side.ThisSaveTip>
+  <JBF.Side.Template>Template</JBF.Side.Template>
+  <JBF.Side.TemplateTip>Edit the template that new games start from. The running game is not changed.</JBF.Side.TemplateTip>
+  <JBF.Side.TemplateOnly>Template for new games. Each new colony gets its own copy.</JBF.Side.TemplateOnly>
+  <JBF.Side.Global>These settings apply to every game.</JBF.Side.Global>
+  <JBF.Side.SaveAsTemplate>Save as template</JBF.Side.SaveAsTemplate>
+  <JBF.Side.SaveAsTemplateConfirm>Replace the template for new games with the settings of this save?</JBF.Side.SaveAsTemplateConfirm>
+  <JBF.Side.SaveAsTemplateTip>Copies the section switches and all settings of this save into the template for new games.</JBF.Side.SaveAsTemplateTip>
+  <JBF.Side.ApplyTemplate>Apply template</JBF.Side.ApplyTemplate>
+  <JBF.Side.ApplyTemplateConfirm>Replace the section switches and all settings of this save with the template? This cannot be undone.</JBF.Side.ApplyTemplateConfirm>
+  <JBF.Side.ApplyTemplateTip>Replaces the settings of this save with the template. Preferences that apply to all games stay.</JBF.Side.ApplyTemplateTip>
+  <JBF.Header.Nerd>Nerd settings</JBF.Header.Nerd>
+  <JBF.Header.SearchResults>Search results</JBF.Header.SearchResults>
+  <JBF.Header.Search>Search all settings...</JBF.Header.Search>
+  <JBF.Header.NerdTip>Shows the technical settings that most players never need. Everything else is unchanged.</JBF.Header.NerdTip>
+  <JBF.Header.EditingTemplate>Editing the template for new games. The running game is not changed.</JBF.Header.EditingTemplate>
+  <JBF.Page.CustomOff>The section "{0}" is switched off. This page has no effect until it is on.</JBF.Page.CustomOff>
+  <JBF.Section.SwitchOn>Switch on</JBF.Section.SwitchOn>
+  <JBF.Overview.IntroGlobal>These settings apply to every game. Switch whole sections on or off here; the pages on the left hold the details.</JBF.Overview.IntroGlobal>
+  <JBF.Overview.IntroTemplate>The template for new games. Each new colony gets its own copy, and you can change it there later.</JBF.Overview.IntroTemplate>
+  <JBF.Overview.IntroSave>The settings of this save. The template for new games stays as it is.</JBF.Overview.IntroSave>
+  <JBF.Overview.Paused>{0} paused itself after repeated errors.</JBF.Overview.Paused>
+  <JBF.Overview.Sections>Sections</JBF.Overview.Sections>
+  <JBF.Overview.NoSections>This mod has no switchable sections. All its settings are on the General page.</JBF.Overview.NoSections>
+  <JBF.Overview.Presets>Presets</JBF.Overview.Presets>
+  <JBF.Overview.Custom>Custom</JBF.Overview.Custom>
+  <JBF.Overview.CustomTip>Your own mix: no preset matches the current values.</JBF.Overview.CustomTip>
+  <JBF.Overview.PresetHint>A preset changes only the values it names; everything else stays as you set it.</JBF.Overview.PresetHint>
+  <JBF.Overview.PresetConfirm>Apply the preset "{0}"? It overwrites {1} values you changed: {2}</JBF.Overview.PresetConfirm>
+  <JBF.Overview.NotInstalled>{0} (not installed)</JBF.Overview.NotInstalled>
+  <JBF.Overview.OpenPage>Open the settings of this section</JBF.Overview.OpenPage>
+  <JBF.Diag.Paused>paused after errors</JBF.Diag.Paused>
+  <JBF.Section.Reset>Reset section</JBF.Section.Reset>
+  <JBF.Section.ResetConfirm>Reset every setting of {0} to its default?</JBF.Section.ResetConfirm>
+  <JBF.Section.IsOffTemplate>This section is off in the template. New games start without it.</JBF.Section.IsOffTemplate>
+  <JBF.Section.IsOff>This section is switched off. Its settings have no effect.</JBF.Section.IsOff>
+  <JBF.Section.PrepareRemoval>Prepare for removal</JBF.Section.PrepareRemoval>
+  <JBF.Section.OnlyNerd>Every setting of this section is a nerd setting. Switch on "Nerd settings" at the top to see them.</JBF.Section.OnlyNerd>
+  <JBF.General.Intro>Settings of the whole mod and of this window.</JBF.General.Intro>
+  <JBF.General.ScaleNote>A new window size applies the next time a window opens.</JBF.General.ScaleNote>
+  <JBF.Search.NoMatchNerd>No setting matches.</JBF.Search.NoMatchNerd>
+  <JBF.Search.NoMatch>No setting matches. Nerd settings are hidden unless you switch them on.</JBF.Search.NoMatch>
+  <JBF.Compat.Intro>What this mod detected in your game, and which integrations with other mods are working.</JBF.Compat.Intro>
+  <JBF.Compat.Dlc>DLC</JBF.Compat.Dlc>
+  <JBF.Compat.Integrations>Integrations</JBF.Compat.Integrations>
+  <JBF.Compat.None>No integrations with other mods.</JBF.Compat.None>
+  <JBF.Compat.Conflicts>Known conflicts</JBF.Compat.Conflicts>
+  <JBF.Compat.Patches>{0} patch classes applied</JBF.Compat.Patches>
+  <JBF.About.Workshop>Steam Workshop page</JBF.About.Workshop>
+  <JBF.About.Project>Project page</JBF.About.Project>
+  <JBF.About.License>Licence: {0}</JBF.About.License>
+  <!-- the framework as a mod: too-old message, Mods page, General page notes -->
+  <JBF.About.Framework>Built on {0} {1}, the settings foundation from Hearth &amp; Harbor.</JBF.About.Framework>
+  <JBF.Framework.TooOld>{0} needs a newer {1} (API level {2}, it was built with {1} {3}). You have {1} {4} (API level {5}). Its {1} features stay off until you update {1}: on Steam, unsubscribe and resubscribe, or restart Steam.</JBF.Framework.TooOld>
+  <JBF.Framework.TooOldTitle>{0} needs an update</JBF.Framework.TooOldTitle>
+  <JBF.General.NoOwn>This mod has no general settings.</JBF.General.NoOwn>
+  <JBF.General.GlobalNote>Window size, detailed log, welcome cards and nerd settings are the same for every mod built on {0}: they live in Mod settings, {0}.</JBF.General.GlobalNote>
+  <JBF.General.OpenFramework>Open {0} settings</JBF.General.OpenFramework>
+  <JBF.Mods.Intro>Every mod that uses {0} in this game. Each one keeps its own settings, log and error fences: a problem in one never switches off another.</JBF.Mods.Intro>
+  <JBF.Mods.ReportTitle>{0}: combined report</JBF.Mods.ReportTitle>
+  <JBF.Mods.Found>Mods found ({0})</JBF.Mods.Found>
+  <JBF.Mods.None>No active mod uses {0}. It does nothing on its own.</JBF.Mods.None>
+  <JBF.Mods.Open>Open settings</JBF.Mods.Open>
+  <JBF.Mods.Needs>needs API level {0}</JBF.Mods.Needs>
+  <JBF.Mods.NoLevel>API level not stated</JBF.Mods.NoLevel>
+  <JBF.Mods.BuiltWith>built with {0} {1}</JBF.Mods.BuiltWith>
+  <JBF.Mods.Log>log file {0}</JBF.Mods.Log>
+  <JBF.Mods.Areas>Areas: {0}</JBF.Mods.Areas>
+  <JBF.Mods.Patches>Patches: {0} applied, {1} failed</JBF.Mods.Patches>
+  <JBF.Mods.Errors>Errors caught: {0} · in the log: {1} errors, {2} warnings</JBF.Mods.Errors>
+  <!-- labels of the framework's own registrations (global preferences, Mods page) -->
+  <JBF.Setting.jbf.windowScale>Window size</JBF.Setting.jbf.windowScale>
+  <JBF.Setting.jbf.windowScale.Desc>Every window of every JB mod grows or shrinks by this factor (on top of the automatic size for large screens). Applies the next time a window opens.</JBF.Setting.jbf.windowScale.Desc>
+  <JBF.Setting.jbf.verboseLog>Detailed log</JBF.Setting.jbf.verboseLog>
+  <JBF.Setting.jbf.verboseLog.Desc>Writes info and debug lines to the game log too (they always go to each mod's own log file). Only for hunting problems.</JBF.Setting.jbf.verboseLog.Desc>
+  <JBF.Setting.jbf.showNerd>Show nerd settings</JBF.Setting.jbf.showNerd>
+  <JBF.Setting.jbf.showNerd.Desc>Shows the technical settings that most players never need, in every JB settings window.</JBF.Setting.jbf.showNerd.Desc>
+  <JBF.Setting.jbf.welcomeCards>Show welcome cards</JBF.Setting.jbf.welcomeCards>
+  <JBF.Setting.jbf.welcomeCards.Desc>A small card with presets and a link to the settings, once per new colony (and once when a mod joins a save), for every JB mod that has one.</JBF.Setting.jbf.welcomeCards.Desc>
+  <JBF.SettingCat.Interface>Interface</JBF.SettingCat.Interface>
+  <JBF.Page.mods>Mods</JBF.Page.mods>
+</LanguageData>

@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Per-mod Keyed language files of JB.Kit: generate them from the kit template, and check that no key is missing.
+"""Per-mod Keyed language files of a mod built on JB Framework: write <XX>_Settings.xml from the settings dump, check missing keys.
 
-    python3 -I kit_lang.py <ModDir> [--prefix XX] [--dump settings_dump.json] [--template-dir DIR] [--check]
+    python3 -I kit_lang.py <ModDir> [--prefix XX] [--dump settings_dump.json] [--check]
+
+Since the framework became its own mod (24.11.2026) its texts live ONCE in JBFramework/Common/Languages/<Lang>/Keyed/JBFramework.xml
+(keys JBF.*); nothing is stamped into the mods any more. A mod only translates its own registration labels (<XX>.Setting.*,
+<XX>.Section.*, <XX>.Preset.*, <XX>.Page.*, <XX>.Compat.*, <XX>.Enum.*, <XX>.SettingCat.*).
 
 Default (write):
-  * <JBKit>/Languages/<Lang>/JBKit.xml  (template, every tag written as <{P}.Kit.Something>)  ->  <ModDir>/Common/Languages/<Lang>/Keyed/<XX>_Kit.xml
-    with {P} replaced by the mod's key prefix. English and German exist from day one; one file per template language.
-  * --dump (or <ModDir>/Source/settings_dump.json when it exists): the registry dump of the in-game suite `kit.settingsdump`:
-        {"prefix": "XX", "keyed": {"XX.Set.mood.label": "Mood bonus", "XX.Set.mood.desc": "...", ...}}
+  * --dump (or <ModDir>/Source/settings_dump.json when it exists): the registry dump of the in-game settings-dump suite:
+        {"prefix": "XX", "keyed": {"XX.Setting.lo.regrowDays": "Days to regrow a limb", ...}}
     -> <ModDir>/Common/Languages/English/Keyed/<XX>_Settings.xml (regenerated; English only, other languages go through i18n_delta.py).
-  Existing hand-written files are never touched; only the two generated files are rewritten.
+  Existing hand-written files are never touched; only the generated file is rewritten. An old <XX>_Kit.xml (stamped kit texts) is
+  reported as obsolete; delete it by hand.
 
 --check (read only, exit 1 on errors):
-  ERROR  English lacks a key of the template or the dump; a Keyed XML does not parse; a key is defined twice in one language;
+  ERROR  English lacks a key of the dump; a Keyed XML does not parse; a key is defined twice in one language;
          a value is empty; C# code under <ModDir>/Source translates a literal "XX.…" key that English does not define.
   WARN   German lacks keys that English has; placeholders ({0}, {name}, [token]) differ between English and German;
-         template missing (kit key check skipped).
-The prefix comes from --prefix, else from `KeyPrefix = "XX"` in the mod's C# (KitInfo). Kit rules: keys are <Prefix>.Kit.*, English
-fallback text lives in code, so a missing translation shows English, never a raw key.
+         an obsolete <XX>_Kit.xml is still there.
+The prefix comes from --prefix, else from `KeyPrefix = "XX"` in the mod's C# (KitInfo). English fallback text lives in code, so a
+missing translation shows English, never a raw key.
 """
 import json, os, re, sys
 import xml.etree.ElementTree as ET
@@ -84,19 +87,6 @@ def keyed_of(mod, lang):
     return out, problems
 
 
-def template_keys(tdir, prefix):
-    """language -> {key: text} from the kit template, {P} substituted."""
-    res = {}
-    if not os.path.isdir(tdir): return res
-    for lang in sorted(os.listdir(tdir)):
-        f = os.path.join(tdir, lang, "JBKit.xml")
-        if os.path.isfile(f):
-            # "{P}" is not legal inside an XML name, so substitute in the text first and parse afterwards
-            root = ET.fromstring(open(f, encoding="utf-8").read().replace("{P}", prefix).encode("utf-8"))
-            res[lang] = [(e.tag, e.text or "") for e in root]
-    return res
-
-
 def code_keys(mod, prefix):
     """Literal "<P>.xxx" keys that C# translates: .Translate() / .TranslateSimple() / Translate("..") / T("..") (heuristic)."""
     found = {}
@@ -118,12 +108,11 @@ def main(argv):
     opt = lambda n: argv[argv.index(n) + 1] if n in argv else None
     if not args: print(__doc__); return 2
     mod = os.path.abspath(args[0])
-    for v in (opt("--prefix"), opt("--dump"), opt("--template-dir")):
+    for v in (opt("--prefix"), opt("--dump")):
         if v in args: args.remove(v)
     prefix = opt("--prefix") or detect_prefix(mod)
     if not prefix:
         print('ERROR no key prefix: pass --prefix XX or put KeyPrefix = "XX" into the KitInfo of the mod'); return 1
-    tdir = opt("--template-dir") or os.path.join(HERE, "..", "Languages")
     dump_path = opt("--dump") or os.path.join(mod, "Source", "settings_dump.json")
     dump = None
     if os.path.isfile(dump_path):
@@ -132,18 +121,14 @@ def main(argv):
             print(f"ERROR dump prefix {dump.get('prefix')} != {prefix}"); return 1
     elif opt("--dump"):
         print("ERROR dump not found:", dump_path); return 1
-    tmpl = template_keys(tdir, prefix)
+    obsolete = [os.path.join(lang_folder(mod, l), "Keyed", f"{prefix}_Kit.xml") for l in ("English", "German")]
+    obsolete = [o for o in obsolete if os.path.isfile(o)]
 
     if "--check" not in argv:
-        if not tmpl:
-            print(f"ERROR no kit template in {os.path.normpath(tdir)} (expected <Lang>/JBKit.xml)"); return 1
-        for lang, pairs in tmpl.items():
-            out = os.path.join(lang_folder(mod, lang), "Keyed", f"{prefix}_Kit.xml")
-            write_keyed(out, pairs, "Generated by JB.Kit tools/kit_lang.py from the kit template. Do not edit; regenerate.")
-            print("wrote", os.path.relpath(out, mod), f"({len(pairs)} keys)")
+        for o in obsolete: print("note: obsolete stamped kit texts (now in JB Framework itself), delete:", os.path.relpath(o, mod))
         if dump:
             out = os.path.join(lang_folder(mod, "English"), "Keyed", f"{prefix}_Settings.xml")
-            write_keyed(out, list(dump.get("keyed", {}).items()), "Generated by JB.Kit tools/kit_lang.py from the kit.settingsdump suite.")
+            write_keyed(out, list(dump.get("keyed", {}).items()), "Generated by JB Framework tools/kit_lang.py from the settings dump suite.")
             print("wrote", os.path.relpath(out, mod), f"({len(dump.get('keyed', {}))} keys)")
         else:
             print("note: no settings dump; <Prefix>_Settings.xml not written (run `jbmod <Mod> test kit.settingsdump`)")
@@ -153,10 +138,7 @@ def main(argv):
     en, probs = keyed_of(mod, "English"); errors += probs
     de, probs = keyed_of(mod, "German"); errors += probs
     need = {}
-    if tmpl.get("English"):
-        for k, v in tmpl["English"]: need[k] = "kit template"
-    else:
-        warns.append(f"kit template not found in {os.path.normpath(tdir)}: kit keys not checked")
+    for o in obsolete: warns.append("obsolete stamped kit texts (JB Framework ships them once now): " + os.path.relpath(o, mod))
     if dump:
         for k in dump.get("keyed", {}): need[k] = "settings dump"
     for k, src in need.items():

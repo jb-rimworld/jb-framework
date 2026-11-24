@@ -30,7 +30,7 @@ import datetime, hashlib, importlib.util, json, os, re, shutil, subprocess, sys
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WPUB = os.path.normpath(os.path.join(HERE, "..", "..", "..", "_Tools", "WPub"))      # 22_RimWorld/_Tools/WPub (kit lives in 22_RimWorld/_Shared/JBKit)
+WPUB = os.path.normpath(os.path.join(HERE, "..", "..", "_Tools", "WPub"))      # 22_RimWorld/_Tools/WPub (framework lives in 22_RimWorld/JBFramework)
 CONTENT = ["Defs", "Patches", "Languages", "Textures", "Sounds"]
 ROOT_FORBIDDEN = CONTENT + ["Assemblies", "Resources"]
 ROOT_ALLOWED = {"About", "Common", "Source", "Workshop", "tools", ".git", ".gitignore", ".gitattributes", "LoadFolders.xml", "CHANGELOG.md",
@@ -123,6 +123,9 @@ def step_dll(mod, R, label="dll scan"):
         if os.path.isdir(d): dlls += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith(".dll")]
     if not dlls: R.warn("no DLL in 1.7/Assemblies"); return
     for d in dlls:
+        if os.path.basename(d).lower() == "jbframework.dll" and not os.path.isfile(os.path.join(mod, "build", "Identity.props")):
+            R.err(f"{os.path.relpath(d, mod)}: a dependent mod must not ship JB Framework (reference it with Private=false; build/JBMod.props does)")
+            continue
         hits = scan_dll(d)
         if hits: R.err(f"{os.path.relpath(d, mod)} contains test code: {', '.join(hits)} (built with JBTests=true?)")
         else: R.ok(f"{os.path.relpath(d, mod)} clean")

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-// JB.Kit sample A: a complete adoption (tier full, per save, theme, custom page, first-start card). Living example for README/API.md and the kit.identity test.
+// JB Framework sample A: a complete dependent mod (per save, theme, sections, every setting kind, presets, compatibility entries,
+// a custom page, the welcome card). Living example for README.md and API.md.
 using System.Collections.Generic;
-using JBKit;
+using JBFramework;
 using UnityEngine;
 using Verse;
 
@@ -14,22 +15,22 @@ namespace KitSampleA
     {
         public KitSampleAMod(ModContentPack content) : base(content, new KitInfo
         {
-            Name = "JB.Kit Sample A",
+            Name = "JB Framework Sample A",
             ShortId = "KSA",
             KeyPrefix = "KSA",
             Version = "1.0.0",
             PerSave = true,
             LicenseLine = "MIT",
-            FirstStartPitch = "A sample of the JB.Kit window. Pick a start below; everything can be changed later in Mod settings.",
+            FirstStartPitch = "A sample of the JB Framework window. Pick a start below; everything can be changed later in Mod settings.",
             Theme = new KitTheme
             {
-                Accent = new Color(0.36f, 0.62f, 0.86f),          // steel blue
-                MarkTex = "UI/KSA/Kit/Mark",                       // not shipped: the window must simply draw no mark
-                Icons = { ["page:notes"] = "UI/KSA/Kit/Notes" },   // not shipped either: no icon, no pink square
+                Accent = new Color(0.36f, 0.62f, 0.86f),        // steel blue
+                MarkTex = "UI/KSA/Mark",                         // not shipped: the window must simply draw no mark
+                Icons = { ["page:notes"] = "UI/KSA/Notes" },     // not shipped either: no icon, no pink square
             },
         }) { }
 
-        internal override void Register(KitRegistry r)
+        protected override void Register(KitRegistry r)
         {
             r.Section("alpha", "Alpha", "The first sample area. On by default.");
             r.SectionFor("ludeon.rimworld.biotech", "Biotech", "beta", "Beta (Biotech)", "Exists only with Biotech. Off by default.", defaultOn: false);
@@ -44,10 +45,10 @@ namespace KitSampleA
             r.Percent("alpha", "Numbers", "ksa.chance", 0.25f, 0f, 1f, "A chance", "Stored as 0..1, shown as percent.");
             r.LogFloat("beta", "Scale", "ksa.factor", 1f, 0.1f, 100f, "A factor", "Log-scale slider from 0.1 to 100.", nerd: true);
             r.Enum("beta", "Scale", "ksa.mode", SampleMode.Normal, "A mode", "One of three named choices.");
-            r.Silver(KitSections.Core, "Economy", "ksa.price", 100, 0, 1000, "A price", "Whole silver; typed values stop at 10 × the silver stack limit.")
+            r.Silver(KitMod.Core, "Economy", "ksa.price", 100, 0, 1000, "A price", "Whole silver; typed values stop at 10 × the silver stack limit.")
                 .RequiresOn("alpha", "Needs the Alpha section.");
             r.Bool("delta", "Switches", "ksa.restartFlag", false, "A restart flag", "Shows the \"after restart\" tag.").NeedsRestart();
-            r.Float(KitSections.Core, "Interface", "ksa.uiPref", 1f, 0.5f, 2f, "A global preference", "Global: the same in every save, shows the \"all games\" tag.").AsGlobal();
+            r.Float(KitMod.Core, "Interface", "ksa.uiPref", 1f, 0.5f, 2f, "A global preference", "Global: the same in every save, shows the \"all games\" tag.").AsGlobal();
 
             r.Preset("calm", "Calm", "Low numbers, Beta off.", p => { p.Set("ksa.count", 2f); p.Set("ksa.speed", 0.5f); p.SetSection("beta", false); });
             r.Preset("loud", "Loud", "High numbers, Beta on.", p => { p.Set("ksa.count", 15f); p.Set("ksa.speed", 3f); p.SetSection("beta", true); });
@@ -59,9 +60,9 @@ namespace KitSampleA
             r.Page("notes", "Notes", order: 50, draw: NotesPage.Draw, section: "alpha");
         }
 
-        internal override void OnSettingsChanged(string key) => KitLog.Debug("Sample", "Changed: " + key);
+        protected override void OnSettingsChanged(string key) => Kit.Log.Debug("Sample", "Changed: " + key);
 
-        internal override IEnumerable<string> Diagnosis()
+        protected override IEnumerable<string> Diagnosis()
         {
             yield return "Sample A: ksa.count = " + Kit.GetInt("ksa.count") + ", alpha " + (Kit.On("alpha") ? "on" : "off");
         }
@@ -72,33 +73,19 @@ namespace KitSampleA
     {
         internal static void Draw(Rect r)
         {
-            var st = Kit.Settings as KitSampleASettings;
+            var st = Framework.Of<KitSampleAMod>()?.Settings as KitSampleASettings;
             if (st == null) return;
             Widgets.Label(new Rect(r.x, r.y, r.width, 26f), "A custom page. This note is saved in the settings file (ExposeExtra):");
             st.note = Widgets.TextArea(new Rect(r.x, r.y + 30f, r.width, Mathf.Min(200f, r.height - 34f)), st.note ?? "");
         }
     }
 
-    /// <summary>Settings class: keep the old class name when adopting the kit. Extra fields go through ExposeExtra.</summary>
+    /// <summary>Settings class: keep the old class name when adopting the framework. Extra fields go through ExposeExtra.</summary>
     public sealed class KitSampleASettings : KitSettingsBase
     {
         public string note = "";
-        internal override void ExposeExtra() => Scribe_Values.Look(ref note, "note", "");
+        protected override void ExposeExtra() => Scribe_Values.Look(ref note, "note", "");
     }
-
-    /// <summary>The per-save component (PerSave = true). The Game constructor is required by RimWorld.</summary>
-    public sealed class KitSampleAGame : KitGameBase
-    {
-        public KitSampleAGame(Game game) : base(game) { }
-    }
-
-#if JB_TESTS
-    /// <summary>The test runner (only in test builds).</summary>
-    public sealed class KitSampleATests : JBKit.Testing.KitTestRunnerBase
-    {
-        public KitSampleATests(Game game) : base(game) { }
-    }
-#endif
 
     /// <summary>Soft integration example: skipped silently (not a failure) because the named mod is not active.</summary>
     [HarmonyLib.HarmonyPatch]

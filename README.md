@@ -1,210 +1,96 @@
-# JB.Kit
+# JB Framework
 
-Shared foundation for JB's smaller RimWorld mods (1.7 only), lifted from Hearth & Harbor (`HearthHarbor/Source/Hearth.Core/Foundation`,
-`Hearth/UI`, `Hearth.Core/Testing`). Specification: `../../_Planung_Upgrade_2026-11-24/audit/SharedKit.md` (sections 1, 3, 4).
-The kit is **source**: every adopting mod compiles `src/**` into its own DLL. There is no kit DLL and no Workshop dependency.
-Licence MIT (each file carries `// SPDX-License-Identifier: MIT`); GPL code (RimWard) must never flow into the kit.
+A RimWorld mod that other mods list as a dependency: the settings window from Hearth & Harbor (sidebar, search, presets, switchable
+areas, values per save), error fences, logs, a diagnosis report, a Compatibility page, all shared by every mod that uses it.
+On its own it adds nothing to a game except one entry in Mod settings. MIT licence. Author Julius Berger.
 
-API reference for mod code and for the UI/Testing parts: **[API.md](API.md)**.
+**Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested** (compiled against `Krafs.Rimworld.Ref 1.6.4871`).
 
+Binding design: `../_Planung_Upgrade_2026-11-24/FRAMEWORK.md`. API reference and the contract for contributors: **[API.md](API.md)**.
+Public API snapshot: [api/PublicApi.txt](api/PublicApi.txt) (additive only).
+
+## Quick start for a mod (10 lines)
+
+```csharp
+using JBFramework;
+public sealed class MyMod : KitModBase
+{
+    public MyMod(ModContentPack c) : base(c, new KitInfo { Name = "My Mod", ShortId = "MM", Version = "1.0.0", PerSave = true }) { }
+    protected override void Register(KitRegistry r)
+    {
+        r.Section("fast", "Fast hauling", "Pawns haul faster.");
+        r.Float("fast", "Speed", "mm.speed", 1.5f, 1f, 5f, "Hauling speed", "Multiplier on hauling speed.");
+    }
+}
+public sealed class MyModSettings : KitSettingsBase { }      // the settings file (keep an existing class name)
 ```
-VERSION                  kit version (semver), baked into every DLL (KitInfo.KitVersion)
-build/JBMod.props        the only file a mod imports (refs, net10, output, kit sources by tier, test switch)
-build/JBMod.targets      obj/1.7/JBKitInfo.g.cs (version + git describe), JBReleaseGuard
-src/Core/                always compiled (tiers core, lite, full)
-src/UI/                  settings window, diagnosis, first-start card (tiers lite, full)   — K3
-src/Testing/             in-game harness (only with -p:JBTests=true)                       — K4
-src/Gate/                optional gate (-p:JBKitGate=true), not in kit 1.0                 — K6
-Languages/<Lang>/JBKit.xml   keyed template with {P} = mod prefix (tools/kit_lang.py copies it into a mod)
-sample/KitSampleA        complete adoption (tier full, per save, theme, custom page, first-start card); builds clean
-tools/                   freeze16.py, jbmod, release/lint/lang tools (K5, other files)
-```
+In a patch: `var k = Framework.Of<MyMod>(); if (!k.On("fast")) return; __result *= k.Get("mm.speed");`
 
-## Build a mod with the kit
-
+About.xml of the mod:
 ```xml
-<!-- <Mod>/Source/<Mod>.csproj  or  <Mod>/Source/<Sub>/<Mod>.csproj -->
+<modDependencies>
+  <li><packageId>brrainz.harmony</packageId><displayName>Harmony</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl></li>
+  <li><packageId>juliusberger.jbframework</packageId><displayName>JB Framework</displayName></li>
+</modDependencies>
+<loadAfter><li>brrainz.harmony</li><li>juliusberger.jbframework</li></loadAfter>
+```
+
+csproj of the mod (`<Mod>/Source/<Mod>.csproj` or `<Mod>/Source/<Sub>/<Mod>.csproj`):
+```xml
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <AssemblyName>LuciferiumOverhaul</AssemblyName>
-    <RootNamespace>LuciferiumOverhaul</RootNamespace>
-    <JBKit>full</JBKit>                       <!-- none | core | lite | full -->
-  </PropertyGroup>
-  <Import Project="$(MSBuildProjectDirectory)/../../_Shared/JBKit/build/JBMod.props" />   <!-- one more ../ for Source/<Sub>/ -->
+  <PropertyGroup><AssemblyName>MyMod</AssemblyName><RootNamespace>MyMod</RootNamespace></PropertyGroup>
+  <Import Project="$(MSBuildProjectDirectory)/../../JBFramework/build/JBMod.props" />
 </Project>
 ```
 ```
 export PATH="$HOME/.dotnet:$PATH"
-dotnet build -c Release                       # → <Mod>/1.7/Assemblies/<AssemblyName>.dll
-dotnet build -c Release -p:JBTests=true       # test build: JB_TESTS + src/Testing
-dotnet build -c Release -p:JBRelease=true     # release build: refuses JBTests=true
+dotnet build -c Release                       # RimWorld 1.7 → <Mod>/1.7/Assemblies (net10.0)
+dotnet build -c Release -p:RimVersion=1.6     # RimWorld 1.6 → <Mod>/1.6/Assemblies (net472, best effort)
+dotnet build -c Release -p:JBTests=true       # defines JB_TESTS (test suites; never in a release)
 ```
+The framework DLL is referenced with `Private=false` (never copied into the mod) from the framework folder next to `JBMod.props`,
+or from `-p:JBFrameworkDll=<path>`. A dependent mod's `LoadFolders.xml` lists `Common` plus the version folder (see `sample/`).
 
-| Tier | Sources | Defines | Meant for |
-|---|---|---|---|
-| `none` | none (mod's own code only) | – | QualityBuilder × Misc. Robots, Pawn Compatibility, Rimling |
-| `core` | src/Core (minimal fallback window) | `JBKIT;JBKIT_CORE` | samples, mods that only want log/guard/settings |
-| `lite` | src/Core + src/UI | `+JBKIT_UI` | HBG2, Mud & Plasteel (global settings) |
-| `full` | src/Core + src/UI | `+JBKIT_UI;JBKIT_FULL` | DNDM, RimWard, Set my Defaults, Luci (per save, presets, card) |
-
-All tiers also define `RW17;RW16PLUS`. `-p:JBTests=true` adds `JB_TESTS` (and compiles src/Core even with tier none, with a warning).
-
-Props details: net10.0, references Assembly-CSharp, UnityStubs, Waylith.UnityCompat (game folder) and Harmony 1.7 (Workshop 2009463077),
-no PDB, no deps file, `IntermediateOutputPath` `obj/1.7/`, compile excludes `obj/ obj17/ bin/ _frozen16/`. Override paths with
-`-p:JBGameDir=…`, `-p:JBHarmonyDir=…`, `-p:JBModRoot=…`. Do **not** put a `Directory.Build.props` into `22_RimWorld/`.
-
-## Adoption recipe (per mod)
-
-1. Mod class: derive from `JBKit.KitModBase`, pass a `KitInfo`, move registrations into `internal override void Register(KitRegistry r)`,
-   delete the old `DoSettingsWindowContents`/`SettingsCategory`. **Keep the Mod class name** (it names the settings file).
-2. Settings class: **keep its name and namespace**, derive from `JBKit.KitSettingsBase`, remove the migrated `Scribe_Values` fields,
-   give each registration `legacyScribe: "<old field name>"`; remaining own data goes into `internal override void ExposeExtra()`.
-3. Per save (`PerSave = true`) or caretaker checks: declare `public sealed class XGame : JBKit.KitGameBase { public XGame(Game g) : base(g) { } }`.
-4. Patches: keep `[HarmonyPatch]` classes; the kit applies them one by one (remove your own `PatchAll`). First line of every prefix/postfix:
-   `if (!Kit.On("section")) return;`. Tag soft-integration patch classes with `[KitCompat("packageId")]`.
-5. Wrap ticks/UI with `KitGuard.Run(section, "Site", …)`, log with `KitLog`.
-6. `tools/kit_lang.py <Mod>`, German strings, then tests (`kit.smoke`, `kit.settings`, `kit.migration` …, K4).
-
-## Decisions where the spec left a choice (simpler option taken)
-
-1. **Hooks are `internal` (override with `internal override`).** `KitModBase`, `KitSettingsBase`, `KitGameBase` must be `public abstract`
-   (a public class cannot derive from an internal one), and their hooks take internal kit types, so the hooks and the KitModBase constructor
-   are `internal`. Only the carrying assembly can derive from them, which is what we want.
-2. **The settings object is found by reflection.** KitModBase looks for the one non-abstract `KitSettingsBase` subclass in the mod
-   assembly and calls `GetSettings<T>()` on it. No boilerplate; a missing class logs a red error and the mod runs on defaults (nothing saved).
-3. **Order in the KitModBase constructor:** `Kit.Init` → log header → kit settings → `Register(r)` → load settings file (migration needs the
-   registrations) → `KitBoot.InstallUI/InstallTesting` (partial methods) → Harmony patch classes → declaration checks.
-4. **src/UI and src/Testing plug in through partial methods** (`KitBoot.InstallUI()`, `KitBoot.InstallTesting()`) and delegates in
-   `KitHooks`. Core never names a UI or Testing type, so tier core compiles without them.
-5. **Tier core gets a minimal window** (`KitFallbackWindow`: section checkboxes + one slider/checkbox per setting). lite and full compile the
-   same sources; behaviour differences (per save, presets, first-start card) come from `KitInfo` and the registrations, not from the tier.
-6. **Kit preferences are registered settings**, global, in section `core`, category `Interface`: `kit.windowScale` (1.0), `kit.verboseLog`,
-   `kit.showNerd`, and `kit.firstStartCard` (only when `KitInfo.FirstStartPitch` is set). The UI draws them on the General page.
-7. **Presets change only what they set.** "Matching" = applying the preset to a scratch copy changes nothing (custom matcher optional).
-   `KitPresets.WouldOverwrite` lists rows the player had changed, so the UI can ask before applying.
-8. **Change delivery is deferred.** Every effective change is queued (`Kit.MarkChanged`); `Kit.FlushChanges` delivers each key once to the
-   setting's `OnChanged` and the mod's `OnSettingsChanged(key)`. Flushed after every settings-window frame, on window close and in
-   `KitGameBase.GameComponentUpdate`. Keys: setting keys, `section:<id>`, and `profile:loaded` after a game starts/loads.
-9. **Unknown section id in `Kit.On`** = programming error: logged once in red, treated as off (tests catch it).
-10. **Harmony is touched only when the mod has patch classes**, so a kit mod without patches needs no Harmony. A `[KitCompat(id)]` class
-    whose mod is inactive is skipped silently (counted as "not needed"), a failing one marks the compat entry "failed: reason".
-11. **Settings file layout:** one `<kit>` node (`dataVersion`, `template` = KitProfile), then `ExposeExtra`. Save: `<kitProfile>` in the
-    mod's GameComponent node, then the game's `ExposeExtra`. Migration rewrites the settings file once at startup (`KitStartup`), after a
-    one-time copy to `Mod_<folder>_<ModClass>.xml.pre-kit`; legacy nodes are never written again.
-12. **Global settings live in the template store**, also during a game; "Save as template" / "Apply template" copy only non-global values and
-    the section switches (`KitProfile.CopySettingsFrom`).
-13. **`KitInfo` is partial**: the generated `obj/1.7/JBKitInfo.g.cs` adds `KitVersion`, `KitCommit` (`git describe --always --dirty`),
-    `KitTier`, `KitTests`. Without git the commit is `unknown`.
-14. **Translations:** the English template does not contain `{P}.Setting.kit.*` (those come from the settings dump, kit_lang.py's
-    `<P>_Settings.xml`); the German template carries their German text, to avoid duplicate English keys.
-
-## Facts checked against the 1.7 game (ilspycmd on Assembly-CSharp 1.7)
-
-The `_decomp17` folder named in the brief holds decompiled *mods* (Hospitality & co.), not vanilla; vanilla APIs were checked by decompiling
-the 1.7 `Assembly-CSharp.dll` with `ilspycmd` instead. Relevant facts:
-- Settings file: `Config/Mod_<Content.FolderName>_<Mod subclass name>.xml` (`LoadedModManager.GetSettingsFilename`), root `ModSettings`
-  loaded with `Scribe_Deep` (settings class resolved by its full name from the `Class` attribute).
-- `Mod` subclasses: `typeof(Mod).InstantiableDescendantsAndSelf()` → abstract kit base never instantiated.
-- `GameComponent`s: `typeof(GameComponent).AllSubclassesNonAbstract()`, created with `Activator.CreateInstance(type, game)` → the Game constructor is required.
-- `ScribeExtractor.CreateInstance` uses `BindingFlags.NonPublic`, so internal `IExposable`s (KitProfile, KitStore) load fine.
-- `Dialog_ModSettings(Mod)`, `PreClose` → `mod.WriteSettings()`; `ModsConfig.IsActive(string)` lower-cases; `ModLister.GetActiveModWithIdentifier(id, ignorePostfix)`.
-
-## Decisions in src/UI (K3) where the spec left a choice (simpler option taken)
-
-1. **Enum settings are a dropdown** (button + FloatMenu), not a slider; Bool a checkbox; numbers a slider with "Free" entry (H&H).
-   Free entry of a Percent setting is typed in percent (25 = 25 %).
-2. **Section pages** exist only for sections that are available here and have settings. Unavailable sections appear only on the
-   Overview, greyed, with "<requires text> (not installed)". A custom page with `section:` disappears when that section is unavailable
-   and is dimmed with a "Switch on" banner when it is off.
-3. **Custom pages draw into the whole main area** (below the header) and do their own scrolling; the header search still works there.
-4. **Icons:** an icon column is reserved in the page list as soon as any page has an icon (labels stay aligned); vanilla fallback icons
-   only for About (`TexButton.Info`) and Diagnosis (`TexButton.ToggleLog`). Missing textures draw nothing.
-5. **Presets:** chips on the Overview plus a non-clickable "Custom" chip that lights up when nothing matches. A preset applies at once;
-   a confirmation appears only when it would overwrite values the player changed (`KitPresets.WouldOverwrite`). Matching is recomputed
-   at most every 0.4 s (it applies every preset to a scratch copy).
-6. **"Reset section"** resets the section's values only (not its on/off switch, which lives on the Overview).
-7. **"Prepare for removal"** is offered on the section page and on the Diagnosis page, only while a game runs and only against the
-   running game's profile (not while editing the template); the result opens in the report dialog.
-8. **Diagnosis report** = `KitReport.Text()` + the last 60 log lines (first line of each); "Show report" opens `Dialog_KitReport`
-   (Copy button), "Copy report" copies directly. No personal paths (KitReport rule).
-9. **First-start card needs `PerSave`** (its "done" flag lives in the save profile). It opens 1.5 s after the map is shown, when no long
-   event runs and no `Page` window is open. "Don't show this card again" sets the global `kit.firstStartCard` off; "Use these choices for
-   all new colonies" calls `Kit.SaveAsTemplate()`. Escape does not close it (as H&H); Start or Open settings do; choices are live.
-10. **Nerd switch** in the header only when the mod has nerd settings; it writes the global `kit.showNerd`, which the General page also lists.
-11. **Window size** (`kit.windowScale`) applies the next time a window opens (the size is read in `InitialSize`); the General page says so.
-12. **Requires greying** (`KitSetting.RequiresOn`) is evaluated against the running profile (`Kit.Current`), also while the template is
-    edited. Known limitation, kept simple.
-13. **Glyphs:** only Latin-1 characters in code-side UI text (`»`, `·`), so every RimWorld font renders them.
-
-## Testing (K4): in-game harness, probe, `tools/jbmod`
-
-Files: `src/Testing/*` (harness, compiled only with `-p:JBTests=true`), `tools/probe/` (test-only probe mod), `tools/jbmod`,
-`tools/compat_sets.json`, `sample/KitSampleB` (test bed: tier core + tests, per save, a GameComponent with saved fields, one item def,
-suite `ksb.counter`, an old settings file in `Source/fixtures/` for `migrate-test`).
-
-```csharp
-#if JB_TESTS   // only in builds with -p:JBTests=true; tools/release.py refuses a DLL that contains the harness
-public sealed class LOTests : JBKit.Testing.KitTestRunnerBase { public LOTests(Game game) : base(game) { } }   // required once per mod
-sealed class RegrowSuite : JBKit.Testing.KitTestSuite
-{
-    public override string Name => "lo.regrow";                 // <shortid>.<what>
-    public override string Section => "healing";                // optional (JB_TEST=section:healing)
-    public override IEnumerable<int> Run(JBKit.Testing.TestContext t) { …; yield return 2500; t.Check(ok, "limb regrew"); }
-}
-#endif
-```
-Built-in suites: `kit.smoke`, `kit.settings`, `kit.defs`, `kit.saveload` (two phases), `kit.settingsdump`, and explicit-only `kit.migration`,
-`kit.addition`, `kit.window` (stub until the UI integration; compiled only in tier lite/full). Helpers: `TestContext` (Check/Note/Center/
-FreeCellNearCenter), `TestCells` (Anchor, TryFindFreeRect, Reachable), `SaveFingerprint`, `SaveLoadKit`, `KitTestLog` (red errors, ours/all).
+## This repository (it is the mod folder)
 
 ```
-tools/jbmod sample/KitSampleB test kit.smoke,kit.settings,kit.saveload     # or: all · lo.* · section:<id>
-tools/jbmod <Mod> plain 300 · saveload · removal · addition · migrate-test [--from FILE] · compat <set> · lang --refresh
+About/About.xml              generated from build/About.template.xml (name, packageId, author, version from build/Identity.props)
+LoadFolders.xml              v1.6: Common, 1.6 · v1.7: Common, 1.7
+Common/Languages/            the framework's texts, once (English + German, keys JBF.*)
+Common/Textures/UI/JBFramework/   the framework's icons (tools/art/build.py; every page falls back to vanilla or no icon)
+1.7/Assemblies/JBFramework.dll    built, tested in game
+1.6/Assemblies/JBFramework.dll    built against Krafs refs, compile-only
+Source/JBFramework/          the framework (Core/, UI/), JBFramework.csproj
+build/Identity.props         THE one place for name, packageId, assembly name, namespace, version, API level
+build/JBFramework.props      build of the framework itself (+ generated identity, AssemblyVersion 1.0.0.0 forever)
+build/JBMod.props            build of a dependent mod (imports JBCommon.props; stamps [assembly: KitRequires(level, version)])
+build/JBCommon.props         RimVersion 1.7 (net10.0, game DLLs) / 1.6 (net472, Krafs.Rimworld.Ref 1.6.4871), shared switches
+api/PublicApi.txt            public API snapshot (tools/public_api.py generate|check), api/JBFramework.xml (doc comments)
+sample/KitSampleA, KitSampleB    dependent sample mods (A: every feature; B: SaveData counter, migration, harness test bed)
+src/Testing/                 the old in-game harness, NOT compiled now (next step: its own assembly JBFramework.Testing)
+tools/                       jbmod (per-mod build/test/release), probe, release.py, freeze16.py, desc_lint.py, changelog.py,
+                             kit_lang.py, i18n_delta.py, public_api.py + PublicApi/, api_scan.sh + ApiScan/, art/
 ```
-Env of a run (set by jbmod): `JB_TEST` (suites), `JB_TEST_OUT` (result file), `JB_TEST_MOD` (pre-slot packageId), `JB_TEST_LOAD` (loaded
-save), `JB_TEST_DUMP` (settings dump), `JB_TEST_MIGRATION` (old settings file), probe: `JB_PROBE_ERR`, `JB_PROBE_OUT`, `JB_PROBE_DAYS`,
-`JB_PROBE_SAVE`. All outputs land in `/private/tmp/claude-501/hh_tests/jb_*_<label>.*` (result, player log, probe errors split into
-`.ours/.others/.noise`, the mod's own log and settings files in `jb_logs_<label>/`).
 
-Decisions in src/Testing and tools/jbmod (simpler option taken):
-1. **Runner gate:** a runner acts when `JB_TEST` is set and `JB_TEST_MOD` is empty or equals its packageId with or without the `.slotN`
-   suffix. jbmod always sets `JB_TEST_MOD`, so two kit mods with tests in one game never both quit it.
-2. **Suites are found in the mod's own assembly only**, sorted by name. An unknown suite name fails the run. `section:<id>` selects the
-   non-explicit suites of a section ("module filter").
-3. **Red errors of ours fail a run.** `KitTestLog` (installed in the mod constructor) records every red error; "ours" = text or stack names
-   the mod's namespace, assembly, `[Name]` log prefix or packageId. The runner fails on any of ours while the suites run, kit.smoke on any
-   since start, and jbmod on any of ours in the probe file (load **or** play; stricter than the spec's "during play"). Removal runs only
-   report them (that is the measurement).
-4. **The probe always runs** (every jbmod game run) and records each red error as `phase, type, first line, up to 6 stack frames`;
-   jbmod splits these into ours / others / known vanilla noise (`Root level exception in OnGUI`, `Prefs.get_UIScale`).
-5. **Test DLLs never touch the mod folder:** test and plain builds go to `/private/tmp/claude-501/hh_tests/jbbuild_<Mod>_<tests|plain>/`
-   (`-p:OutputPath`, tests with `IntermediateOutputPath=obj/1.7jbtest/`) and are copied into the slot copy only. `jbmod build` without
-   `--tests` is the only command that writes `<Mod>/1.7/Assemblies`. Two parallel runs of the same mod share that scratch build folder.
-6. **Slot copy = symlink** `_jb_slotN` in the game's Mods folder → `hh_tests/slotN/mod` (rsync of the mod without Source/Workshop/tools/
-   .git/obj/bin/csproj), packageId renamed to `<id>.slotN`; probe `_jb_probeN`, compat mods `_jb_cN_*`; removed by trap. Same as H&H.
-7. **Test runners are left out of test saves** (`SaveLoadKit.SaveWithFingerprint` removes them from `Game.components` while saving):
-   release builds have no runner, so removal/addition measurements must not see one. The probe's own component stays in its saves.
-8. **kit.saveload is two-phase** (as H&H): in a new game it changes up to three per-save values and one switch, saves `jb_<shortid>_saveload`
-   with fingerprint and value list, and puts the live game back; loaded from that save it compares both and plays 2500 ticks. A single
-   `test kit.saveload` run therefore checks only the save side; `jbmod saveload` does both. Transient fingerprint fields: Scribe `tmp*`
-   lists and `KitGameBase.IsNewGame`.
-9. **kit.settings restores everything** (template and save stores, switches with callbacks) and re-delivers every key once to the mod.
-   Presets are checked for idempotence (applying twice changes nothing), not against expected values.
-10. **kit.defs** requires a label on every def of the mod except sound/effecter/fleck/rule-pack-like types and motes/ethereal things, a
-    description on items, buildings, terrain, research, genes, abilities, hediffs, precepts; textures: graphic/uiIcon not the bad texture,
-    and every `*icon*Path`/`*tex*Path` string field resolves (file, `_north` variant or folder). Registry keys are checked against the
-    **English** language (`jbmod <Mod> lang --refresh` writes `<P>_Settings.xml`); the kit's own `<P>.Kit.*` keys are checked statically by
-    `kit_lang.py --check`, not in game.
-11. **Test language is English** (`GAME_LANG` to change it); the player's Prefs.xml is only copied.
-12. **migrate-test** copies the old file into the slot profile as `Mod__jb_slotN_<ModClass>.xml` (ModClass from the code or `--class`) and a
-    pristine copy for the suite; default source is the player's `Config/Mod_*_<ModClass>.xml`, read only.
-13. **compat** takes mods from the game's Mods folder or the Workshop folder, else from the Rimling cache (symlinked); `tools/compat_sets.json`
-    holds the sets (packageIds of third-party mods there are unverified).
+## Build the framework
 
-## Status (kit 1.0.0, K1 + K2 + K3)
+```
+dotnet build Source/JBFramework -c Release                     # 1.7/Assemblies/JBFramework.dll, About/About.xml, api/JBFramework.xml
+dotnet build Source/JBFramework -c Release -p:RimVersion=1.6   # 1.6/Assemblies/JBFramework.dll
+python3 -I tools/public_api.py check                           # public API unchanged or only added (with a raised API level)
+tools/api_scan.sh 1.6 [dependent DLLs...]                      # every Harmony target exists in RimWorld 1.6 (Krafs refs)
+uv run --with resvg-py --with pillow python3 -I tools/art/build.py   # icons
+```
+Both builds must stay at 0 warnings and 0 errors. CS1591 is on for the framework: every public member has an XML doc comment.
 
-Done: repo, VERSION, props/targets, src/Core, src/UI (K3), sample A on tier full (builds clean in tiers core/lite/full and with tests,
-0 warnings; only the three bases are public in the DLL).
-Not yet: src/Testing (K4, other agent), tools jbmod/release (K5), KitSampleB + `kit.identity` (K7), KIT_ORIGIN.md, ADOPTION.md.
-**Nothing of the kit has run inside RimWorld yet**: load, settings file round trip, migration, per-save behaviour and every pixel of the
-window, diagnosis and first-start card are unverified until K4 (`kit.window` suite, screenshots).
+## Rules (short; FRAMEWORK.md section 2 is binding)
+
+1. Multi-tenant: no per-mod static state. Each mod has one `KitMod`; the framework keeps the list. Nothing depends on mod load order.
+2. Binary compatibility forever: `AssemblyVersion` 1.0.0.0, real version in file/informational version and `Framework.ApiLevel`. The public
+   API only grows; a new member needs a higher `JBFrameworkApiLevel`. Never add a parameter to a public method: add an overload.
+3. A broken mod never breaks another mod or the game: every hook, tick, page, patch application and report line is fenced per mod.
+4. Saves hold plain values: one `FrameworkGame` component stores every mod's profile by packageId; mods with own per-save data use
+   `KitRegistry.SaveData`, which is skipped (types untouched) when the mod is absent.
+5. Settings files stay per mod (the mod's own `KitSettingsBase` subclass); legacy fields migrate once, the old file is kept as `*.pre-kit`.
+6. Test code never ships: suites only under `JB_TESTS`; the harness becomes its own unpublished assembly.
+7. Texts exist once in the framework (English + German); mods translate only their own labels.

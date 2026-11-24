@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CHANGELOG.md -> Steam change note and the description's Changelog block (JB.Kit release tooling).
+"""CHANGELOG.md -> Steam change note and the description's Changelog block (JB Framework release tooling).
 
     python3 -I changelog.py <ModDir> note              top entry as plain text (Steam change note)
     python3 -I changelog.py <ModDir> block [--n 5]     "[h2]Changelog[/h2]" + [list] of the newest N entries (BBCode)

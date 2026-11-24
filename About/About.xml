@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from build/About.template.xml by the framework build (name, packageId, author and version come from build/Identity.props). Edit the template, not this file. -->
+<ModMetaData>
+  <name>JB Framework</name>
+  <author>Julius Berger</author>
+  <packageId>juliusberger.jbframework</packageId>
+  <modVersion>1.0.0</modVersion>
+  <supportedVersions>
+    <li>1.6</li>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+      <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+  <description>The shared foundation of the RimWorld mods by Julius Berger. It adds nothing to your game by itself: no items, no buildings, no events. Mods that need it list it as a dependency, and Steam installs it for you.
+
+What it gives those mods:
+- the settings window from Hearth and Harbor: sidebar, search, presets, areas you can switch off as a whole, values per save
+- error fences: when one feature of one mod keeps failing, only that feature pauses, the game keeps running and tells you
+- a diagnosis report you can copy into a bug report (no personal paths)
+- a Compatibility page that says which DLCs and mods were detected
+
+Mod settings, JB Framework: every mod that uses it, their versions, which areas are on, patches that failed, one combined report, and the window size, detailed log and welcome cards for all of them.
+
+Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested.
+
+For modders: MIT licence. A stable public API (additive only), XML docs and a sample mod.</description>
+</ModMetaData>

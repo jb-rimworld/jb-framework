@@ -68,7 +68,7 @@ if [ -d "$MOD/Source" ]; then   # namespaces actually declared in the code
   NSS="$NSS $(grep -rhoE '^[[:space:]]*namespace [A-Za-z0-9_.]+' "$MOD/Source" --include='*.cs' 2>/dev/null | awk '{print $2}' | sort -u | tr '\n' ' ')"
 fi
 mod_class() {   # the Verse.Mod subclass: names the settings file Mod_<folder>_<Class>.xml
-  grep -rhoE 'class [A-Za-z0-9_]+ *: *(JBKit\.)?(KitModBase|Mod)\b' "$MOD/Source" --include='*.cs' 2>/dev/null | head -1 | awk '{print $2}'
+  grep -rhoE 'class [A-Za-z0-9_]+ *: *(JBKit\.|JBFramework\.)?(KitModBase|Mod)\b' "$MOD/Source" --include='*.cs' 2>/dev/null | head -1 | awk '{print $2}'
 }
 
 # ---------------------------------------------------------------------------------------------------------------- build
@@ -204,7 +204,9 @@ run_slot() {
   if [ -n "$PROBE_DAYS" ]; then export JB_PROBE_DAYS=$PROBE_DAYS; else unset JB_PROBE_DAYS; fi
   if [ -n "$PROBE_SAVE" ]; then export JB_PROBE_SAVE=$PROBE_SAVE; else unset JB_PROBE_SAVE; fi
   local started; started=$(date +%s)
-  ( cd "$G/RimWorld.app/Contents/MacOS" && HOME="$FH" JB_TEST="$SUITES" JB_TEST_OUT="$OUT" JB_TEST_MOD="$PIDL" timeout "${TIMEOUT_S:-${TIMEOUT:-600}}" ./RimWorld $QT > "$LOG" 2>&1 )
+  # test instances run without a window (engine offscreen backend, virtual 1920x1080 screen) and muted; see _Tools/rwquiet/README.md
+  sed -i '' -e 's#<volumeMaster>[^<]*</volumeMaster>#<volumeMaster>0</volumeMaster>#' "$FH/Library/Application Support/RimWorld/Config/Prefs.xml" 2>/dev/null
+  ( cd "$G/RimWorld.app/Contents/MacOS" && HOME="$FH" JB_TEST="$SUITES" JB_TEST_OUT="$OUT" JB_TEST_MOD="$PIDL" timeout "${TIMEOUT_S:-${TIMEOUT:-600}}" env WAYLITH_BACKEND=offscreen ./RimWorld $QT > "$LOG" 2>&1 )
   local code=$?
   if [ -n "$SAVES_OUT" ]; then mkdir -p "$SAVES_OUT"; cp "$FH/Library/Application Support/RimWorld/Saves/"* "$SAVES_OUT/" 2>/dev/null; rm -f "$SAVES_OUT/autostart.rws"; fi
   rm -rf "$S/jb_logs_$LABEL"; mkdir -p "$S/jb_logs_$LABEL"; cp "$C"/*.log "$C"/Mod_*.xml* "$S/jb_logs_$LABEL/" 2>/dev/null

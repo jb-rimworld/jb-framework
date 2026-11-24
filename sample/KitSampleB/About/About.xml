@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-  <name>JB.Kit Sample B</name>
-  <author>juliusberger00</author>
+  <name>JB Framework Sample B</name>
+  <author>Julius Berger</author>
   <packageId>juliusberger00.jbkitsampleb</packageId>
   <modVersion>1.0.0</modVersion>
   <supportedVersions>
+    <li>1.6</li>
     <li>1.7</li>
   </supportedVersions>
-  <description>Test and example mod for JB.Kit (kit tier core, with the in-game test harness). Not for players. Per-save values, a game component with its own saved fields, one item def and one own test suite. Proves the harness: tools/jbmod sample/KitSampleB test kit.smoke,kit.settings,kit.saveload.</description>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+    <li>
+      <packageId>juliusberger.jbframework</packageId>
+      <displayName>JB Framework</displayName>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+    <li>juliusberger.jbframework</li>
+  </loadAfter>
+  <description>Test and example mod for JB Framework (a dependent mod, test bed of the in-game harness). Not for players. Per-save values, a counter saved through the framework (KitRegistry.SaveData), one item def, legacy settings migration and one own test suite. Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested.</description>
 </ModMetaData>

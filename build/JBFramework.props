@@ -1,0 +1,85 @@
+<Project>
+  <!--
+    Build of JB Framework itself (Source/JBFramework/JBFramework.csproj). Consumers import build/JBMod.props instead.
+    SPDX-License-Identifier: MIT
+
+      dotnet build Source/JBFramework -c Release                     → 1.7/Assemblies/JBFramework.dll (+ api/JBFramework.xml docs)
+      dotnet build Source/JBFramework -c Release -p:RimVersion=1.6   → 1.6/Assemblies/JBFramework.dll (compile-only, best effort)
+
+    Generated before compile (obj/<RimVersion>/): FrameworkIdentity.g.cs (name, packageId, version, API level, git state as
+    internal constants) and AssemblyInfo.g.cs (AssemblyVersion 1.0.0.0 forever, file/informational version = the real version).
+    About/About.xml is rewritten from build/About.template.xml when name, packageId, author or version differ.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)Identity.props" />
+  <Import Project="$(MSBuildThisFileDirectory)JBCommon.props" />
+  <PropertyGroup>
+    <JBFrameworkRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBFrameworkRoot>
+    <AssemblyName>$(JBFrameworkAssemblyName)</AssemblyName>
+    <RootNamespace>$(JBFrameworkNamespace)</RootNamespace>
+    <OutputPath>$(JBFrameworkRoot)$(RimVersion)/Assemblies/</OutputPath>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <CopyDocumentationFileToOutputDirectory>false</CopyDocumentationFileToOutputDirectory>
+    <DocumentationFile>$(MSBuildProjectDirectory)/obj/$(RimVersion)/$(JBFrameworkAssemblyName).xml</DocumentationFile>
+    <!-- CS1591 (missing XML doc on a public member) stays ON for the framework: every public member is documented. -->
+    <NoWarn>$(NoWarn);CS0649;CS0169;CS0414;CS8632;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <Target Name="JBFrameworkIdentity" BeforeTargets="CoreCompile;BeforeBuild">
+    <Exec Command="git -C &quot;$(JBFrameworkRoot)&quot; describe --always --dirty --abbrev=7" ConsoleToMSBuild="true" StandardOutputImportance="low"
+          ContinueOnError="true" IgnoreExitCode="true" EchoOff="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_JBCommitRaw" />
+      <Output TaskParameter="ExitCode" PropertyName="_JBGitExit" />
+    </Exec>
+    <PropertyGroup>
+      <_JBCommit>$(_JBCommitRaw.Trim())</_JBCommit>
+      <_JBCommit Condition="'$(_JBGitExit)' != '0' or '$(_JBCommit)' == '' or $(_JBCommit.Contains(' '))">unknown</_JBCommit>
+      <_JBGenDir>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)</_JBGenDir>
+      <_JBIdFile>$(_JBGenDir)FrameworkIdentity.g.cs</_JBIdFile>
+      <_JBAsmFile>$(_JBGenDir)AssemblyInfo.g.cs</_JBAsmFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <_JBIdLine Include="// &lt;auto-generated&gt; by build/JBFramework.props from build/Identity.props. Do not edit. SPDX-License-Identifier: MIT" />
+      <_JBIdLine Include="namespace $(JBFrameworkNamespace)" />
+      <_JBIdLine Include="{" />
+      <_JBIdLine Include="    public static partial class Framework" />
+      <_JBIdLine Include="    {" />
+      <_JBIdLine Include="        internal const string IdName = &quot;$(JBFrameworkName)&quot;%3B" />
+      <_JBIdLine Include="        internal const string IdPackageId = &quot;$(JBFrameworkPackageId)&quot;%3B" />
+      <_JBIdLine Include="        internal const string IdVersion = &quot;$(JBFrameworkVersion)&quot;%3B" />
+      <_JBIdLine Include="        internal const int IdApiLevel = $(JBFrameworkApiLevel)%3B" />
+      <_JBIdLine Include="        internal const string IdCommit = &quot;$(_JBCommit)&quot;%3B" />
+      <_JBIdLine Include="        internal const string IdRimVersion = &quot;$(RimVersion)&quot;%3B" />
+      <_JBIdLine Include="    }" />
+      <_JBIdLine Include="}" />
+      <_JBAsmLine Include="// &lt;auto-generated&gt; by build/JBFramework.props. Do not edit. SPDX-License-Identifier: MIT" />
+      <_JBAsmLine Include="[assembly: System.Reflection.AssemblyTitle(&quot;$(JBFrameworkName)&quot;)]" />
+      <_JBAsmLine Include="[assembly: System.Reflection.AssemblyProduct(&quot;$(JBFrameworkName)&quot;)]" />
+      <_JBAsmLine Include="[assembly: System.Reflection.AssemblyCompany(&quot;$(JBFrameworkAuthor)&quot;)]" />
+      <_JBAsmLine Include="[assembly: System.Reflection.AssemblyVersion(&quot;1.0.0.0&quot;)]" />
+      <_JBAsmLine Include="[assembly: System.Reflection.AssemblyFileVersion(&quot;$(JBFrameworkVersion).0&quot;)]" />
+      <_JBAsmLine Include="[assembly: System.Reflection.AssemblyInformationalVersion(&quot;$(JBFrameworkVersion)+api$(JBFrameworkApiLevel).$(_JBCommit)&quot;)]" />
+      <_JBAsmLine Include="[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(&quot;$(JBFrameworkAssemblyName).Testing&quot;)]" />
+    </ItemGroup>
+    <MakeDir Directories="$(_JBGenDir)" />
+    <WriteLinesToFile File="$(_JBIdFile)" Lines="@(_JBIdLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <WriteLinesToFile File="$(_JBAsmFile)" Lines="@(_JBAsmLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Remove="$(_JBIdFile);$(_JBAsmFile)" />
+      <Compile Include="$(_JBIdFile);$(_JBAsmFile)" />
+      <FileWrites Include="$(_JBIdFile);$(_JBAsmFile)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- About/About.xml from the template: name, packageId, author, version stay in Identity.props only. -->
+  <Target Name="JBFrameworkAbout" BeforeTargets="CoreCompile;BeforeBuild" Condition="'$(RimVersion)' == '1.7'">
+    <PropertyGroup>
+      <_JBAboutText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)About.template.xml').Replace('@NAME@', '$(JBFrameworkName)').Replace('@PACKAGEID@', '$(JBFrameworkPackageId)').Replace('@AUTHOR@', '$(JBFrameworkAuthor)').Replace('@VERSION@', '$(JBFrameworkVersion)'))</_JBAboutText>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(JBFrameworkRoot)About/About.xml" Lines="$(_JBAboutText)" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="utf-8" />
+  </Target>
+
+  <!-- Docs for other modders: the 1.7 doc XML is copied to api/ (the DLL folders stay clean). -->
+  <Target Name="JBFrameworkDocs" AfterTargets="Build" Condition="'$(RimVersion)' == '1.7'">
+    <Copy SourceFiles="$(DocumentationFile)" DestinationFolder="$(JBFrameworkRoot)api/" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

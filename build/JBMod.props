@@ -1,7 +1,6 @@
 <Project>
   <!--
-    JB.Kit build for RimWorld 1.7 (net10.0). The only file a mod imports. Replaces gen17.py and the per-mod *.rw17.csproj.
-    SPDX-License-Identifier: MIT
+    Build of a mod that USES JB Framework (a "dependent mod"). The only file such a mod imports. SPDX-License-Identifier: MIT
 
     Minimal csproj (at <Mod>/Source/<Mod>.csproj or <Mod>/Source/<Sub>/<Mod>.csproj):
 
@@ -9,24 +8,30 @@
         <PropertyGroup>
           <AssemblyName>LuciferiumOverhaul</AssemblyName>
           <RootNamespace>LuciferiumOverhaul</RootNamespace>
-          <JBKit>full</JBKit>            (none | core | lite | full)
         </PropertyGroup>
-        <Import Project="$(MSBuildProjectDirectory)/../../_Shared/JBKit/build/JBMod.props" />   (adjust ../ depth)
+        <Import Project="$(MSBuildProjectDirectory)/../../JBFramework/build/JBMod.props" />   (adjust ../ to reach the framework)
       </Project>
 
-    Switches:
-      -p:JBTests=true      defines JB_TESTS and compiles src/Testing (never for a release)
-      -p:JBRelease=true    release build: fails when JBTests=true (target JBReleaseGuard)
-      -p:JBKitGate=true    compiles src/Gate (optional gate, not part of kit 1.0)
-      -p:JBModRoot=...     mod folder; detected automatically (see below)
-      -p:JBKitVersion=X    stamp another kit version into KitInfo.KitVersion (tests only: sample B poses as an older kit)
+    Builds:
+      dotnet build -c Release                      RimWorld 1.7: net10.0 into <Mod>/1.7/Assemblies (tested in game)
+      dotnet build -c Release -p:RimVersion=1.6    RimWorld 1.6: net472 against Krafs.Rimworld.Ref 1.6.4871 into <Mod>/1.6/Assemblies
+                                                   (compile-only, best effort; needs the framework's 1.6 DLL built first)
+      -p:JBTests=true          defines JB_TESTS (test suites; never in a release)
+      -p:JBRelease=true        fails when JBTests=true
+      -p:JBModRoot=DIR         mod folder (default: the parent of the "Source" folder above the csproj)
+      -p:JBFrameworkDll=FILE   reference this JBFramework.dll instead of the one next to this file (<framework>/<RimVersion>/Assemblies)
+      -p:JBMinApiLevel=N       API level stamped into the mod (default: the level of the framework it is built against)
+
+    The framework DLL is referenced with Private=false: it is never copied into the mod (the framework mod provides it at runtime).
+    Before compile, obj/<RimVersion>/JBModInfo.g.cs stamps [assembly: JBFramework.KitRequires(level, "version")] so an older installed
+    framework can tell the player in plain words to update, without running the mod's code.
   -->
+  <Import Project="$(MSBuildThisFileDirectory)Identity.props" />
+  <Import Project="$(MSBuildThisFileDirectory)JBCommon.props" />
   <PropertyGroup>
-    <JBKitRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBKitRoot>
-    <JBKit Condition="'$(JBKit)' == ''">none</JBKit>
-    <JBTests Condition="'$(JBTests)' == ''">false</JBTests>
-    <JBRelease Condition="'$(JBRelease)' == ''">false</JBRelease>
-    <JBKitGate Condition="'$(JBKitGate)' == ''">false</JBKitGate>
+    <JBFrameworkRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)..'))</JBFrameworkRoot>
+    <JBFrameworkDll Condition="'$(JBFrameworkDll)' == ''">$(JBFrameworkRoot)$(RimVersion)/Assemblies/$(JBFrameworkAssemblyName).dll</JBFrameworkDll>
+    <JBMinApiLevel Condition="'$(JBMinApiLevel)' == ''">$(JBFrameworkApiLevel)</JBMinApiLevel>
 
     <!-- Mod root: the parent of the "Source" folder. Works for Source/x.csproj and Source/<Sub>/x.csproj. -->
     <_JBProjDirName>$([System.IO.Path]::GetFileName($(MSBuildProjectDirectory.TrimEnd('/').TrimEnd('\'))))</_JBProjDirName>
@@ -34,70 +39,30 @@
     <JBModRoot Condition="'$(JBModRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)/../..'))</JBModRoot>
     <JBModRoot>$([MSBuild]::EnsureTrailingSlash('$(JBModRoot)'))</JBModRoot>
 
-    <!-- Game references (1.7, Waylith/CoreCLR) -->
-    <JBGameDir Condition="'$(JBGameDir)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorld.app/Contents/MacOS</JBGameDir>
-    <JBHarmonyDir Condition="'$(JBHarmonyDir)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/workshop/content/294100/2009463077/1.7/Assemblies</JBHarmonyDir>
-
-    <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Nullable>disable</Nullable>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <OutputType>Library</OutputType>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateDependencyFile>false</GenerateDependencyFile>
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <IntermediateOutputPath>obj/1.7/</IntermediateOutputPath>
-    <OutputPath>$(JBModRoot)1.7/Assemblies/</OutputPath>
+    <OutputPath>$(JBModRoot)$(RimVersion)/Assemblies/</OutputPath>
     <NoWarn>$(NoWarn);CS0649;CS0169;CS0414;CS1591;CS8632;CA1416</NoWarn>
-    <DefineConstants>$(DefineConstants);RW17;RW16PLUS</DefineConstants>
-    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;obj17/**;bin/**;_frozen16/**</DefaultItemExcludes>
-  </PropertyGroup>
-
-  <!-- Tier defines: JBKIT (any kit), JBKIT_CORE, JBKIT_UI (lite and full), JBKIT_FULL, JBKIT_GATE -->
-  <PropertyGroup Condition="'$(JBKit)' == 'core' or '$(JBKit)' == 'lite' or '$(JBKit)' == 'full' or '$(JBTests)' == 'true'">
-    <_JBCore>true</_JBCore>
-    <DefineConstants>$(DefineConstants);JBKIT;JBKIT_CORE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(JBKit)' == 'lite' or '$(JBKit)' == 'full'">
-    <_JBUI>true</_JBUI>
-    <DefineConstants>$(DefineConstants);JBKIT_UI</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(JBKit)' == 'full'">
-    <DefineConstants>$(DefineConstants);JBKIT_FULL</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(JBKitGate)' == 'true' and '$(_JBCore)' == 'true'">
-    <DefineConstants>$(DefineConstants);JBKIT_GATE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(JBTests)' == 'true'">
-    <DefineConstants>$(DefineConstants);JB_TESTS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="obj/**;obj17/**;bin/**;_frozen16/**" />
-    <Reference Include="Assembly-CSharp"><HintPath>$(JBGameDir)/Assembly-CSharp.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="UnityStubs"><HintPath>$(JBGameDir)/UnityStubs.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="Waylith.UnityCompat"><HintPath>$(JBGameDir)/Waylith.UnityCompat.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="0Harmony"><HintPath>$(JBHarmonyDir)/0Harmony.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="$(JBFrameworkAssemblyName)"><HintPath>$(JBFrameworkDll)</HintPath><Private>False</Private></Reference>
   </ItemGroup>
 
-  <!-- Kit sources, linked into the mod's own assembly (all kit types are internal, see README) -->
-  <ItemGroup Condition="'$(_JBCore)' == 'true'">
-    <Compile Include="$(JBKitRoot)src/Core/**/*.cs" Link="JBKit/Core/%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(_JBUI)' == 'true'">
-    <Compile Include="$(JBKitRoot)src/UI/**/*.cs" Link="JBKit/UI/%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(JBKitGate)' == 'true' and '$(_JBCore)' == 'true'">
-    <Compile Include="$(JBKitRoot)src/Gate/**/*.cs" Link="JBKit/Gate/%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(JBTests)' == 'true'">
-    <Compile Include="$(JBKitRoot)src/Testing/**/*.cs" Link="JBKit/Testing/%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <Import Project="$(MSBuildThisFileDirectory)JBMod.targets" />
+  <Target Name="JBModInfo" BeforeTargets="CoreCompile;BeforeBuild">
+    <Error Condition="!Exists('$(JBFrameworkDll)')"
+           Text="$(JBFrameworkName) for RimWorld $(RimVersion) not found at $(JBFrameworkDll). Build it first: dotnet build $(JBFrameworkRoot)Source/JBFramework -c Release -p:RimVersion=$(RimVersion) (or pass -p:JBFrameworkDll=...)." />
+    <PropertyGroup>
+      <_JBModInfoFile>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)JBModInfo.g.cs</_JBModInfoFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <_JBModInfoLine Include="// &lt;auto-generated&gt; by $(JBFrameworkName) build/JBMod.props. Do not edit. SPDX-License-Identifier: MIT" />
+      <_JBModInfoLine Include="[assembly: $(JBFrameworkNamespace).KitRequires($(JBMinApiLevel), &quot;$(JBFrameworkVersion)&quot;)]" />
+    </ItemGroup>
+    <MakeDir Directories="$(MSBuildProjectDirectory)/$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(_JBModInfoFile)" Lines="@(_JBModInfoLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Remove="$(_JBModInfoFile)" />
+      <Compile Include="$(_JBModInfoFile)" />
+      <FileWrites Include="$(_JBModInfoFile)" />
+    </ItemGroup>
+  </Target>
 </Project>

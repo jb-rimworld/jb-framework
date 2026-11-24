@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- German texts of JB.Kit Sample A (English comes from the code fallbacks / the settings dump). -->
+<!-- German texts of JB Framework Sample A (English comes from the code fallbacks / the settings dump). -->
 <LanguageData>
   <KSA.Section.alpha>Alpha</KSA.Section.alpha>
   <KSA.Section.alpha.Desc>Der erste Beispielbereich. Standardmäßig an.</KSA.Section.alpha.Desc>
@@ -10,6 +10,7 @@
   <KSA.SettingCat.Numbers>Zahlen</KSA.SettingCat.Numbers>
   <KSA.SettingCat.Scale>Maßstab</KSA.SettingCat.Scale>
   <KSA.SettingCat.Economy>Wirtschaft</KSA.SettingCat.Economy>
+  <KSA.SettingCat.Interface>Oberfläche</KSA.SettingCat.Interface>
   <KSA.Setting.ksa.flag>Ein Schalter</KSA.Setting.ksa.flag>
   <KSA.Setting.ksa.flag.Desc>Ein einfacher An/Aus-Wert.</KSA.Setting.ksa.flag.Desc>
   <KSA.Setting.ksa.count>Eine Anzahl</KSA.Setting.ksa.count>

@@ -1,9 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- JB.Kit sample, tier full. Build: dotnet build (from this folder). Output: ../1.7/Assemblies/KitSampleA.dll -->
+  <!-- JB Framework sample A (a dependent mod). Build: dotnet build -c Release [-p:RimVersion=1.6]. Output: ../1.7/Assemblies/KitSampleA.dll -->
   <PropertyGroup>
     <AssemblyName>KitSampleA</AssemblyName>
     <RootNamespace>KitSampleA</RootNamespace>
-    <JBKit>full</JBKit>
   </PropertyGroup>
   <Import Project="$(MSBuildProjectDirectory)/../../../build/JBMod.props" />
 </Project>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JB Framework texts (German). One file for every mod built on the framework. Keys like the English file. -->
+<LanguageData>
+  <JBF.On>An</JBF.On>
+  <JBF.Off>Aus</JBF.Off>
+  <JBF.Silver>{0} Silber</JBF.Silver>
+  <JBF.Guard.PausedTitle>{0}: Bereich pausiert</JBF.Guard.PausedTitle>
+  <JBF.Guard.PausedText>Ein Teil von {0} ist wiederholt auf Fehler gestoßen und hat sich selbst pausiert, damit dein Spiel weiterläuft.\n\n{1}\n\nDu kannst ihn unter Mod-Einstellungen → {0} fortsetzen (Knopf „Fortsetzen“ auf der Übersicht). Einzelheiten stehen in {2}.</JBF.Guard.PausedText>
+  <JBF.Section.NotAvailable>In diesem Spiel nicht verfügbar.</JBF.Section.NotAvailable>
+  <JBF.Section.SwitchedOff>Ausgeschaltet.</JBF.Section.SwitchedOff>
+  <JBF.Row.RequiresSection>Braucht den eingeschalteten Bereich „{0}“.</JBF.Row.RequiresSection>
+  <JBF.Row.RequiresMod>Braucht {0}.</JBF.Row.RequiresMod>
+  <JBF.Compat.Active>aktiv</JBF.Compat.Active>
+  <JBF.Compat.NotInstalled>nicht installiert</JBF.Compat.NotInstalled>
+  <JBF.Compat.Failed>fehlgeschlagen: {0}</JBF.Compat.Failed>
+  <JBF.Compat.Unhealthy>installiert, aber die Anbindung meldet ein Problem</JBF.Compat.Unhealthy>
+  <JBF.Compat.IncompatiblePresent>installiert: bekannter Konflikt</JBF.Compat.IncompatiblePresent>
+  <JBF.Compat.IncompatibleAbsent>nicht installiert (gut so)</JBF.Compat.IncompatibleAbsent>
+  <!-- kit-eigene Einstellungen -->
+  <!-- src/UI: settings window, rows, diagnosis, first-start card -->
+  <JBF.Diag.Lines>{0} Zeilen</JBF.Diag.Lines>
+  <JBF.Diag.CopyShort>In die Zwischenablage kopieren</JBF.Diag.CopyShort>
+  <JBF.Diag.Copied>In die Zwischenablage kopiert.</JBF.Diag.Copied>
+  <JBF.Diag.ReportTitle>{0}: Diagnose</JBF.Diag.ReportTitle>
+  <JBF.Diag.RemovalTitle>Entfernen vorbereiten</JBF.Diag.RemovalTitle>
+  <JBF.Diag.NeedsSave>Öffne zuerst ein Spiel. Das Entfernen lässt sich nur in einem laufenden Spiel vorbereiten.</JBF.Diag.NeedsSave>
+  <JBF.Diag.NothingToDo>Es gab nichts aufzuräumen.</JBF.Diag.NothingToDo>
+  <JBF.Diag.RemovalDone>Fertig. Der Bereich ist ausgeschaltet. Speichere das Spiel, bevor du die Mod entfernst.</JBF.Diag.RemovalDone>
+  <JBF.Diag.Summary>{0} Einstellungen registriert · {1} Warnungen · {2} Fehler im Protokoll · Protokolldatei {3}</JBF.Diag.Summary>
+  <JBF.Diag.Show>Bericht anzeigen</JBF.Diag.Show>
+  <JBF.Diag.Copy>Bericht in die Zwischenablage kopieren</JBF.Diag.Copy>
+  <JBF.Diag.CopyTip>Für Fehlermeldungen: Versionen, erkannte Mods, was an und aus ist, und die letzten Protokollzeilen. Keine persönlichen Pfade.</JBF.Diag.CopyTip>
+  <JBF.Diag.Folders>Geladene Ordner</JBF.Diag.Folders>
+  <JBF.Diag.Sections>Bereiche</JBF.Diag.Sections>
+  <JBF.Diag.Resume>Fortsetzen</JBF.Diag.Resume>
+  <JBF.Diag.PrepareRemovalShort>Entfernen vorbereiten</JBF.Diag.PrepareRemovalShort>
+  <JBF.Section.PrepareRemovalConfirm>Dieses Spiel auf ein Leben ohne {0} vorbereiten? Der Bereich wird ausgeschaltet, und was er in den Spielstand gelegt hat, wird aufgeräumt. Lege vorher eine Sicherung an.</JBF.Section.PrepareRemovalConfirm>
+  <JBF.Section.PrepareRemovalTip>Schaltet den Bereich aus und entfernt, was er in diesen Spielstand gelegt hat, damit der Spielstand auch ohne ihn lädt.</JBF.Section.PrepareRemovalTip>
+  <JBF.Diag.Caretaker>Hausmeister (bisherige Reparaturen: {0})</JBF.Diag.Caretaker>
+  <JBF.Diag.Fixes>Läufe {0} · zuletzt {1} · gesamt {2}</JBF.Diag.Fixes>
+  <JBF.Diag.Patches>Patches ({0} angewendet, {1} übersprungen)</JBF.Diag.Patches>
+  <JBF.Diag.PatchesOk>Alle Patch-Klassen angewendet.</JBF.Diag.PatchesOk>
+  <JBF.Diag.NotNeeded>{0} Anbindungs-Patches nicht nötig (ihre Mod ist nicht aktiv).</JBF.Diag.NotNeeded>
+  <JBF.Diag.Log>Letzte Protokollzeilen</JBF.Diag.Log>
+  <JBF.Card.TitleJoined>{0} ist dieser Kolonie beigetreten</JBF.Card.TitleJoined>
+  <JBF.Card.Title>Willkommen bei {0}</JBF.Card.Title>
+  <JBF.Card.Start>Los geht's</JBF.Card.Start>
+  <JBF.Card.OpenSettings>Einstellungen öffnen</JBF.Card.OpenSettings>
+  <JBF.Card.UseForAll>Diese Auswahl für alle neuen Kolonien verwenden</JBF.Card.UseForAll>
+  <JBF.Card.UseForAllTip>Speichert sie zusätzlich als Vorlage für neue Spiele (Mod-Einstellungen, Vorlage).</JBF.Card.UseForAllTip>
+  <JBF.Card.NeverAgain>Willkommenskarten nicht mehr zeigen</JBF.Card.NeverAgain>
+  <JBF.Card.NeverAgainTip>Für jede JB-Mod: Neue Kolonien starten dann ohne Nachfrage mit den Vorlagen. Du kannst die Karten in den Mod-Einstellungen unter {0} wieder einschalten.</JBF.Card.NeverAgainTip>
+  <JBF.Card.Presets>Wähle einen Start</JBF.Card.Presets>
+  <JBF.Card.Sections>Was eingeschaltet ist</JBF.Card.Sections>
+  <JBF.Card.Hint>Alles hier lässt sich später in den Mod-Einstellungen ändern. Wenn du die Karte schließt, bleibt deine Auswahl erhalten.</JBF.Card.Hint>
+  <JBF.Row.Nerd>technisch</JBF.Row.Nerd>
+  <JBF.Row.Restart>nach Neustart</JBF.Row.Restart>
+  <JBF.Row.AllGames>alle Spiele</JBF.Row.AllGames>
+  <JBF.Row.RestartTip>Wirkt erst nach einem Neustart von RimWorld.</JBF.Row.RestartTip>
+  <JBF.Row.AllGamesTip>Eine Vorliebe dieser Installation: in jedem Spielstand gleich.</JBF.Row.AllGamesTip>
+  <JBF.Row.Range>Regler {0} bis {1} · Standard {2}</JBF.Row.Range>
+  <JBF.Row.Limit>Technische Grenze</JBF.Row.Limit>
+  <JBF.Row.Reset>zurücksetzen</JBF.Row.Reset>
+  <JBF.Row.Beyond>Außerhalb des Reglerbereichs. Die freie Eingabe erlaubt das.</JBF.Row.Beyond>
+  <JBF.Row.Limited>Grenze {0}</JBF.Row.Limited>
+  <JBF.Row.LimitGeneric>Das Spiel kann diesen Wert nicht verwenden, daher wird der nächstmögliche genommen.</JBF.Row.LimitGeneric>
+  <JBF.Row.Free>Frei</JBF.Row.Free>
+  <JBF.Row.FreeTip>Freie Eingabe: jede Zahl bis zur technischen Grenze des Spiels.</JBF.Row.FreeTip>
+  <JBF.Page.Overview>Übersicht</JBF.Page.Overview>
+  <JBF.Page.General>Allgemein</JBF.Page.General>
+  <JBF.Side.Paused>pausiert</JBF.Side.Paused>
+  <JBF.Side.Off>aus</JBF.Side.Off>
+  <JBF.Page.Compat>Kompatibilität</JBF.Page.Compat>
+  <JBF.Page.Diagnosis>Diagnose</JBF.Page.Diagnosis>
+  <JBF.Page.About>Über</JBF.Page.About>
+  <JBF.Side.ThisSave>Dieser Spielstand</JBF.Side.ThisSave>
+  <JBF.Side.ThisSaveTip>Die Einstellungen des laufenden Spiels bearbeiten. Sie werden mit ihm gespeichert.</JBF.Side.ThisSaveTip>
+  <JBF.Side.Template>Vorlage</JBF.Side.Template>
+  <JBF.Side.TemplateTip>Die Vorlage bearbeiten, mit der neue Spiele starten. Das laufende Spiel bleibt unverändert.</JBF.Side.TemplateTip>
+  <JBF.Side.TemplateOnly>Vorlage für neue Spiele. Jede neue Kolonie bekommt ihre eigene Kopie.</JBF.Side.TemplateOnly>
+  <JBF.Side.Global>Diese Einstellungen gelten für jedes Spiel.</JBF.Side.Global>
+  <JBF.Side.SaveAsTemplate>Als Vorlage speichern</JBF.Side.SaveAsTemplate>
+  <JBF.Side.SaveAsTemplateConfirm>Die Vorlage für neue Spiele durch die Einstellungen dieses Spielstands ersetzen?</JBF.Side.SaveAsTemplateConfirm>
+  <JBF.Side.SaveAsTemplateTip>Kopiert die Bereichsschalter und alle Einstellungen dieses Spielstands in die Vorlage für neue Spiele.</JBF.Side.SaveAsTemplateTip>
+  <JBF.Side.ApplyTemplate>Vorlage übernehmen</JBF.Side.ApplyTemplate>
+  <JBF.Side.ApplyTemplateConfirm>Die Bereichsschalter und alle Einstellungen dieses Spielstands durch die Vorlage ersetzen? Das lässt sich nicht rückgängig machen.</JBF.Side.ApplyTemplateConfirm>
+  <JBF.Side.ApplyTemplateTip>Ersetzt die Einstellungen dieses Spielstands durch die Vorlage. Vorlieben, die für alle Spiele gelten, bleiben.</JBF.Side.ApplyTemplateTip>
+  <JBF.Header.Nerd>Technische Einstellungen</JBF.Header.Nerd>
+  <JBF.Header.SearchResults>Suchergebnisse</JBF.Header.SearchResults>
+  <JBF.Header.Search>Alle Einstellungen durchsuchen...</JBF.Header.Search>
+  <JBF.Header.NerdTip>Zeigt die technischen Einstellungen, die die meisten Spieler nie brauchen. Alles andere bleibt unverändert.</JBF.Header.NerdTip>
+  <JBF.Header.EditingTemplate>Du bearbeitest die Vorlage für neue Spiele. Das laufende Spiel bleibt unverändert.</JBF.Header.EditingTemplate>
+  <JBF.Page.CustomOff>Der Bereich „{0}“ ist ausgeschaltet. Diese Seite wirkt erst, wenn er eingeschaltet ist.</JBF.Page.CustomOff>
+  <JBF.Section.SwitchOn>Einschalten</JBF.Section.SwitchOn>
+  <JBF.Overview.IntroGlobal>Diese Einstellungen gelten für jedes Spiel. Hier schaltest du ganze Bereiche ein oder aus; die Seiten links enthalten die Einzelheiten.</JBF.Overview.IntroGlobal>
+  <JBF.Overview.IntroTemplate>Die Vorlage für neue Spiele. Jede neue Kolonie bekommt ihre eigene Kopie, die du dort später ändern kannst.</JBF.Overview.IntroTemplate>
+  <JBF.Overview.IntroSave>Die Einstellungen dieses Spielstands. Die Vorlage für neue Spiele bleibt, wie sie ist.</JBF.Overview.IntroSave>
+  <JBF.Overview.Paused>{0} hat sich nach wiederholten Fehlern selbst pausiert.</JBF.Overview.Paused>
+  <JBF.Overview.Sections>Bereiche</JBF.Overview.Sections>
+  <JBF.Overview.NoSections>Diese Mod hat keine schaltbaren Bereiche. Alle Einstellungen stehen auf der Seite Allgemein.</JBF.Overview.NoSections>
+  <JBF.Overview.Presets>Voreinstellungen</JBF.Overview.Presets>
+  <JBF.Overview.Custom>Eigene</JBF.Overview.Custom>
+  <JBF.Overview.CustomTip>Deine eigene Mischung: keine Voreinstellung passt zu den aktuellen Werten.</JBF.Overview.CustomTip>
+  <JBF.Overview.PresetHint>Eine Voreinstellung ändert nur die Werte, die sie nennt; alles andere bleibt, wie du es eingestellt hast.</JBF.Overview.PresetHint>
+  <JBF.Overview.PresetConfirm>Voreinstellung „{0}“ übernehmen? Sie überschreibt {1} Werte, die du geändert hast: {2}</JBF.Overview.PresetConfirm>
+  <JBF.Overview.NotInstalled>{0} (nicht installiert)</JBF.Overview.NotInstalled>
+  <JBF.Overview.OpenPage>Die Einstellungen dieses Bereichs öffnen</JBF.Overview.OpenPage>
+  <JBF.Diag.Paused>nach Fehlern pausiert</JBF.Diag.Paused>
+  <JBF.Section.Reset>Bereich zurücksetzen</JBF.Section.Reset>
+  <JBF.Section.ResetConfirm>Jede Einstellung von {0} auf den Standard zurücksetzen?</JBF.Section.ResetConfirm>
+  <JBF.Section.IsOffTemplate>Dieser Bereich ist in der Vorlage aus. Neue Spiele starten ohne ihn.</JBF.Section.IsOffTemplate>
+  <JBF.Section.IsOff>Dieser Bereich ist ausgeschaltet. Seine Einstellungen wirken nicht.</JBF.Section.IsOff>
+  <JBF.Section.PrepareRemoval>Entfernen vorbereiten</JBF.Section.PrepareRemoval>
+  <JBF.Section.OnlyNerd>Alle Einstellungen dieses Bereichs sind technisch. Schalte oben „Technische Einstellungen“ ein, um sie zu sehen.</JBF.Section.OnlyNerd>
+  <JBF.General.Intro>Einstellungen der ganzen Mod und dieses Fensters.</JBF.General.Intro>
+  <JBF.General.ScaleNote>Eine neue Fenstergröße gilt ab dem nächsten Öffnen eines Fensters.</JBF.General.ScaleNote>
+  <JBF.Search.NoMatchNerd>Keine Einstellung passt.</JBF.Search.NoMatchNerd>
+  <JBF.Search.NoMatch>Keine Einstellung passt. Technische Einstellungen sind ausgeblendet, solange du sie nicht einschaltest.</JBF.Search.NoMatch>
+  <JBF.Compat.Intro>Was diese Mod in deinem Spiel erkannt hat und welche Anbindungen an andere Mods funktionieren.</JBF.Compat.Intro>
+  <JBF.Compat.Dlc>DLC</JBF.Compat.Dlc>
+  <JBF.Compat.Integrations>Anbindungen</JBF.Compat.Integrations>
+  <JBF.Compat.None>Keine Anbindungen an andere Mods.</JBF.Compat.None>
+  <JBF.Compat.Conflicts>Bekannte Konflikte</JBF.Compat.Conflicts>
+  <JBF.Compat.Patches>{0} Patch-Klassen angewendet</JBF.Compat.Patches>
+  <JBF.About.Workshop>Steam-Workshop-Seite</JBF.About.Workshop>
+  <JBF.About.Project>Projektseite</JBF.About.Project>
+  <JBF.About.License>Lizenz: {0}</JBF.About.License>
+  <!-- the framework as a mod: too-old message, Mods page, General page notes -->
+  <JBF.About.Framework>Gebaut auf {0} {1}, dem Einstellungs-Fundament aus Hearth &amp; Harbor.</JBF.About.Framework>
+  <JBF.Framework.TooOld>{0} braucht ein neueres {1} (API-Stufe {2}, gebaut mit {1} {3}). Installiert ist {1} {4} (API-Stufe {5}). Seine {1}-Funktionen bleiben aus, bis du {1} aktualisierst: auf Steam abbestellen und neu abonnieren oder Steam neu starten.</JBF.Framework.TooOld>
+  <JBF.Framework.TooOldTitle>{0} braucht ein Update</JBF.Framework.TooOldTitle>
+  <JBF.General.NoOwn>Diese Mod hat keine allgemeinen Einstellungen.</JBF.General.NoOwn>
+  <JBF.General.GlobalNote>Fenstergröße, ausführliches Protokoll, Willkommenskarten und technische Einstellungen gelten für jede Mod auf {0} gemeinsam: Du findest sie unter Mod-Einstellungen, {0}.</JBF.General.GlobalNote>
+  <JBF.General.OpenFramework>Einstellungen von {0} öffnen</JBF.General.OpenFramework>
+  <JBF.Mods.Intro>Jede Mod in diesem Spiel, die {0} nutzt. Jede hat ihre eigenen Einstellungen, ihr eigenes Protokoll und eigene Fehlerschranken: Ein Problem in einer schaltet nie eine andere ab.</JBF.Mods.Intro>
+  <JBF.Mods.ReportTitle>{0}: Gesamtbericht</JBF.Mods.ReportTitle>
+  <JBF.Mods.Found>Gefundene Mods ({0})</JBF.Mods.Found>
+  <JBF.Mods.None>Keine aktive Mod nutzt {0}. Allein tut es nichts.</JBF.Mods.None>
+  <JBF.Mods.Open>Einstellungen öffnen</JBF.Mods.Open>
+  <JBF.Mods.Needs>braucht API-Stufe {0}</JBF.Mods.Needs>
+  <JBF.Mods.NoLevel>API-Stufe nicht angegeben</JBF.Mods.NoLevel>
+  <JBF.Mods.BuiltWith>gebaut mit {0} {1}</JBF.Mods.BuiltWith>
+  <JBF.Mods.Log>Protokolldatei {0}</JBF.Mods.Log>
+  <JBF.Mods.Areas>Bereiche: {0}</JBF.Mods.Areas>
+  <JBF.Mods.Patches>Patches: {0} angewendet, {1} fehlgeschlagen</JBF.Mods.Patches>
+  <JBF.Mods.Errors>Abgefangene Fehler: {0} · im Protokoll: {1} Fehler, {2} Warnungen</JBF.Mods.Errors>
+  <!-- labels of the framework's own registrations (global preferences, Mods page) -->
+  <JBF.Setting.jbf.windowScale>Fenstergröße</JBF.Setting.jbf.windowScale>
+  <JBF.Setting.jbf.windowScale.Desc>Jedes Fenster jeder JB-Mod wird um diesen Faktor größer oder kleiner (zusätzlich zur automatischen Größe auf großen Bildschirmen). Gilt ab dem nächsten Öffnen eines Fensters.</JBF.Setting.jbf.windowScale.Desc>
+  <JBF.Setting.jbf.verboseLog>Ausführliches Protokoll</JBF.Setting.jbf.verboseLog>
+  <JBF.Setting.jbf.verboseLog.Desc>Schreibt Info- und Debug-Zeilen auch ins Spielprotokoll (in die eigene Protokolldatei jeder Mod kommen sie immer). Nur zur Fehlersuche.</JBF.Setting.jbf.verboseLog.Desc>
+  <JBF.Setting.jbf.showNerd>Technische Einstellungen zeigen</JBF.Setting.jbf.showNerd>
+  <JBF.Setting.jbf.showNerd.Desc>Zeigt in jedem JB-Einstellungsfenster die technischen Einstellungen, die die meisten nie brauchen.</JBF.Setting.jbf.showNerd.Desc>
+  <JBF.Setting.jbf.welcomeCards>Willkommenskarten zeigen</JBF.Setting.jbf.welcomeCards>
+  <JBF.Setting.jbf.welcomeCards.Desc>Eine kleine Karte mit Voreinstellungen und einem Link zu den Einstellungen, einmal je neuer Kolonie (und einmal, wenn eine Mod zu einem Spielstand dazukommt), für jede JB-Mod, die eine hat.</JBF.Setting.jbf.welcomeCards.Desc>
+  <JBF.SettingCat.Interface>Oberfläche</JBF.SettingCat.Interface>
+  <JBF.Page.mods>Mods</JBF.Page.mods>
+</LanguageData>

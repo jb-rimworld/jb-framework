@@ -1,0 +1,64 @@
+<Project>
+  <!--
+    Shared by build/JBFramework.props (the framework itself) and build/JBMod.props (dependent mods). Not imported directly.
+    SPDX-License-Identifier: MIT
+
+    RimVersion=1.7 (default): net10.0 against the installed game (Waylith/CoreCLR), tested in game.
+    RimVersion=1.6:           net472 against Krafs.Rimworld.Ref 1.6.4871 (no 1.6 game on this machine): compile-only, best effort.
+  -->
+  <PropertyGroup>
+    <RimVersion Condition="'$(RimVersion)' == ''">1.7</RimVersion>
+    <JBGameDir Condition="'$(JBGameDir)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorld.app/Contents/MacOS</JBGameDir>
+    <JBHarmonyRoot Condition="'$(JBHarmonyRoot)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/workshop/content/294100/2009463077</JBHarmonyRoot>
+    <JBTests Condition="'$(JBTests)' == ''">false</JBTests>
+    <JBRelease Condition="'$(JBRelease)' == ''">false</JBRelease>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <IntermediateOutputPath>obj/$(RimVersion)/</IntermediateOutputPath>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;obj17/**;bin/**;_frozen16/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RimVersion)' == '1.7'">
+    <TargetFramework>net10.0</TargetFramework>
+    <DefineConstants>$(DefineConstants);RW17;RW16PLUS</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RimVersion)' == '1.6'">
+    <TargetFramework>net472</TargetFramework>
+    <DefineConstants>$(DefineConstants);RW16;RW16PLUS</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(JBTests)' == 'true'">
+    <DefineConstants>$(DefineConstants);JB_TESTS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="obj/**;obj17/**;bin/**;_frozen16/**" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RimVersion)' == '1.7'">
+    <Reference Include="Assembly-CSharp"><HintPath>$(JBGameDir)/Assembly-CSharp.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityStubs"><HintPath>$(JBGameDir)/UnityStubs.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Waylith.UnityCompat"><HintPath>$(JBGameDir)/Waylith.UnityCompat.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(JBHarmonyRoot)/1.7/Assemblies/0Harmony.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(RimVersion)' == '1.6'">
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4871" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="0Harmony"><HintPath>$(JBHarmonyRoot)/1.6/Assemblies/0Harmony.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="JBVersionGuard" BeforeTargets="CoreCompile;BeforeBuild">
+    <Error Condition="'$(RimVersion)' != '1.7' and '$(RimVersion)' != '1.6'" Text="RimVersion must be 1.7 or 1.6 (was '$(RimVersion)')." />
+    <Error Condition="'$(JBRelease)' == 'true' and '$(JBTests)' == 'true'"
+           Text="Release build with JBTests=true: test code must never ship. Build without -p:JBTests=true." />
+  </Target>
+</Project>

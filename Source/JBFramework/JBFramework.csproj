@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- JB Framework. Build: dotnet build -c Release [-p:RimVersion=1.6]. Identity: build/Identity.props. SPDX-License-Identifier: MIT -->
+  <Import Project="$(MSBuildProjectDirectory)/../../build/JBFramework.props" />
+</Project>

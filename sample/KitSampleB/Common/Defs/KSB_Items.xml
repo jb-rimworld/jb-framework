@@ -4,7 +4,7 @@
   <ThingDef ParentName="ResourceBase">
     <defName>KSB_SampleToken</defName>
     <label>sample token</label>
-    <description>A test item of JB.Kit Sample B. It looks like silver and does nothing.</description>
+    <description>A test item of JB Framework Sample B. It looks like silver and does nothing.</description>
     <graphicData>
       <texPath>Things/Item/Resource/Silver</texPath>
       <graphicClass>Graphic_StackCount</graphicClass>

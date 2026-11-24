@@ -1,217 +1,191 @@
-# JB.Kit 1.0 API (src/Core, src/UI)
+# JB Framework API (API level 1, framework 1.0.0)
 
-Everything here is in namespace `JBKit`, compiled into each mod's own DLL. All types are `internal` except the three bases
-`KitModBase`, `KitSettingsBase`, `KitGameBase` (`public abstract`, internal constructors/hooks). src/UI (K3) and src/Testing (K4)
-may rely on every member listed here; anything not listed is an implementation detail. Statics are per mod assembly.
-
-## Rules for src/UI and src/Testing
-
-- Namespace `JBKit` (Testing may use `JBKit.Testing`), every type `internal`, except bases a mod must derive public classes from
-  (e.g. `public abstract class KitTestRunnerBase : GameComponent` with an internal constructor/hooks, like `KitGameBase`).
-- Nothing the game resolves by name (XML `Class=`, defs, comps, `DefModExtension`, concrete GameComponents/ModSettings).
-- Player-facing text through `KitText.K("<Area>.<Key>", "English fallback", args…)` → key `<Prefix>.Kit.<Area>.<Key>`; add every key to
-  `Languages/English/JBKit.xml` **and** `Languages/German/JBKit.xml` (tags `<{P}.Kit.…>`). Texture paths `UI/<Prefix>/Kit/…`, from
-  `Kit.Info.Theme`; a missing texture draws nothing (vanilla fallback icons such as `TexButton`).
-- Install yourself in a partial method of `KitBoot` (called from the KitModBase constructor, after `Register` and settings load):
-  ```csharp
-  internal static partial class KitBoot { static partial void InstallUI() { KitHooks.DrawSettings = KitSettingsWindow.Draw; … } }
-  internal static partial class KitBoot { static partial void InstallTesting() { … } }   // file under #if JB_TESTS
-  ```
-- Kit `[HarmonyPatch]` classes (window size getter, ctor resizeable) are applied automatically by `KitPatches` like the mod's own;
-  compare `dialogMod == Kit.Mod` and early-out for every other mod.
-- Wrap draws in `KitGuard.Run(KitSections.Core, "UI.<Page>", …)`; never throw out of a page.
-
-## KitInfo (sealed partial class) — given by the mod
-| Member | Meaning |
-|---|---|
-| `string Name, ShortId, KeyPrefix, Version` | player name; file/channel id (`<ShortId>.log`); key/texture prefix; mod version. Defaults filled by `Kit.Init` (ShortId from Name, KeyPrefix = ShortId). |
-| `bool PerSave` | values + section switches per save (needs a KitGameBase subclass) |
-| `bool UseGate` | reserved (src/Gate, K6) |
-| `string WorkshopId, Url, LicenseLine` | About page (optional) |
-| `string HarmonyId` | default: `Content.PackageId` |
-| `string FirstStartPitch` | non-null = first-start card wanted (UI draws it; registers `kit.firstStartCard`) |
-| `KitTheme Theme` | `Color Accent`, `Color AccentSoft` (35 % alpha), `string MarkTex`, `Dictionary<string,string> Icons` (keys `overview`, `general`, `compat`, `diagnosis`, `about`, `section:<id>`, `page:<id>`) |
-| `const string KitVersion, KitCommit, KitTier; const bool KitTests` | generated (obj/1.7/JBKitInfo.g.cs) |
-
-## Kit (static) — front door
-| Member | Meaning |
-|---|---|
-| `KitInfo Info`, `KitModBase Mod`, `KitSettingsBase Settings` | set in the KitModBase constructor (`Settings` null if the mod has no settings class) |
-| `KitProfile Template` | the settings-file profile (global values always live here) |
-| `KitProfile SaveProfile` | the running game's profile when PerSave, else null |
-| `KitProfile Current` | `SaveProfile ?? Template`; all reads go here |
-| `bool HasSaveProfile` | show "This save / Template" chips |
-| `bool On(string section)` | = `KitSections.On` |
-| `float Get(key)`, `bool GetBool(key)`, `int GetInt(key)`, `T GetEnum<T>(key)`, `int GetSilver(key)` | current values |
-| `void Set(key, float)`, `Set(key, bool)`, `Reset(key)` | against Current |
-| `void SaveAsTemplate()`, `void ApplyTemplateToSave()` | sidebar buttons (no-ops without a save profile) |
-| `void OpenSettings(string pageId = null)` | opens Dialog_ModSettings, selects a page via `KitHooks.SelectPage` |
-| `void FlushChanges()`, `bool HasPendingChanges`, `void MarkChanged(key)` (internal) | deferred change delivery (README decision 8) |
-| `void WriteSettingsSafe()` | writes the settings file, never throws |
-
-## KitHooks (static delegates) — filled by UI/Testing
-| Hook | Called |
-|---|---|
-| `Action<Rect> DrawSettings` | by `KitModBase.DoSettingsWindowContents` (null → `KitFallbackWindow.Draw`); `Kit.FlushChanges()` runs right after |
-| `Action<string> SelectPage` | by `Kit.OpenSettings(pageId)`. Page ids: `overview`, `general`, `section:<id>`, `page:<id>`, `compat`, `diagnosis`, `about` |
-| `Action WindowClosed` | in `KitModBase.WriteSettings` (window close), before flush + file write |
-| `Action DefsLoaded` | once, after the mod's `OnDefsLoaded` (StaticConstructorOnStartup) |
-| `Action<bool,bool> GameInit` | (isNewGame, joinedExistingSave) after the profile is in place (needs the mod's KitGameBase) |
-| `Action GameOnGUI` | `KitGameBase.GameComponentOnGUI` (first-start card) |
-| `Func<IEnumerable<string>> ExtraReportLines` | appended to `KitReport.Lines()` |
-
-## KitModBase (public abstract : Verse.Mod)
-Constructor `internal KitModBase(ModContentPack content, KitInfo info)`. Hooks (override with `internal override`):
-`abstract void Register(KitRegistry r)`, `virtual void OnDefsLoaded()`, `virtual void OnSettingsChanged(string key)` (keys: setting key,
-`section:<id>`, `profile:loaded`), `virtual void OnGameStarted()`, `virtual void OnGameLoaded(bool joinedExistingSave)`,
-`virtual IEnumerable<string> Diagnosis()`. Overrides (public): `SettingsCategory()` = `Info.Name`, `DoSettingsWindowContents`, `WriteSettings`.
-
-## KitSettingsBase (public abstract : ModSettings)
-`public sealed override ExposeData()`; hook `internal virtual void ExposeExtra()`. Members: `KitProfile Template`, `int KitDataVersion`,
-`List<string> Migrated` ("key=value (from old)"), `bool MigratedThisSession`, `static string SettingsFilePath` (absolute; never print it).
-
-## KitGameBase (public abstract : GameComponent)
-Constructor `protected KitGameBase(Game game)`. Hooks: `internal virtual void ExposeExtra()`, `internal virtual void Tick(int ticksGame)`.
-State: `KitProfile Profile`, `bool IsNewGame`, `bool JoinedExistingSave` (first-start card variant). Statics: `KitGameBase Instance`
-(this mod's component of the running game, else null), `KitProfile CurrentProfile`. All GameComponent overrides are sealed; it runs the
-caretaker, flushes changes in `GameComponentUpdate`, calls `KitHooks.GameOnGUI`.
-
-## KitRegistry (passed to Register)
-| Method | Returns |
-|---|---|
-| `Section(id, label, desc=null, icon=null, defaultOn=true, available=null, requires=null, order=0, onSwitched=null, diagnosis=null, prepareRemoval=null, legacyEnabled=null)` | KitSection |
-| `SectionFor(packageId, modName, id, label, desc=null, icon=null, defaultOn=true, order=0)` | KitSection available only with that mod/DLC |
-| `Bool(section, cat, key, def, label, desc=null, nerd=false, legacyScribe=null)` | KitSetting |
-| `Int(section, cat, key, def, min, max, label, desc=null, nerd=false, hardMin=0, hardMax=1e6, legacyScribe=null)` | KitSetting |
-| `Float(…, float def, float min, float max, …, hardMin=0, hardMax=1e6, legacyScribe=null)`, `Percent(…, hardMax=1)`, `LogFloat(…)` | KitSetting |
-| `Enum<T>(section, cat, key, T def, label, desc=null, nerd=false, legacyScribe=null)` | KitSetting |
-| `Silver(section, cat, key, int def, int min, int max, label, desc=null, nerd=false, legacyScribe=null)` | KitSetting (hard max 10 × silver stack limit) |
-| `Preset(id, label, desc, Action<KitProfile> apply, Func<KitProfile,bool> matches=null)` | KitPreset |
-| `Compat(name, packageIdOrDlc, what, Func<bool> healthy=null)`, `Incompatible(name, packageId, why)` | KitCompatEntry |
-| `Page(id, label, icon=null, order=0, Action<Rect> draw=null, section=null)` | KitPage (custom page; null without draw) |
-| `Caretaker(section, name, Func<int> check)` | void |
-
-## KitSetting (class) + KitSettingKind { Bool, Int, Float, Percent, LogFloat, Enum, Silver }
-Fields: `Key, Section, Category, Kind, Default, SliderMin, SliderMax, HardMin, HardMax, DynamicHardMax, HardLimitReason, Nerd, Global,
-EnumType, LabelEn, DescEn, Step, Order, LegacyKey, LegacyToValue, LegacyScribe, OnChanged (Action<float>), Restart, Requires, RequiresText`.
-Computed: `Label`, `Desc`, `CategoryLabel` (translated, keys `<P>.Setting.<Key>[.Desc]`, `<P>.SettingCat.<CatKey>`), `static CatLabel(cat)`,
-`static CatKey(cat)`, `EffectiveHardMax`, `IsLog`, `SliderLo/SliderHi`, `ToSlider(v)`, `FromSlider(x)` (log sliders), `Clamp(v)`,
-`Format(v)` (On/Off, %, silver, enum names `<P>.Enum.<Type>.<Name>`), `RequiresMet`, `RequiresReason`, `StoredIn(store)`, `IsStoredIn(store)`,
-`TryParseLegacy(raw, out v)`. Fluent: `AsGlobal() AsNerd() NeedsRestart() WithStep(s) WithLimit(reason, dynMax) Legacy(old) LegacyStoreKey(old, convert) OnChange(a) RequiresOn(idOrPackage, reason)`.
-
-## KitSettings (static)
-`List<KitSetting> All` (registration order), `Add(s)`, `Find(key)`, `OfSection(id)`;
-against an explicit profile (the window edits save or template): `StoreFor(s, profile)`, `Value(s, profile)`, `IsOverridden(s, profile)`,
-`Set(s, profile, v)` (clamps, marks changed), `Reset(s, profile)` (also clears free-text flag), `ResetSection(id, profile)`;
-against Current: `Get(key|s)`, `GetBool`, `GetInt`, `GetEnum<T>`, `GetSilver`, `Set(key, v)`, `Reset(key)`; tests: `ClearForTests()`.
-
-## KitStore (IExposable)
-`TryGet(k, out v)`, `Has(k)`, `Set(k, v)`, `Remove(k)`, `Count`, `Keys`, `Clone()`, `Dictionary<string,bool> freeText` (free-entry rows).
-
-## KitProfile (IExposable)
-`Dictionary<string,bool> sections`, `KitStore Store`, `int ProfileVersion`, `bool FirstStartCardDone`, `const CurrentVersion`.
-`SectionOn(id)` (stored or default), `SectionStored(id)`, `SetSection(id, on)` (callbacks when current), `ResetSection(id)`,
-`Get(key)`, `GetBool(key)`, `Set(key, float|bool)`, `Reset(key)`, `CloneForNewGame()`, `CopySettingsFrom(src)` (keeps own globals).
-
-## KitSection / KitSections
-KitSection: `Id, LabelEn, DescEn, Icon, DefaultOn, AvailableFunc, RequiresText, Order, OnSwitched, Diagnosis, PrepareRemoval, LegacyEnabled`;
-`Label`, `Desc`, `RequiresLabel` (keys `<P>.Section.<id>`, `.Desc`, `.Requires`).
-KitSections: `const string Core = "core"`, `List<KitSection> All` (by Order), `Add`, `Find(id)`, `Available(id)`, `On(id)`, `WhyOff(id)`
-(null when on), `LabelOf(id)` (core → mod name), `PrepareRemoval(id)` → report lines (switches the section off), `ClearForTests()`.
-
-## KitPreset / KitPresets
-KitPreset: `Id, LabelEn, DescEn, Apply, Matches, Label, Desc` (keys `<P>.Preset.<id>[.Desc]`).
-KitPresets: `All`, `Add`, `Find(id)`, `Changes(p, profile)` (keys incl. `section:<id>` it would change), `IsMatch(p, profile)`,
-`Matching(profile)` (first match or null = "Custom"), `WouldOverwrite(p, profile)` (player-changed rows → ask first), `Apply(p, profile)`.
-
-## KitCompat / KitCompatEntry / [KitCompat(packageId)]
-Entry: `Name, PackageId, WhatEn, Incompatible, Healthy, Failures, PatchesApplied, What` (key `<P>.Compat.<CatKey(Name)>.What|.Why`),
-`State` (KitCompatState: NotInstalled, Active, Failed, Unhealthy, IncompatiblePresent, IncompatibleAbsent), `StateLabel`.
-KitCompat: `All`, `Dlcs` ((Id, Name)[5]), `Add`, `Find(packageId)`, `IsModActive(packageId)` (any case, `_steam` tolerant, never throws),
-`ActiveDlcNames()`.
-
-## KitPatches (static)
-`List<string> Failures` ("Type: reason"), `List<string> SkippedInactive`, `int Applied`, `object HarmonyInstance`, `bool Done`,
-`SharedTargets()` ("Type.Method: other owners" for the diagnosis page), `SafeTypes(asm)`.
-
-## KitLog (static) + KitLogLevel { Debug, Info, Warn, Error }
-`Debug/Info/Warn(channel, msg)`, `Error(channel, msg, Exception e = null)`, `Once(key, level, channel, msg)`, `bool Verbose`,
-`int ErrorCount, WarnCount`, `string[] RecentSnapshot()` (last 300 lines), `string FileName` (print this), `string FilePath` (never print),
-`string Prefix` ("[Name] "), `SessionStart()`.
-
-## KitGuard / KitCaretaker (static)
-KitGuard: `Run(section, site, Action)`, `T Run<T>(section, site, Func<T>, fallback)`, `Fail(section, site, e)`, `IsPaused(id)`, `Paused`,
-`ReasonFor(id)`, `Resume(id)`, `int TotalFailures`, `const MaxConsecutive = 3`, `ResetAll()` (tests).
-KitCaretaker: `List<Check> Checks` (`Name, Section, Run, TotalFixes, LastFixes, Runs`), `TotalFixes`, `Register(section, name, run)`,
-`Fixed(checkName, what)`, `RunAll(force=false)`.
-
-## KitPages / KitPage
-KitPage: `Id, LabelEn, Icon, Order, Section, Draw (Action<Rect>), Label` (key `<P>.Page.<id>`). KitPages: `All` (by Order), `Find`, `Add`.
-
-## KitText (static)
-`TranslateOr(this string key, string fallback)`, `Prefix`, `Key(suffix)` → `<P>.<suffix>`, `K(sub, fallbackEn)`, `K(sub, fallbackEn, params object[])`
-(string.Format on the translated text, falls back on bad formats).
-
-## KitReport (static)
-`List<string> LoadFolders()` (relative to the mod root), `List<string> Lines()`, `string Text()`: versions, DLCs, mod count, folders,
-sections with WhyOff and section diagnosis, Harmony applied/skipped/shared targets, compat states, guard pauses, caretaker, mod lines,
-`KitHooks.ExtraReportLines`. No absolute paths.
-
-## Built-in settings (KitBuiltins, section core, category "Interface", all global)
-`kit.windowScale` (Percent, 1.0, slider 0.8–1.5, hard 0.6–2), `kit.verboseLog`, `kit.showNerd`, `kit.firstStartCard` (only with a pitch).
-Constants `KitBuiltins.WindowScaleKey, VerboseLogKey, ShowNerdKey, FirstStartCardKey, Category`.
-
-## KitFallbackWindow (static)
-`Draw(Rect)` — tier core only (used when `KitHooks.DrawSettings` is null).
+Namespace `JBFramework`, assembly `JBFramework.dll` (identity: `build/Identity.props`). Part 1 is the public contract for mod authors.
+Part 2 is the internal architecture and the contract for the people (and agents) who extend the framework: what exists, where to hook in,
+which files belong to whom. The snapshot `api/PublicApi.txt` is the machine-checked list of every public line; this file explains it.
 
 ---
 
-# src/UI (K3, tiers lite and full)
+## Part 1: public API (for mods)
 
-Installed by `KitBoot.InstallUI()` (src/UI/KitBootUI.cs): `KitHooks.DrawSettings = KitSettingsWindow.Draw`, `KitHooks.SelectPage`,
-`KitHooks.WindowClosed += …`; with `KitInfo.FirstStartPitch` and `PerSave`: `KitHooks.GameOnGUI += …`, `KitHooks.GameInit += …`.
-**Hooks are multicast where several parts listen:** use `+=` for `WindowClosed`, `DefsLoaded`, `GameInit`, `GameOnGUI`; `=` only for
-`DrawSettings`, `SelectPage`. (`ExtraReportLines` is a `Func`: only one owner, src/UI does not use it.)
+### Compatibility promise
+- Additive only. A public type or member is never removed, renamed or changed (signature, parameter names, defaults). New behaviour =
+  a new member, a new overload or a new optional registration. `tools/public_api.py check` fails on any removed/changed line and on
+  added lines without a raised `JBFrameworkApiLevel`.
+- `AssemblyVersion` stays `1.0.0.0`, so a mod built against framework 1.0 binds to every later framework DLL.
+- `Framework.ApiLevel` (int) rises with every release that adds public API. build/JBMod.props stamps `[assembly: KitRequires(level, version)]`
+  into each dependent mod (the level it was built against; override `-p:JBMinApiLevel=N`). `KitInfo.MinApiLevel` can raise it further.
+  When the installed framework is older, the framework reads the attribute without running the mod's code, keeps that mod **blocked**
+  (`KitMod.Blocked`: no registration, no settings written, no patches, every section off) and tells the player in plain words
+  (startup dialog, Mod settings page, log). A mod whose constructor itself fails on a missing member is still reported by the startup scan.
 
-## KitUI (static) — window sizing
-`Size(w, h, minW=0, minH=0, maxFracW=0.92, maxFracH=0.92)` (design size at a 900 px screen × auto factor 1–1.35 × `kit.windowScale`,
-clamped to the screen), `SettingsSize()` (1000×720 design, min 860×560), `Scale`, `Vector2? TestScreen` (tests), `ScreenW/H`,
-`Cols(r, gap, fractions…)`, `TextH(text, width, font)` (cached), `TextW(text, font)`, `FitsScreen(size)`.
-Mod windows: `public override Vector2 InitialSize => KitUI.Size(900f, 640f);`
+### Types at a glance
+| Type | Kind | What |
+|---|---|---|
+| `Framework` | static | `ApiLevel`, `Version`, `Name`, `PackageId`, `Mods` (dependent mods), `Find(packageId)`, `Of<TMod>()`, `IsModActive(id)`, `DiagnosisReport()` (combined, no personal paths) |
+| `KitModBase` | public abstract : `Verse.Mod` | base of a mod's Mod class; `Kit` (its `KitMod`); protected hooks `Register`, `OnDefsLoaded`, `OnSettingsChanged(key)`, `OnGameStarted`, `OnGameLoaded(joined)`, `OnTick(ticks)`, `Diagnosis()`; `SettingsCategory()` overridable; window drawing and `WriteSettings` sealed |
+| `KitMod` | sealed | one mod's context (below) |
+| `KitInfo`, `KitTheme` | sealed, fields | what the mod tells the framework (name, ids, version, per save, links, pitch, MinApiLevel, theme: accent, mark, icons) |
+| `KitRegistry` | sealed | passed to `Register`: sections, settings, presets, compat entries, pages, caretaker checks, `SaveData` |
+| `KitSetting`, `KitSection`, `KitPreset`, `KitPage`, `KitCompatEntry` | sealed | registration results; read-only ids/labels; `KitSetting` has fluent modifiers |
+| `KitProfile` | sealed : `IExposable` | one mod's values for one save or the template; presets receive it |
+| `KitSettingsBase` | public abstract : `ModSettings` | base of the mod's settings class (keep the old class name); `ExposeExtra()` for own fields; `Kit` |
+| `KitLog`, `KitLogLevel` | sealed / enum | a mod's log (`KitMod.Log`) |
+| `KitCompatAttribute` | attribute | `[KitCompat("packageId")]` on a soft-integration `[HarmonyPatch]` class |
+| `KitRequiresAttribute` | assembly attribute | stamped by JBMod.props (API level, framework version) |
+| `KitUI` | static | `Size(w, h, minW, minH, maxFracW, maxFracH)`, `Scale` (screen × global "Window size") for a mod's own windows |
+| `KitStyle` | static | colours (`Accent` = drawing mod's accent, `AccentSoft`, `Grey`, `DimGrey`, `Good`, `Bad`, `Line`) and helpers `Heading`, `Section`, `LabelColored`, `Paragraph`, `Chip`, `Banner`, `Bar` |
+| `FrameworkMod`, `FrameworkSettings`, `FrameworkGame` | sealed | the framework's own Mod class, settings file and the one GameComponent. Created by RimWorld; their names are in settings files and saves, so they are public and never renamed. Mods do not use them. |
 
-## KitWindowPatches
-`KitPatch_ModSettings_InitialSize` (getter postfix → `KitUI.SettingsSize()`), `KitPatch_ModSettings_Ctor` (resizeable + draggable);
-both only for `Dialog_ModSettings` whose `mod == Kit.Mod`. `KitPatch_ModSettings_InitialSize.IsOurs(dialog)`.
+### KitMod (one per mod)
+Reach it as `Kit` inside the Mod class, `Framework.Of<MyMod>()` in patches (cache it in a static after the first non-null), or
+`Framework.Find("my.packageid")`. Reads go against `Current` = `SaveProfile ?? Template`.
 
-## KitStyle (static) / KitUiProbe
-Colours `Accent` (theme), `AccentSoft`, `Grey`, `DimGrey`, `Good`, `Bad`, `Line`; consts `Pad, RowH, Gap`. `Solid(c)`, `Heading(r, t)`,
-`Section(x, y, w, text)` → height 30, `LabelColored(r, text, c, anchor, font)`, `Paragraph(x, y, w, text, c, font)` → height,
-`Bar`, `Heat(t)`, `Chip(r, label, selected, tip, enabled)` → clicked, `Banner(x, y, w, text, color, button, out h)` → clicked,
-`CachedHeight(text, width, font)`. `KitUiProbe.Hit/Count/Clear(name)`: names `settings`, `diagnosis`, `report`, `card`.
+| Member | Meaning |
+|---|---|
+| `PackageId`, `Name`, `Version`, `Info`, `Mod`, `Content`, `Log`, `Settings` | identity and parts (`PackageId` as loaded, lower case; test slots add `.slotN`) |
+| `Blocked`, `BlockedReason`, `RequiredApiLevel`, `BuiltWithFramework` | API-level check result |
+| `On(section)`, `WhyOff(section)` | section active right now (available, not paused, switched on); `KitMod.Core` = "core" is always on |
+| `Get(key)`, `GetBool`, `GetInt`, `GetEnum<T>`, `Set(key, float/bool)`, `Reset(key)` | values in `Current` (clamped; changes delivered debounced) |
+| `Template`, `SaveProfile`, `Current`, `HasSaveProfile` | profiles |
+| `SaveAsTemplate()`, `ApplyTemplateToSave()`, `WriteSettings()`, `OpenSettings(pageId)` | page ids: `overview`, `general`, `section:<id>`, `page:<id>`, `compat`, `diagnosis`, `about` |
+| `Run(section, site, Action)`, `Run<T>(section, site, Func<T>, fallback)`, `Fail(section, site, e)`, `IsPaused`, `Resume` | the mod's error fence: logged once per site, 3 in a row pause the section (letter + Resume button); core never pauses |
+| `CaretakerFixed(check, what)` | count and log a repair from a caretaker check |
+| `PatchFailures`, `DiagnosisReport()` | report |
 
-## KitIcons (static)
-`Get(path)` (cached, null when missing), `Mark`, `Page(pageId)` (theme `Icons[pageId]` → section/page `Icon` → vanilla for about/diagnosis),
-`Section(id)`, `Draw(r, tex, dim)`, `AllPaths()` (tests: every path the theme/sections/pages name).
+### KitRegistry (inside `Register`)
+- `Section(id, label, desc, icon, defaultOn, available, requires, order, onSwitched, diagnosis, prepareRemoval, legacyEnabled)`,
+  `SectionFor(packageId, modName, id, label, …)`.
+- Settings (section id first, then category = group header): `Bool`, `Int`, `Float`, `Percent` (0..1), `LogFloat`, `Enum<T>` (dropdown),
+  `Silver` (hard max 10 × silver stack limit). Optional `nerd`, hard limits for free entry, `legacyScribe` (old field name, migrated once).
+  Fluent on the result: `AsGlobal()` (installation preference), `AsNerd()`, `NeedsRestart()`, `WithStep(s)`, `WithLimit(reason, dynamicMax)`,
+  `Legacy(old)`, `LegacyStoreKey(oldKey, convert)`, `OnChange(Action<float>)`, `RequiresOn(sectionOrPackageId, reason)`.
+- `Preset(id, label, desc, Action<KitProfile> apply, Func<KitProfile,bool> matches = null)`: changes only what it sets.
+- `Compat(name, packageIdOrDlc, what, healthy)`, `Incompatible(name, packageId, why)`.
+- `Page(id, label, icon, order, Action<Rect> draw, section)`: order below 0 lists it before General.
+- `Caretaker(section, name, Func<int> check)`: once after every load, then round robin every 250 ticks while the section is on.
+- `SaveData(Action exposeData, Action reset)`: the mod's own per-save data inside the framework's game component, node of the mod's
+  packageId; `reset` runs when a new Game object is created (new game, or before a load). Skipped silently when the mod is absent.
 
-## KitRow (static) — one setting row
-`Draw(x, y, w, setting, profile, visible)` → height (skips drawing outside `visible` unless `ForceDrawAll`), `Height(s, w)`,
-`LabelWidth(w)`, `Reset(s, profile)`, `ClearBuffers()`, `MatchesSearch(s, query)`, `bool ForceDrawAll` (tests).
+### Translation keys of a mod's registrations (prefix = `KitInfo.KeyPrefix`)
+`<P>.Section.<id>`, `.Desc`, `.Requires` · `<P>.Setting.<key>`, `.Desc` · `<P>.SettingCat.<CategoryLettersAndDigits>` · `<P>.Preset.<id>`, `.Desc` ·
+`<P>.Page.<id>` · `<P>.Compat.<NameLettersAndDigits>.What` / `.Why` · `<P>.Enum.<EnumType>.<Name>`. English text in code is the fallback.
+The framework's own texts (`JBF.*`) exist once in `Common/Languages`; mods never copy them.
 
-## KitSettingsWindow (static)
-`Draw(Rect)`, `SelectPage(id)`, `SelectedPage`, `Search` (get/set), `EditTemplate` (get/set), `Target` (profile being edited),
-`BuildPages(profile)` → `PageEntry { Id, Label, Dim, DimReason, Icon }`, `SideWidth(w)`.
-Page ids: `overview`, `general`, `section:<id>` (available sections with settings), `page:<id>` (custom), `compat`, `diagnosis`, `about`.
+### Change keys for `OnSettingsChanged`
+Setting keys (`"lo.regrowDays"`), `"section:<id>"`, and `"profile:loaded"` once after a game starts or loads. Debounced: delivered once per
+key per frame (settings window), on window close and from `FrameworkGame.GameComponentUpdate`.
 
-## KitDiagnosis (static) / Dialog_KitReport (Window)
-`Draw(w)`, `BuildText(logLines=60)` (= `KitReport.Text()` + last log lines), `RecentLog(n)`, `Copy(text)`, `ShowReport()`,
-`RunPrepareRemoval(sectionId)`, `string LastRemovalReport`. `new Dialog_KitReport(title, text)` (`ReportText`).
+### Settings file and saves
+- Settings file `Config/Mod_<folder>_<ModClassName>.xml` (vanilla rule), settings class = the mod's `KitSettingsBase` subclass found by
+  reflection (exactly one per assembly). Layout: `<kit><dataVersion/><template>KitProfile</template></kit>` then `ExposeExtra`.
+- Legacy migration: on load, each `legacyScribe`/`legacyEnabled` field the template lacks is read as a string, parsed (bool, invariant
+  number, enum name), clamped, stored; the old file is copied once to `*.xml.pre-kit`; the file is rewritten without legacy nodes at startup.
+- Save: one `JBFramework.FrameworkGame` component, `<mods><li><id>packageid</id><profile>…</profile><data>…SaveData…</data></li></mods>`.
+  The key is the packageId without `_steam` and without `.slotN`. A removed mod's profile stays in the save (plain values, framework types
+  only) and comes back when the mod returns; its `<data>` node is dropped at the next save (its types are never touched).
+- "Joined existing save": `OnGameLoaded(true)` when the save had no entry for the mod (or no framework component at all).
 
-## KitFirstStartCard (static) / Dialog_KitFirstStartCard (Window)
-Opens once per new colony / once when the mod joins a save, 1.5 s after the map is shown (no long event, no `Page` window).
-Needs `FirstStartPitch` **and** `PerSave` (the done flag lives in the save profile; without PerSave a warning is logged and no card shows).
-`bool Suppressed` (tests set it), `Due()`, `OpenNow()` (tests), `Delay`. Card: `ApplyPreset(p)`, `Finish()`, `UseForAll`, `NeverAgain`,
-`Preset`, `JoinedExisting`, `static OpenedCount`.
+### Global preferences (framework settings, one for all mods)
+Window size (`KitUI.Scale`), detailed log (`KitLog` writes Info/Debug to the game log), nerd settings, welcome cards. Shown on the
+framework's General page; every mod's General page links there.
 
-## Translation keys of src/UI
-`<P>.Kit.Page.*`, `Side.*`, `Header.*`, `Overview.*`, `Section.*`, `General.*`, `Search.*`, `Compat.*`, `Row.*`, `Diag.*`, `Card.*`,
-`About.*` — all in `Languages/{English,German}/JBKit.xml` (block "src/UI"), English fallback in code.
+---
+
+## Part 2: architecture and contract for contributors
+
+### Shape
+```
+Framework (static)                 list of contexts (snapshot arrays, no allocation per tick), identity, global prefs, too-old messages
+ └─ KitMod (per mod)               created by KitModBase ctor → KitMod.Boot: context → Framework.Add → log header → API check →
+     ├─ KitSettingRegistry           Register(r) → settings file (KitSettingsBase, legacy migration) → KitPatches.ApplyAll → KitHooks.ModBooted
+     ├─ KitSectionRegistry, KitPresetRegistry, KitCompatRegistry, KitPageRegistry
+     ├─ KitGuard, KitCaretaker, KitPatches, KitLog
+     └─ KitWindowState (UI state of its settings window), SaveExpose/SaveReset
+FrameworkMod : KitModBase          the framework's own context (Framework.Self): global prefs + "Mods" page (UI/FrameworkPages.cs)
+FrameworkGame : GameComponent      per-save profiles + SaveData, ticks (caretaker, OnTick), change flush, welcome cards — each mod fenced
+KitStartup [StaticConstructorOnStartup]  OnDefsLoaded per mod, migration rewrite, KitHooks.DefsLoaded, API-level scan + dialog
+KitWindowPatches                   Dialog_ModSettings bigger/resizable for every KitModBase (applied once, by the framework)
+```
+Everything except Part 1 is `internal`. `[assembly: InternalsVisibleTo("JBFramework.Testing")]` is generated, so the test assembly may use
+internals; nobody else may rely on them.
+
+### Internal hook points (`Source/JBFramework/Core/KitHooks.cs`) — use these instead of editing Core/UI
+| Hook | When | Signature |
+|---|---|---|
+| `KitHooks.ModBooted` | after each (non-blocked) mod's boot | `Action<KitMod>` (mods booted before you subscribed are in `Framework.AllContexts()`) |
+| `KitHooks.DefsLoaded` | once, after all mods' OnDefsLoaded | `Action` |
+| `KitHooks.ReportLines` | building a mod's diagnosis report | `Func<KitMod, IEnumerable<string>>` |
+| `KitHooks.CompatPage` | drawing a mod's Compatibility page, after integrations/conflicts | `Func<KitMod, float width, float y, float newY>` |
+All are fenced per mod (`KitHooks.Each`). Subscribe from a static constructor of your part or a `[StaticConstructorOnStartup]` class.
+If you need a new hook, add it to KitHooks (one line) rather than editing a drawing method.
+
+### Useful internals
+`KitMod.SettingsReg` (`All`, `Find`, `Value(s, profile)`, `Set(s, profile, v)`, `Reset`, `StoreFor`, `IsOverridden`), `KitMod.Sections`
+(`All`, `Find`, `Available`, `On`, `WhyOff`, `LabelOf`, `PrepareRemoval`), `KitMod.Presets` (`All`, `Matching`, `Changes`, `Apply`),
+`KitMod.Compat` (`All`, `Find`, `ReportFailure`), `KitMod.Pages`, `KitMod.Guard` (`TotalFailures`, `Paused`, `ReasonFor`, `ResetAll`),
+`KitMod.Caretaker` (`Checks`, `RunAll`), `KitMod.Patches` (`Failures`, `SkippedInactive`, `Applied`, `SharedTargets()`),
+`KitMod.Log.RecentSnapshot()`, `KitMod.MarkChanged/FlushChanges`, `KitMod.Window` (`PageId`, `Search`, `EditTemplate`, `Last` layout),
+`KitProfile.CloneForNewGame/CopySettingsFrom`, `FrameworkGame.Instance`, `FrameworkGame.SaveKey(k)`, `KitCompat.IsModActive/Strip/Dlcs`,
+`KitReport.Text(k)/Lines(k)/Combined()/LoadFolders(k)`, `KitText.K(sub, english, args)` (framework text `JBF.<sub>`),
+`KitUI.TestScreen`, `KitRow.ForceDrawAll`, `KitUiProbe` (hit counters "settings", "page:<id>", "diagnosis", "report", "card",
+"framework:mods"), `KitFirstStartCard.Suppressed/OpenNow(k)/Due()`, `KitDiagnosis.LastRemovalReport`, `KitSettingsWindow.BuildPages(k, target)`.
+
+### Ownership (who edits what)
+| Files | Owner |
+|---|---|
+| `build/*`, `Source/JBFramework/JBFramework.csproj`, `Source/JBFramework/Core/*`, `Source/JBFramework/UI/*`, `api/*`, `tools/public_api.py`, `tools/PublicApi/`, `tools/api_scan.sh`, `tools/ApiScan/`, `tools/art/`, `sample/*`, `About`, `LoadFolders.xml`, `README.md`, this file | conversion (done). Others change them only through a hook, a one-line hook addition in KitHooks, or a clearly scoped fix. |
+| `Common/Languages/*/Keyed/JBFramework.xml` | shared: append your keys in your own `JBF.<YourArea>.*` block, English and German both. Or add your own file next to it (`JBFramework_Compat.xml`). |
+| new: `Source/JBFramework/Compat/` (detection helpers, `ModNoteDef`, KB queries, adapters), `Common/Defs/ModNotes/*.xml`, `Source/JBFramework/Shared/` (dropdown-to-material designator, one-architect-entry helper, tier gizmo base, safe def mutation with restore, removal preparation), `Source/JBFramework/Random/` (JRand from H&H) | **agent 2: compat knowledge base and shared functions** |
+| `src/Testing/` → new project `Source/JBFramework.Testing/` (assembly `JBFramework.Testing`), a local unpublished test mod folder (suggested `testmod/`), `tools/jbmod`, `tools/probe/`, the `JB_TESTS` reference in `build/JBMod.props` | **agent 3: harness split and jbmod** |
+
+### Agent 2 (compat knowledge base, shared functions, random): where to hook in
+- Public types the game resolves by name (a `ModNoteDef : Def`, comps, place workers) must be `public` and live in namespace `JBFramework`;
+  their full names are then fixed forever. Everything else stays `internal` until it is meant as API.
+- New public API: add members/types, raise `JBFrameworkApiLevel` to 2 in `build/Identity.props`, rebuild both versions, run
+  `python3 -I tools/public_api.py check` (must say "added"), then `generate` and commit `api/PublicApi.txt`. Every public member needs an
+  XML doc comment (CS1591 is an error-free warning gate: keep 0 warnings).
+- Compat page: draw the knowledge-base part through `KitHooks.CompatPage` (e.g. "Known mods in your list" for the mod's tags). Report lines
+  through `KitHooks.ReportLines`. Per-mod compat registrations still go through `KitRegistry.Compat/Incompatible`; if mods need to state tags
+  ("this mod changes the bills UI"), add a new `KitRegistry` method (additive) that stores into a new internal registry hanging on
+  `KitMod` (add the field in `KitMod`; that one-line edit is allowed).
+- Shared functions that need Harmony patches: put the `[HarmonyPatch]` classes in the framework assembly (applied once by `KitPatches` of the
+  framework's own context, Harmony id = framework packageId) and make them early-out unless a mod opted in through a public registration.
+- Must compile for 1.6 too (`-p:RimVersion=1.6`, use `#if RW17` shims) and pass `tools/api_scan.sh 1.6`.
+
+### Agent 3 (harness and jbmod): what changed under you
+`src/Testing` is **not compiled** any more; it still uses the old static kit. Port it into `Source/JBFramework.Testing/` (own csproj importing
+`build/JBMod.props`-like settings or JBCommon.props, referencing `JBFramework.dll` with Private=false; `InternalsVisibleTo` already
+grants internals). Mapping old → new:
+
+| Old (source-shared kit) | New |
+|---|---|
+| `namespace JBKit` / `JBKit.Testing` | `JBFramework` / `JBFramework.Testing` |
+| `Kit.Info`, `Kit.Mod`, `Kit.Settings`, `Kit.Template/SaveProfile/Current`, `Kit.Get/Set/On` | `k.Info`, `k.Mod`, `k.Settings`, `k.Template/…`, `k.Get/Set/On` for the mod under test `k` |
+| `KitSettings.All/Find/Value/Set` | `k.SettingsReg.All/Find/Value/Set`; `KitSetting.Section` → `SectionId` |
+| `KitSections.*`, `KitPresets.*`, `KitCompat.All`, `KitPages.*` | `k.Sections.*`, `k.Presets.*`, `k.Compat.All`, `k.Pages.*` |
+| `KitGuard.*`, `KitCaretaker.*`, `KitPatches.*`, `KitLog.*` (static) | `k.Guard.*`, `k.Caretaker.*`, `k.Patches.*`, `k.Log.*` |
+| `KitGameBase` (per-mod GameComponent), `KitGameBase.Instance/CurrentProfile` | `FrameworkGame.Instance`, `k.SaveProfile`; per-save mod data via `KitRegistry.SaveData` |
+| `KitBoot.InstallTesting()` partial, `KitHooks.ExtraReportLines` | your own `[StaticConstructorOnStartup]` + `KitHooks.ModBooted`, `KitHooks.ReportLines` |
+| `KitBuiltins.*` (per-mod kit.windowScale, kit.verboseLog, kit.showNerd, kit.firstStartCard) | gone; global prefs `Framework.WindowScaleKey` etc. on `Framework.Self` |
+| `KitSettingsWindow.Last/SelectedPage/Search/EditTemplate`, `KitSettingsWindow.Target` | `k.Window.Last/PageId/Search/EditTemplate`, `KitSettingsWindow.Target(k)` |
+| `KitIcons.Mark/Page(id)/AllPaths()`, `KitDiagnosis.Draw(w)/BuildText()` | `KitIcons.Mark(k)/Page(k, id)/AllPaths(k)`, `KitDiagnosis.Draw(k, w)/BuildText(k)` |
+| `KitFirstStartCard.OpenNow()/Due()` (bool) | `KitFirstStartCard.OpenNow(k)`, `Due()` returns the `KitMod` whose card is due |
+| `<P>.Kit.*` keys stamped per mod | `JBF.*` once in the framework |
+| per-mod `KitTestRunnerBase : GameComponent` | suggestion: ONE runner GameComponent in the test assembly that picks the mod under test by `JB_TEST_MOD` (`Framework.Find`) and finds its suites by reflection over that mod's assembly (types deriving from `JBFramework.Testing.KitTestSuite`, compiled into the mod only with `JB_TESTS`) |
+
+`build/JBMod.props` with `-p:JBTests=true` only defines `JB_TESTS`; add there the reference to `JBFramework.Testing.dll` (Private=false)
+for test builds. `sample/KitSampleB/Source/SampleB.cs` keeps its `CounterSuite` under `#if JB_TESTS`, already ported to the new API except the
+harness types themselves. jbmod must now also put the framework into the slot profile's ModsConfig (`juliusberger.jbframework`, loaded from
+this folder or a slot copy) before the mod under test; the sample About files depend on it.
+
+### Decisions taken in the conversion (simplest option)
+1. Type names keep the `Kit` prefix (`KitMod`, `KitModBase`, …) in namespace `JBFramework`: short, already in every doc and sample.
+2. Hooks are `protected` virtuals on `KitModBase`; the framework calls them through internal bridges, each fenced.
+3. The settings object is found by reflection (one `KitSettingsBase` subclass per mod assembly); during the first load its context is
+   found by assembly (`Framework.ForAssembly`), because RimWorld sets `ModSettings.Mod` only after reading the file.
+4. Welcome cards: one global switch ("Show welcome cards") instead of one per mod; the card's "never again" box sets it for all JB mods.
+5. The framework itself is a context (`Framework.Self`) and reuses the settings window: no Overview (no sections), a "Mods" page first.
+6. Absent mods' profiles are kept forever (simplest silent option of FRAMEWORK.md 2.4); their SaveData nodes are dropped on the next save.
+7. Name, packageId, assembly name, namespace, version and API level live in `build/Identity.props`. The namespace is necessarily also
+   written in every `.cs` file; change it with a search-and-replace before the first upload (no tool yet).

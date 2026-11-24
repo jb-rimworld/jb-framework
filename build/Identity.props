@@ -1,0 +1,25 @@
+<Project>
+  <!--
+    The ONE place for the framework's identity. Everything else reads it: the framework build (assembly name, root namespace,
+    version stamps, generated About/About.xml), build/JBMod.props (reference name, API level and version stamped into dependent mods),
+    tools/public_api.py (API level of the snapshot).
+    SPDX-License-Identifier: MIT
+
+    Rules:
+      * Name and PackageId are final at the first Workshop upload. After that they never change.
+      * AssemblyVersion stays 1.0.0.0 forever (binary compatibility); JBFrameworkVersion is the file/informational version.
+      * JBFrameworkApiLevel rises by one with every release that ADDS public API (api/PublicApi.txt grows). Removing or changing a
+        public member is never allowed (tools/public_api.py check fails).
+      * The namespace is necessarily also written in every .cs file (C# has no other way): change it here AND by search-and-replace
+        in Source/, sample/ and the docs, before the first upload. The display name and packageId need nothing else.
+  -->
+  <PropertyGroup>
+    <JBFrameworkName>JB Framework</JBFrameworkName>
+    <JBFrameworkPackageId>juliusberger.jbframework</JBFrameworkPackageId>
+    <JBFrameworkAssemblyName>JBFramework</JBFrameworkAssemblyName>
+    <JBFrameworkNamespace>JBFramework</JBFrameworkNamespace>
+    <JBFrameworkVersion>1.0.0</JBFrameworkVersion>
+    <JBFrameworkApiLevel>1</JBFrameworkApiLevel>
+    <JBFrameworkAuthor>Julius Berger</JBFrameworkAuthor>
+  </PropertyGroup>
+</Project>
