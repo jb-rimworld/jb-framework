@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-// Built-in suites every kit mod gets (spec SharedKit.md 1.5.11). Generalised from Hearth & Harbor's smoke, core.defs, saveload.* and
-// core.settingsdump suites. Compiled only with -p:JBTests=true.
-#if JB_TESTS
+// Built-in suites every mod on the framework gets (run against the mod under test, TestContext.Mod; spec SharedKit.md 1.5.11).
+// Generalised from Hearth & Harbor's smoke, core.defs, saveload.* and core.settingsdump suites. Part of JBFramework.Testing.dll.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -14,7 +13,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 
-namespace JBKit.Testing
+namespace JBFramework.Testing
 {
     /// <summary>Shared helpers of the built-in suites.</summary>
     internal static class KitSuiteUtil
@@ -58,46 +57,47 @@ namespace JBKit.Testing
         /// <summary>Copy of the template and (when per-save) the save profile, to put everything back after a suite.</summary>
         internal sealed class Snapshot
         {
-            KitStore tStore, sStore; Dictionary<string, bool> tSec, sSec; KitProfile save;
-            public static Snapshot Take()
+            KitMod k; KitStore tStore, sStore; Dictionary<string, bool> tSec, sSec; KitProfile save;
+            public static Snapshot Take(KitMod k)
             {
-                var s = new Snapshot { tStore = Kit.Template.Store.Clone(), tSec = new Dictionary<string, bool>(Kit.Template.sections), save = Kit.SaveProfile };
+                var s = new Snapshot { k = k, tStore = k.Template.Store.Clone(), tSec = new Dictionary<string, bool>(k.Template.sections), save = k.SaveProfile };
                 if (s.save != null) { s.sStore = s.save.Store.Clone(); s.sSec = new Dictionary<string, bool>(s.save.sections); }
                 return s;
             }
             /// <summary>Restores values and switches (switch callbacks run for sections that change back) and tells the mod about every key once.</summary>
             public void Restore()
             {
-                foreach (var p in new[] { (Kit.Template, tSec), (save, sSec) })
+                foreach (var p in new[] { (k.Template, tSec), (save, sSec) })
                 {
                     if (p.Item1 == null || p.Item2 == null) continue;
-                    foreach (var sec in KitSections.All)
+                    foreach (var sec in k.Sections.All)
                     {
                         bool want = p.Item2.TryGetValue(sec.Id, out bool on) ? on : sec.DefaultOn;
                         if (p.Item1.SectionOn(sec.Id) != want) p.Item1.SetSection(sec.Id, want);
                     }
                     p.Item1.sections = new Dictionary<string, bool>(p.Item2);
                 }
-                Kit.Template.Store = tStore.Clone();
+                k.Template.Store = tStore.Clone();
                 if (save != null && sStore != null) save.Store = sStore.Clone();
-                foreach (var s in KitSettings.All) Kit.MarkChanged(s.Key);
-                Kit.FlushChanges();
+                foreach (var s in k.SettingsReg.All) k.MarkChanged(s.Key);
+                k.FlushChanges();
             }
         }
 
+
         /// <summary>Every translation key the registry uses, with its English text (the kit.settingsdump contract for tools/kit_lang.py).</summary>
-        public static List<KeyValuePair<string, string>> RegistryKeys()
+        public static List<KeyValuePair<string, string>> RegistryKeys(KitMod k)
         {
             var list = new List<KeyValuePair<string, string>>();
             var seen = new HashSet<string>();
-            void Add(string suffix, string en) { if (string.IsNullOrEmpty(en)) return; var k = KitText.Key(suffix); if (seen.Add(k)) list.Add(new KeyValuePair<string, string>(k, en)); }
-            foreach (var sec in KitSections.All)
+            void Add(string suffix, string en) { if (string.IsNullOrEmpty(en)) return; var key = k.Key(suffix); if (seen.Add(key)) list.Add(new KeyValuePair<string, string>(key, en)); }
+            foreach (var sec in k.Sections.All)
             {
                 Add("Section." + sec.Id, sec.LabelEn ?? sec.Id);
                 Add("Section." + sec.Id + ".Desc", sec.DescEn);
                 Add("Section." + sec.Id + ".Requires", sec.RequiresText);
             }
-            foreach (var s in KitSettings.All)
+            foreach (var s in k.SettingsReg.All)
             {
                 if (!string.IsNullOrEmpty(s.Category)) Add("SettingCat." + KitSetting.CatKey(s.Category), s.Category);
                 Add("Setting." + s.Key, s.LabelEn ?? s.Key);
@@ -105,9 +105,9 @@ namespace JBKit.Testing
                 if (s.Kind == KitSettingKind.Enum && s.EnumType != null)
                     foreach (var n in System.Enum.GetNames(s.EnumType)) Add("Enum." + s.EnumType.Name + "." + n, GenText.SplitCamelCase(n));
             }
-            foreach (var p in KitPresets.All) { Add("Preset." + p.Id, p.LabelEn ?? p.Id); Add("Preset." + p.Id + ".Desc", p.DescEn); }
-            foreach (var p in KitPages.All) Add("Page." + p.Id, p.LabelEn ?? p.Id);
-            foreach (var c in KitCompat.All) Add("Compat." + KitSetting.CatKey(c.Name) + (c.Incompatible ? ".Why" : ".What"), c.WhatEn);
+            foreach (var p in k.Presets.All) { Add("Preset." + p.Id, p.LabelEn ?? p.Id); Add("Preset." + p.Id + ".Desc", p.DescEn); }
+            foreach (var p in k.Pages.All) Add("Page." + p.Id, p.LabelEn ?? p.Id);
+            foreach (var c in k.Compat.All) Add("Compat." + KitSetting.CatKey(c.Name) + (c.Incompatible ? ".Why" : ".What"), c.WhatEn);
             return list;
         }
 
@@ -132,17 +132,27 @@ namespace JBKit.Testing
             return d;
         }
 
-        public static string SaveName => "jb_" + (Kit.Info?.ShortId ?? "kit").ToLowerInvariant() + "_saveload";
-        public static bool HasGameComponentType => KitPatches.SafeTypes(typeof(KitSuiteUtil).Assembly).Any(t => typeof(KitGameBase).IsAssignableFrom(t) && !t.IsAbstract);
+        public static string SaveName(KitMod k) => "jb_" + (k?.Info?.ShortId ?? "kit").ToLowerInvariant() + "_saveload";
 
-        public static List<string> ValueLines(KitProfile p)
+        public static List<string> ValueLines(KitMod k, KitProfile p)
         {
             var l = new List<string>();
-            if (p == null) return l;
-            foreach (var s in KitSettings.All.Where(x => !x.Global)) l.Add(s.Key + "=" + F(KitSettings.Value(s, p)));
-            foreach (var sec in KitSections.All) l.Add("section:" + sec.Id + "=" + p.SectionOn(sec.Id));
+            if (p == null || k == null) return l;
+            foreach (var s in k.SettingsReg.All.Where(x => !x.Global)) l.Add(s.Key + "=" + F(k.SettingsReg.Value(s, p)));
+            foreach (var sec in k.Sections.All) l.Add("section:" + sec.Id + "=" + p.SectionOn(sec.Id));
             return l;
         }
+
+        /// <summary>No red error naming the framework or the mod since the start of the run (notes the first ones).</summary>
+        public static void NoRedErrors(TestContext t, int since, string what)
+        {
+            var ours = KitTestLog.Since(since, true);
+            foreach (var e in ours.Take(10)) t.Note("our red error: " + KitTestLog.Format(e));
+            t.Check(ours.Count == 0, what + " (" + ours.Count + " of ours; all mods: " + KitTestLog.Since(since, false).Count + ")");
+        }
+
+        /// <summary>Does a save text hold this mod's entry in the framework's component?</summary>
+        public static bool SaveHasEntry(string text, KitMod k) => text.Contains("<id>" + FrameworkGame.SaveKey(k) + "</id>");
     }
 
     /// <summary>kit.smoke: loaded from the expected folders, registrations complete, nothing skipped or paused, no red error of ours.</summary>
@@ -153,14 +163,26 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
-            t.Check(Kit.Mod != null && Kit.Info != null, "kit initialised: " + Kit.Info?.Name + " " + Kit.Info?.Version + ", kit " + KitInfo.KitVersion + " (" + KitInfo.KitCommit + ", tier " + KitInfo.KitTier + ")");
-            t.Check(KitInfo.KitTests, "this is a test build (KitInfo.KitTests)");
+            var k = t.Mod;
+            t.Check(k != null && k.Mod != null, "context of the mod under test: " + k?.Name + " " + k?.Version + " (" + k?.PackageId + ") on " + Framework.Name + " " + Framework.Version + " (API level " + Framework.ApiLevel + ")");
+            if (k == null) yield break;
+            t.Check(!k.Blocked, "not blocked by the API-level check" + (k.Blocked ? ": " + k.BlockedReason : ""));
+            t.Check(Framework.Self != null, "the framework's own context exists");
+            t.Note("tenants: " + string.Join(", ", Framework.Mods.Select(m => m.Name + " " + m.Version)));
+            if (!k.IsFramework)
+            {
+                t.Check(Framework.Mods.Contains(k), "the mod is listed in Framework.Mods");
+                var mine = k.Content?.assemblies?.loadedAssemblies ?? new List<Assembly>();
+                t.Check(!mine.Any(a => a == typeof(Framework).Assembly || a.GetName().Name == typeof(Framework).Assembly.GetName().Name), "the mod ships no copy of " + typeof(Framework).Assembly.GetName().Name + ".dll");
+                int need = Framework.RequiredLevel(k.Mod.GetType().Assembly, out string built);
+                t.Check(need >= 1 && need <= Framework.ApiLevel, "API level stamp " + need + " (built with " + built + ") ≤ installed " + Framework.ApiLevel);
+            }
 
             // folders: the 1.7 view of LoadFolders.xml, never 1.6
-            var loaded = KitReport.LoadFolders();
+            var loaded = KitReport.LoadFolders(k);
             t.Note("load folders: " + string.Join(", ", loaded));
             t.Check(!loaded.Any(f => f == "1.6" || f.StartsWith("1.6/")), "no 1.6 folder loaded on 1.7");
-            var expected = ExpectedFolders();
+            var expected = ExpectedFolders(k);
             if (expected != null)
             {
                 var a = new HashSet<string>(loaded.Select(Norm)); var b = new HashSet<string>(expected.Select(Norm));
@@ -168,51 +190,48 @@ namespace JBKit.Testing
             }
             else t.Note("no LoadFolders.xml with a v1.7 entry");
 
-            t.Check(Kit.Settings != null, "settings object found (" + Kit.Settings?.GetType().Name + ")");
-            t.Check(KitSettings.All.Count >= 3, "settings registered: " + KitSettings.All.Count + " (incl. the kit's own)");
-            var noLabel = KitSettings.All.Where(s => string.IsNullOrWhiteSpace(s.Label) || string.IsNullOrWhiteSpace(s.Desc)).Select(s => s.Key).ToList();
+            t.Check(k.Settings != null, "settings object found (" + k.Settings?.GetType().Name + ")");
+            t.Note("registered: " + k.SettingsReg.All.Count + " settings, " + k.Sections.All.Count + " sections, " + k.Presets.All.Count + " presets, " + k.Compat.All.Count + " compat entries, " + k.Pages.All.Count + " pages");
+            var noLabel = k.SettingsReg.All.Where(s => string.IsNullOrWhiteSpace(s.Label) || string.IsNullOrWhiteSpace(s.Desc)).Select(s => s.Key).ToList();
             t.Check(noLabel.Count == 0, "every setting has a label and a description" + (noLabel.Count > 0 ? ": missing " + string.Join(", ", noLabel) : ""));
-            var badSec = KitSections.All.Where(s => string.IsNullOrWhiteSpace(s.Label) || string.IsNullOrWhiteSpace(s.Desc)).Select(s => s.Id).ToList();
-            t.Check(badSec.Count == 0, "every section (" + KitSections.All.Count + ") has a label and a description" + (badSec.Count > 0 ? ": missing " + string.Join(", ", badSec) : ""));
-            t.Check(KitPresets.All.All(p => !string.IsNullOrWhiteSpace(p.Label) && !string.IsNullOrWhiteSpace(p.Desc)), "every preset (" + KitPresets.All.Count + ") has a label and a description");
-            t.Check(KitCompat.All.All(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.What)), "every compat entry (" + KitCompat.All.Count + ") says what it does");
-            t.Check(KitPages.All.All(p => !string.IsNullOrWhiteSpace(p.Label)), "every custom page (" + KitPages.All.Count + ") has a label");
-            t.Check(KitPatches.Failures.Count == 0, "no patch class skipped (" + KitPatches.Applied + " applied" + (KitPatches.Failures.Count > 0 ? "; " + string.Join("; ", KitPatches.Failures) : "") + ")");
-            t.Check(!KitGuard.Paused.Any(), "no section paused: " + string.Join(", ", KitGuard.Paused.Select(KitGuard.ReasonFor)));
-            if (Kit.Info != null && Kit.Info.PerSave)
-            {
-                t.Check(KitGameBase.Instance != null, "the mod's KitGameBase component runs in this game");
-                t.Check(Kit.SaveProfile != null && ReferenceEquals(Kit.Current, Kit.SaveProfile), "per save: reads go to this save's profile");
-            }
-            else t.Check(ReferenceEquals(Kit.Current, Kit.Template), "global: reads go to the template (settings file)");
+            var badSec = k.Sections.All.Where(s => string.IsNullOrWhiteSpace(s.Label) || string.IsNullOrWhiteSpace(s.Desc)).Select(s => s.Id).ToList();
+            t.Check(badSec.Count == 0, "every section (" + k.Sections.All.Count + ") has a label and a description" + (badSec.Count > 0 ? ": missing " + string.Join(", ", badSec) : ""));
+            t.Check(k.Presets.All.All(p => !string.IsNullOrWhiteSpace(p.Label) && !string.IsNullOrWhiteSpace(p.Desc)), "every preset (" + k.Presets.All.Count + ") has a label and a description");
+            t.Check(k.Compat.All.All(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.What)), "every compat entry (" + k.Compat.All.Count + ") says what it does");
+            t.Check(k.Pages.All.All(p => !string.IsNullOrWhiteSpace(p.Label)), "every custom page (" + k.Pages.All.Count + ") has a label");
+            t.Check(k.Patches.Failures.Count == 0, "no patch class skipped (" + k.Patches.Applied + " applied, " + k.Patches.SkippedInactive.Count + " soft integrations inactive" + (k.Patches.Failures.Count > 0 ? "; " + string.Join("; ", k.Patches.Failures) : "") + ")");
+            t.Check(!k.Guard.Paused.Any(), "no section paused: " + string.Join(", ", k.Guard.Paused.Select(k.Guard.ReasonFor)));
+            t.Check(FrameworkGame.Instance != null, "the framework's game component runs in this game");
+            if (k.Info.PerSave)
+                t.Check(k.SaveProfile != null && ReferenceEquals(k.Current, k.SaveProfile), "per save: reads go to this save's profile");
+            else t.Check(ReferenceEquals(k.Current, k.Template), "global: reads go to the template (settings file)");
 
-            string report = null;
-            try { report = KitReport.Text(); } catch (Exception e) { t.Check(false, "diagnosis report threw " + e.Message); }
+            string report = null, combined = null;
+            try { report = k.DiagnosisReport(); combined = Framework.DiagnosisReport(); } catch (Exception e) { t.Check(false, "diagnosis report threw " + e.Message); }
             if (report != null)
             {
-                t.Check(report.Length > 50, "diagnosis report built (" + report.Split('\n').Length + " lines)");
+                t.Check(report.Length > 50 && combined.Length > report.Length / 2, "diagnosis report built (" + report.Split('\n').Length + " lines; combined " + combined.Split('\n').Length + ")");
                 string home = null; try { home = Environment.GetEnvironmentVariable("HOME"); } catch { }
-                t.Check(report.IndexOf("/Users/", StringComparison.Ordinal) < 0 && (string.IsNullOrEmpty(home) || report.IndexOf(home, StringComparison.Ordinal) < 0), "diagnosis report has no personal paths");
+                bool clean(string r) => r.IndexOf("/Users/", StringComparison.Ordinal) < 0 && (string.IsNullOrEmpty(home) || r.IndexOf(home, StringComparison.Ordinal) < 0);
+                t.Check(clean(report) && clean(combined), "diagnosis reports have no personal paths");
             }
 
-            t.Check(KitLog.ErrorCount == 0, "no error in the kit log since start (" + KitLog.ErrorCount + ")");
-            var ours = KitTestLog.Since(0, true);
-            foreach (var e in ours.Take(10)) t.Note("our red error: " + KitTestLog.Format(e));
-            t.Check(ours.Count == 0, "no red error of this mod since start (" + ours.Count + "; all mods: " + KitTestLog.Count(false) + ")");
+            t.Check(k.Log.ErrorCount == 0 && (Framework.Self?.Log.ErrorCount ?? 0) == 0, "no error in the logs of the mod (" + k.Log.ErrorCount + ") and the framework (" + Framework.Self?.Log.ErrorCount + ") since start");
+            KitSuiteUtil.NoRedErrors(t, 0, "no red error of the framework or the mod since start");
 
             int tick0 = Find.TickManager.TicksGame;
             yield return 600;
             t.Check(Find.TickManager.TicksGame > tick0, "the game ticks");
-            t.Check(!KitGuard.Paused.Any() && KitTestLog.Since(0, true).Count == 0, "still nothing paused and no red error of ours after 600 ticks");
+            t.Check(!k.Guard.Paused.Any() && KitTestLog.Since(0, true).Count == 0, "still nothing paused and no red error of ours after 600 ticks");
         }
 
         static string Norm(string f) { f = (f ?? "").Replace('\\', '/').Trim('/'); return f.Length == 0 ? "/" : f; }
 
-        static List<string> ExpectedFolders()
+        static List<string> ExpectedFolders(KitMod k)
         {
             try
             {
-                var root = Kit.Mod?.Content?.RootDir; if (root == null) return null;
+                var root = k.Content?.RootDir; if (root == null) return null;
                 var path = Path.Combine(root, "LoadFolders.xml"); if (!File.Exists(path)) return null;
                 var doc = new XmlDocument(); doc.Load(path);
                 var v = doc.DocumentElement?.SelectSingleNode("v1.7"); if (v == null) return null;
@@ -240,21 +259,23 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
-            var snap = KitSuiteUtil.Snapshot.Take();
-            var before = KitSuiteUtil.ValueLines(Kit.Current).Concat(KitSuiteUtil.ValueLines(Kit.Template)).ToList();
-            try { Body(t); }
+            var k = t.Mod;
+            var snap = KitSuiteUtil.Snapshot.Take(k);
+            var before = KitSuiteUtil.ValueLines(k, k.Current).Concat(KitSuiteUtil.ValueLines(k, k.Template)).ToList();
+            try { Body(t, k); }
             finally { snap.Restore(); }
-            var after = KitSuiteUtil.ValueLines(Kit.Current).Concat(KitSuiteUtil.ValueLines(Kit.Template)).ToList();
+            var after = KitSuiteUtil.ValueLines(k, k.Current).Concat(KitSuiteUtil.ValueLines(k, k.Template)).ToList();
             t.Check(before.SequenceEqual(after), "values and switches put back as they were (" + before.Count + " lines)");
             yield return 1;
         }
 
-        static void Body(TestContext t)
+        static void Body(TestContext t, KitMod k)
         {
+            var reg = k.SettingsReg;
             int bad = 0;
-            foreach (var s in KitSettings.All)
+            foreach (var s in reg.All)
             {
-                var target = s.Global ? Kit.Template : Kit.Current;
+                var target = s.Global ? k.Template : k.Current;
                 var why = new List<string>();
                 if (s.Kind != KitSettingKind.Bool)
                 {
@@ -263,33 +284,33 @@ namespace JBKit.Testing
                     if (s.Default < s.HardMin || s.Default > s.EffectiveHardMax) why.Add("default " + s.Default + " outside hard range");
                 }
                 float other = KitSuiteUtil.OtherValue(s);
-                KitSettings.Set(s, target, other);
-                if (!KitSuiteUtil.Near(KitSettings.Value(s, target), s.Clamp(other))) why.Add("set " + other + " read " + KitSettings.Value(s, target));
-                if (!KitSettings.IsOverridden(s, target)) why.Add("not stored after set");
-                if (s.Kind == KitSettingKind.Bool && !KitSuiteUtil.Near(KitSettings.Value(s, target), other)) why.Add("bool did not flip");
+                reg.Set(s, target, other);
+                if (!KitSuiteUtil.Near(reg.Value(s, target), s.Clamp(other))) why.Add("set " + other + " read " + reg.Value(s, target));
+                if (!reg.IsOverridden(s, target)) why.Add("not stored after set");
+                if (s.Kind == KitSettingKind.Bool && !KitSuiteUtil.Near(reg.Value(s, target), other)) why.Add("bool did not flip");
                 if (s.Kind != KitSettingKind.Bool)
                 {
                     if (s.HardMin > -1e30f)
                     {
-                        KitSettings.Set(s, target, s.HardMin - 1000f);
-                        if (!KitSuiteUtil.Near(KitSettings.Value(s, target), s.Clamp(s.HardMin))) why.Add("below hard min reads " + KitSettings.Value(s, target));
+                        reg.Set(s, target, s.HardMin - 1000f);
+                        if (!KitSuiteUtil.Near(reg.Value(s, target), s.Clamp(s.HardMin))) why.Add("below hard min reads " + reg.Value(s, target));
                     }
                     float hmax = s.EffectiveHardMax;
                     if (hmax < 1e30f)
                     {
-                        KitSettings.Set(s, target, hmax * 2f + 1000f);
-                        if (!KitSuiteUtil.Near(KitSettings.Value(s, target), s.Clamp(hmax))) why.Add("above hard max reads " + KitSettings.Value(s, target));
+                        reg.Set(s, target, hmax * 2f + 1000f);
+                        if (!KitSuiteUtil.Near(reg.Value(s, target), s.Clamp(hmax))) why.Add("above hard max reads " + reg.Value(s, target));
                     }
                 }
-                KitSettings.Reset(s, target);
-                if (!KitSuiteUtil.Near(KitSettings.Value(s, target), s.Clamp(s.Default))) why.Add("reset reads " + KitSettings.Value(s, target) + " not the default " + s.Default);
-                if (KitSettings.IsOverridden(s, target)) why.Add("still stored after reset");
+                reg.Reset(s, target);
+                if (!KitSuiteUtil.Near(reg.Value(s, target), s.Clamp(s.Default))) why.Add("reset reads " + reg.Value(s, target) + " not the default " + s.Default);
+                if (reg.IsOverridden(s, target)) why.Add("still stored after reset");
                 if (s.LegacyKey != null)
                 {
                     if (s.LegacyToValue == null) why.Add("legacy key without converter");
                     else
                     {
-                        var st = KitSettings.StoreFor(s, target);
+                        var st = reg.StoreFor(s, target);
                         st.Set(s.LegacyKey, s.Default);
                         if (s.StoredIn(st) == null) why.Add("legacy key " + s.LegacyKey + " does not resolve");
                         st.Remove(s.LegacyKey);
@@ -297,59 +318,63 @@ namespace JBKit.Testing
                 }
                 if (why.Count > 0) { bad++; t.Check(false, s.Key + ": " + string.Join("; ", why)); }
             }
-            t.Check(bad == 0, "every registration round-trips (" + KitSettings.All.Count + " settings, " + bad + " bad)");
+            t.Check(bad == 0, "every registration round-trips (" + reg.All.Count + " settings, " + bad + " bad)");
 
-            var legacy = KitSettings.All.Where(s => s.LegacyScribe != null).Select(s => s.LegacyScribe).Concat(KitSections.All.Where(s => s.LegacyEnabled != null).Select(s => s.LegacyEnabled)).ToList();
+            var legacy = reg.All.Where(s => s.LegacyScribe != null).Select(s => s.LegacyScribe).Concat(k.Sections.All.Where(s => s.LegacyEnabled != null).Select(s => s.LegacyEnabled)).ToList();
             t.Check(legacy.Count == legacy.Distinct().Count() && !legacy.Contains("kit"), "legacy field names unique and not 'kit' (" + legacy.Count + ")");
 
             // section switches
-            foreach (var sec in KitSections.All)
+            foreach (var sec in k.Sections.All)
             {
-                var p = Kit.Current;
+                var p = k.Current;
                 bool was = p.SectionOn(sec.Id);
                 p.SetSection(sec.Id, !was);
-                bool flipped = p.SectionOn(sec.Id) == !was && (KitSections.On(sec.Id) == (!was && KitSections.Available(sec.Id)));
+                bool flipped = p.SectionOn(sec.Id) == !was && (k.On(sec.Id) == (!was && k.Sections.Available(sec.Id)));
                 p.SetSection(sec.Id, was);
-                t.Check(flipped && p.SectionOn(sec.Id) == was, "section " + sec.Id + " switches " + (was ? "off" : "on") + " and back (available " + KitSections.Available(sec.Id) + ")");
+                t.Check(flipped && p.SectionOn(sec.Id) == was, "section " + sec.Id + " switches " + (was ? "off" : "on") + " and back (available " + k.Sections.Available(sec.Id) + ")");
             }
 
             // presets: applying twice changes nothing the second time
-            foreach (var pr in KitPresets.All)
+            foreach (var pr in k.Presets.All)
             {
-                var scratch = Kit.Template.CloneForNewGame();
-                Kit.SuppressNotifications(() => pr.Apply(scratch));
-                var again = KitPresets.Changes(pr, scratch);
-                t.Check(again.Count == 0 && KitPresets.IsMatch(pr, scratch), "preset " + pr.Id + " is idempotent and matches after applying" + (again.Count > 0 ? " (changes again: " + string.Join(", ", again) + ")" : ""));
+                var scratch = k.Template.CloneForNewGame();
+                k.SuppressNotifications(() => pr.Apply(scratch));
+                var again = k.Presets.Changes(pr, scratch);
+                t.Check(again.Count == 0 && k.Presets.IsMatch(pr, scratch), "preset " + pr.Id + " is idempotent and matches after applying" + (again.Count > 0 ? " (changes again: " + string.Join(", ", again) + ")" : ""));
             }
 
             // template → new game copy
-            var tmpl = Kit.Template; var copy = tmpl.CloneForNewGame();
-            var diff = KitSettings.All.Where(s => !s.Global && !KitSuiteUtil.Near(KitSettings.Value(s, copy), KitSettings.Value(s, tmpl))).Select(s => s.Key)
-                .Concat(KitSections.All.Where(sec => copy.SectionOn(sec.Id) != tmpl.SectionOn(sec.Id)).Select(sec => "section:" + sec.Id)).ToList();
+            var tmpl = k.Template; var copy = tmpl.CloneForNewGame();
+            var diff = reg.All.Where(s => !s.Global && !KitSuiteUtil.Near(reg.Value(s, copy), reg.Value(s, tmpl))).Select(s => s.Key)
+                .Concat(k.Sections.All.Where(sec => copy.SectionOn(sec.Id) != tmpl.SectionOn(sec.Id)).Select(sec => "section:" + sec.Id)).ToList();
             t.Check(diff.Count == 0 && !copy.FirstStartCardDone, "a new game starts with the template's values and switches" + (diff.Count > 0 ? ": differs " + string.Join(", ", diff) : ""));
 
             // per save: save and template are separate stores; global settings always live in the template
-            var save = Kit.SaveProfile;
-            if (Kit.Info.PerSave)
+            var save = k.SaveProfile;
+            if (k.Info.PerSave)
             {
                 t.Check(save != null, "per-save profile exists in this game");
-                var s = KitSettings.All.FirstOrDefault(x => !x.Global);
-                var g = KitSettings.All.FirstOrDefault(x => x.Global);
+                var s = reg.All.FirstOrDefault(x => !x.Global);
+                var g = reg.All.FirstOrDefault(x => x.Global);
                 if (save != null && s != null)
                 {
-                    float tBefore = KitSettings.Value(s, tmpl);
-                    KitSettings.Set(s, save, KitSuiteUtil.OtherValue(s));
-                    t.Check(KitSuiteUtil.Near(KitSettings.Value(s, tmpl), tBefore) && KitSuiteUtil.Near(Kit.Get(s.Key), KitSettings.Value(s, save)), s.Key + ": a change in this save leaves the template alone, reads follow the save");
-                    KitSettings.Reset(s, save);
+                    float tBefore = reg.Value(s, tmpl);
+                    reg.Set(s, save, KitSuiteUtil.OtherValue(s));
+                    t.Check(KitSuiteUtil.Near(reg.Value(s, tmpl), tBefore) && KitSuiteUtil.Near(k.Get(s.Key), reg.Value(s, save)), s.Key + ": a change in this save leaves the template alone, reads follow the save");
+                    reg.Reset(s, save);
                 }
                 if (save != null && g != null)
                 {
-                    KitSettings.Set(g, save, KitSuiteUtil.OtherValue(g));
-                    t.Check(KitSuiteUtil.Near(KitSettings.Value(g, tmpl), KitSettings.Value(g, save)) && !save.Store.Has(g.Key), g.Key + " (global) is stored in the template, never in the save");
-                    KitSettings.Reset(g, save);
+                    reg.Set(g, save, KitSuiteUtil.OtherValue(g));
+                    t.Check(KitSuiteUtil.Near(reg.Value(g, tmpl), reg.Value(g, save)) && !save.Store.Has(g.Key), g.Key + " (global) is stored in the template, never in the save");
+                    reg.Reset(g, save);
                 }
             }
             else t.Check(save == null, "not per-save: no save profile");
+
+            // other tenants are not touched by anything above
+            foreach (var other in Framework.Mods.Where(m => m != k))
+                t.Check(other.SettingsReg.All.All(x => reg.Find(x.Key) == null || ReferenceEquals(reg.Find(x.Key).Owner, k)), "registry of " + other.Name + " is separate");
         }
     }
 
@@ -365,10 +390,11 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
+            var k = t.Mod;
             var ours = new List<Def>();
             foreach (var type in GenDefDatabase.AllDefTypesWithDatabases())
                 foreach (var d in GenDefDatabase.GetAllDefsInDatabaseForDef(type))
-                    if (SaveFingerprint.OurDef(d)) ours.Add(d);
+                    if (SaveFingerprint.OurDef(d, k)) ours.Add(d);
             t.Note(ours.Count + " defs of this mod: " + string.Join(", ", ours.GroupBy(d => d.GetType().Name).Select(g => g.Key + " " + g.Count())));
 
             var noLabel = new List<string>(); var noDesc = new List<string>(); var badTex = new List<string>();
@@ -400,10 +426,13 @@ namespace JBKit.Testing
             t.Check(noDesc.Count == 0, "every shown def has a description" + (noDesc.Count > 0 ? ": missing " + string.Join(", ", noDesc.Take(20)) : ""));
             t.Check(badTex.Count == 0, "every texture resolves" + (badTex.Count > 0 ? ": " + string.Join(", ", badTex.Take(20)) : ""));
 
-            var keys = KitSuiteUtil.RegistryKeys();
+            var keys = KitSuiteUtil.RegistryKeys(k);
             var en = LanguageDatabase.defaultLanguage;
-            var missing = en == null ? keys.Select(k => k.Key).ToList() : keys.Where(k => !en.HaveTextForKey(k.Key)).Select(k => k.Key).ToList();
+            var missing = en == null ? keys.Select(x => x.Key).ToList() : keys.Where(x => !en.HaveTextForKey(x.Key)).Select(x => x.Key).ToList();
             t.Check(missing.Count == 0, "every registry key exists in English (" + keys.Count + " keys" + (missing.Count > 0 ? ", missing " + missing.Count + ": " + string.Join(", ", missing.Take(15)) + " → run `jbmod <Mod> lang --refresh`" : "") + ")");
+            // the framework's own texts exist once, in the framework (never copied into a mod)
+            var fwKeys = new[] { "JBF.Side.ThisSave", "JBF.Side.Template", "JBF.Header.Search" };
+            t.Check(en != null && fwKeys.All(x => en.HaveTextForKey(x)), "the framework's own texts (JBF.*) are loaded");
             yield return 1;
         }
 
@@ -428,40 +457,39 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
+            var k = t.Mod;
             string orig = KitTestEnv.Get(KitTestEnv.Migration);
             if (string.IsNullOrEmpty(orig) || !File.Exists(orig))
             {
                 t.Note("no old settings file provided (JB_TEST_MIGRATION); nothing to check. Run `jbmod <Mod> migrate-test`.");
                 yield break;
             }
-            t.Check(Kit.Settings != null, "settings object exists");
-            if (Kit.Settings == null) yield break;
+            t.Check(k.Settings != null, "settings object exists");
+            if (k.Settings == null) yield break;
             var old = KitSuiteUtil.SettingsFileFields(orig, out bool oldHadKit);
             t.Check(old != null, "the old settings file is valid XML");
             if (old == null) yield break;
             t.Note("old file: " + old.Count + " fields" + (oldHadKit ? ", already has a kit node" : ""));
-            int expected = 0, wrong = 0;
-            foreach (var s in KitSettings.All.Where(x => x.LegacyScribe != null))
+            int expected = 0;
+            foreach (var s in k.SettingsReg.All.Where(x => x.LegacyScribe != null))
             {
                 if (!old.TryGetValue(s.LegacyScribe, out string raw)) { t.Note(s.Key + ": old field " + s.LegacyScribe + " not in the file (default stays)"); continue; }
                 if (!s.TryParseLegacy(raw, out float want)) { t.Note(s.Key + ": old value '" + raw + "' unreadable (default stays)"); continue; }
                 expected++;
-                bool ok = Kit.Template.Store.TryGet(s.Key, out float got) && KitSuiteUtil.Near(got, want);
-                if (!ok) wrong++;
-                t.Check(ok, s.Key + " = " + s.Format(want) + " (from " + s.LegacyScribe + " '" + raw + "'), read " + (Kit.Template.Store.TryGet(s.Key, out float g2) ? s.Format(g2) : "nothing"));
+                bool ok = k.Template.Store.TryGet(s.Key, out float got) && KitSuiteUtil.Near(got, want);
+                t.Check(ok, s.Key + " = " + s.Format(want) + " (from " + s.LegacyScribe + " '" + raw + "'), read " + (k.Template.Store.TryGet(s.Key, out float g2) ? s.Format(g2) : "nothing"));
             }
-            foreach (var sec in KitSections.All.Where(x => x.LegacyEnabled != null))
+            foreach (var sec in k.Sections.All.Where(x => x.LegacyEnabled != null))
             {
                 if (!old.TryGetValue(sec.LegacyEnabled, out string raw) || !bool.TryParse(raw.Trim(), out bool want)) continue;
                 expected++;
-                bool ok = Kit.Template.sections.TryGetValue(sec.Id, out bool got) && got == want;
-                if (!ok) wrong++;
+                bool ok = k.Template.sections.TryGetValue(sec.Id, out bool got) && got == want;
                 t.Check(ok, "section " + sec.Id + " = " + want + " (from " + sec.LegacyEnabled + ")");
             }
             t.Check(expected > 0 || oldHadKit, "the old file had values to migrate (" + expected + ")");
-            if (!oldHadKit) t.Check(Kit.Settings.MigratedThisSession == (expected > 0), "migration ran this session (" + Kit.Settings.Migrated.Count + " values)");
+            if (!oldHadKit) t.Check(k.Settings.MigratedThisSession == (expected > 0), "migration ran this session (" + k.Settings.Migrated.Count + " values)");
 
-            string file = KitSettingsBase.SettingsFilePath;
+            string file = KitSettingsBase.SettingsFilePath(k);
             bool exists = file != null && File.Exists(file);
             t.Check(exists, "settings file exists (" + (file == null ? "?" : Path.GetFileName(file)) + ")");
             if (exists && expected > 0 && !oldHadKit)
@@ -469,9 +497,9 @@ namespace JBKit.Testing
                 string bak = file + ".pre-kit";
                 t.Check(File.Exists(bak) && File.ReadAllBytes(bak).SequenceEqual(File.ReadAllBytes(orig)), "backup " + Path.GetFileName(bak) + " equals the old file");
                 var now = KitSuiteUtil.SettingsFileFields(file, out bool nowKit) ?? new Dictionary<string, string>();
-                var leftover = KitSettings.All.Where(s => s.LegacyScribe != null && now.ContainsKey(s.LegacyScribe)).Select(s => s.LegacyScribe)
-                    .Concat(KitSections.All.Where(s => s.LegacyEnabled != null && now.ContainsKey(s.LegacyEnabled)).Select(s => s.LegacyEnabled)).ToList();
-                t.Check(nowKit && leftover.Count == 0, "file rewritten in the kit format without legacy nodes" + (leftover.Count > 0 ? " (left: " + string.Join(", ", leftover) + ")" : ""));
+                var leftover = k.SettingsReg.All.Where(s => s.LegacyScribe != null && now.ContainsKey(s.LegacyScribe)).Select(s => s.LegacyScribe)
+                    .Concat(k.Sections.All.Where(s => s.LegacyEnabled != null && now.ContainsKey(s.LegacyEnabled)).Select(s => s.LegacyEnabled)).ToList();
+                t.Check(nowKit && leftover.Count == 0, "file rewritten in the framework format without legacy nodes" + (leftover.Count > 0 ? " (left: " + string.Join(", ", leftover) + ")" : ""));
             }
             yield return 1;
         }
@@ -490,22 +518,20 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
+            var k = t.Mod;
             string save = SaveLoadKit.LoadedSave;
-            if (save == null) { foreach (var y in SavePhase(t)) yield return y; yield break; }
+            if (save == null) { foreach (var y in SavePhase(t, k)) yield return y; yield break; }
             t.Note("phase 2: loaded " + save);
-            if (KitSuiteUtil.HasGameComponentType)
-            {
-                t.Check(KitGameBase.Instance != null, "the mod's game component exists after the load");
-                t.Check(KitGameBase.Instance != null && !KitGameBase.Instance.JoinedExistingSave, "it was loaded from the save (not created fresh)");
-            }
+            t.Check(FrameworkGame.Instance != null, "the framework's game component exists after the load");
+            t.Check(!k.Window.JoinedExistingSave, "the mod's entry was loaded from the save (not created fresh)");
             SaveLoadKit.CompareFingerprints(save, t);
             var want = SaveLoadKit.ReadSide(save, "values");
-            if (Kit.Info.PerSave)
+            if (k.Info.PerSave)
             {
                 t.Check(want != null, "values of the save found");
                 if (want != null)
                 {
-                    var now = KitSuiteUtil.ValueLines(Kit.SaveProfile);
+                    var now = KitSuiteUtil.ValueLines(k, k.SaveProfile);
                     var d = want.Except(now).ToList();
                     foreach (var l in d.Take(20)) t.Note("saved " + l + ", now " + now.FirstOrDefault(x => x.StartsWith(l.Split('=')[0] + "=")));
                     t.Check(d.Count == 0 && now.Count == want.Count, "every per-save value and switch came back (" + want.Count + ")");
@@ -513,41 +539,38 @@ namespace JBKit.Testing
             }
             int mark = KitTestLog.Mark();
             yield return 2500;
-            var ours = KitTestLog.Since(mark, true);
-            foreach (var e in ours.Take(10)) t.Note("our red error: " + KitTestLog.Format(e));
-            t.Check(ours.Count == 0 && !KitGuard.Paused.Any(), "2500 ticks after the load: no red error of ours, nothing paused");
+            KitSuiteUtil.NoRedErrors(t, 0, "load + 2500 ticks: no red error of ours");
+            t.Check(!k.Guard.Paused.Any() && KitTestLog.Since(mark, true).Count == 0, "nothing paused, nothing new while playing");
         }
 
-        IEnumerable<int> SavePhase(TestContext t)
+        IEnumerable<int> SavePhase(TestContext t, KitMod k)
         {
-            t.Note("phase 1: new game → save " + KitSuiteUtil.SaveName);
-            var snap = KitSuiteUtil.Snapshot.Take();
+            string name = KitSuiteUtil.SaveName(k);
+            t.Note("phase 1: new game → save " + name);
+            var snap = KitSuiteUtil.Snapshot.Take(k);
             var changed = new List<string>();
             try
             {
-                var sp = Kit.SaveProfile;
+                var sp = k.SaveProfile;
                 if (sp != null)
                 {
-                    foreach (var s in KitSettings.All.Where(x => !x.Global && x.Section != KitSections.Core).Concat(KitSettings.All.Where(x => !x.Global)).Distinct().Take(3))
-                    { KitSettings.Set(s, sp, KitSuiteUtil.OtherValue(s)); changed.Add(s.Key + "=" + s.Format(KitSettings.Value(s, sp))); }
-                    var sec = KitSections.All.FirstOrDefault(x => KitSections.Available(x.Id));
+                    foreach (var s in k.SettingsReg.All.Where(x => !x.Global && x.SectionId != KitMod.Core).Concat(k.SettingsReg.All.Where(x => !x.Global)).Distinct().Take(3))
+                    { k.SettingsReg.Set(s, sp, KitSuiteUtil.OtherValue(s)); changed.Add(s.Key + "=" + s.Format(k.SettingsReg.Value(s, sp))); }
+                    var sec = k.Sections.All.FirstOrDefault(x => k.Sections.Available(x.Id));
                     if (sec != null) { sp.SetSection(sec.Id, !sp.SectionOn(sec.Id)); changed.Add("section:" + sec.Id + "=" + sp.SectionOn(sec.Id)); }
-                    Kit.FlushChanges();
+                    k.FlushChanges();
                     t.Note("changed in this save before saving: " + string.Join(", ", changed));
                 }
                 else t.Note("not per-save: setting values are not part of the save");
-                if (SaveLoadKit.SaveWithFingerprint(KitSuiteUtil.SaveName, t))
+                if (SaveLoadKit.SaveWithFingerprint(name, t))
                 {
-                    SaveLoadKit.WriteSide(KitSuiteUtil.SaveName, "values", KitSuiteUtil.ValueLines(sp));
-                    string text = File.ReadAllText(GenFilePaths.FilePathForSavedGame(KitSuiteUtil.SaveName));
-                    if (KitSuiteUtil.HasGameComponentType)
-                    {
-                        var gt = KitPatches.SafeTypes(typeof(KitSuiteUtil).Assembly).First(x => typeof(KitGameBase).IsAssignableFrom(x) && !x.IsAbstract);
-                        t.Check(text.Contains("\"" + gt.FullName + "\""), "the save holds the game component " + gt.FullName);
-                    }
-                    if (sp != null) t.Check(text.Contains("<kitProfile>"), "the save holds the per-save profile");
-                    var runnerTypes = KitPatches.SafeTypes(typeof(KitSuiteUtil).Assembly).Where(x => typeof(KitTestRunnerBase).IsAssignableFrom(x) && !x.IsAbstract).ToList();
-                    t.Check(runnerTypes.All(rt => !text.Contains("\"" + rt.FullName + "\"")), "no test runner in the save");
+                    SaveLoadKit.WriteSide(name, "values", KitSuiteUtil.ValueLines(k, sp));
+                    string text = File.ReadAllText(GenFilePaths.FilePathForSavedGame(name));
+                    t.Check(text.Contains("\"" + typeof(FrameworkGame).FullName + "\""), "the save holds the framework's game component " + typeof(FrameworkGame).FullName);
+                    if (!k.IsFramework) t.Check(KitSuiteUtil.SaveHasEntry(text, k), "the save holds the mod's entry (" + FrameworkGame.SaveKey(k) + ")");
+                    if (sp != null) t.Check(text.Contains("<profile>"), "the save holds the per-save profile");
+                    if (k.SaveExpose != null) t.Check(text.Contains("<data>"), "the save holds the mod's SaveData node");
+                    t.Check(!text.Contains(typeof(KitTestRunner).Namespace + "."), "nothing of the test harness in the save");
                 }
             }
             finally { snap.Restore(); }
@@ -555,8 +578,8 @@ namespace JBKit.Testing
         }
     }
 
-    /// <summary>kit.addition (explicit): a save made WITHOUT this mod was loaded with it (tools/jbmod addition). The component was created
-    /// fresh, the save's profile is a copy of the template, and 2500 ticks run without a red error of ours.</summary>
+    /// <summary>kit.addition (explicit): a save made WITHOUT this mod (and without the framework) was loaded with it (tools/jbmod addition).
+    /// The entry was created fresh, the save's profile is a copy of the template, and 2500 ticks run without a red error of ours.</summary>
     internal sealed class KitAdditionSuite : KitTestSuite
     {
         public override string Name => "kit.addition";
@@ -566,28 +589,23 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
+            var k = t.Mod;
             t.Check(SaveLoadKit.LoadedSave != null, "the game was loaded from a save (" + SaveLoadKit.LoadedSave + ")");
-            if (KitSuiteUtil.HasGameComponentType)
+            t.Check(FrameworkGame.Instance != null, "the framework's game component was added to the save");
+            t.Check(k.Window.JoinedExistingSave, "the mod knows it joined an existing save");
+            if (k.Info.PerSave)
             {
-                t.Check(KitGameBase.Instance != null, "the mod's game component was added to the save");
-                t.Check(KitGameBase.Instance != null && KitGameBase.Instance.JoinedExistingSave, "it knows it joined an existing save");
-            }
-            if (Kit.Info.PerSave)
-            {
-                var sp = Kit.SaveProfile;
+                var sp = k.SaveProfile;
                 t.Check(sp != null, "the save got a profile");
                 if (sp != null)
                 {
-                    var d = KitSuiteUtil.ValueLines(sp).Except(KitSuiteUtil.ValueLines(Kit.Template)).ToList();
+                    var d = KitSuiteUtil.ValueLines(k, sp).Except(KitSuiteUtil.ValueLines(k, k.Template)).ToList();
                     t.Check(d.Count == 0, "the save's profile is a copy of the template" + (d.Count > 0 ? " (differs: " + string.Join(", ", d.Take(10)) + ")" : ""));
                 }
             }
-            int mark = KitTestLog.Mark();
             yield return 2500;
-            var ours = KitTestLog.Since(mark, true);
-            var all = KitTestLog.Since(0, true);
-            foreach (var e in all.Take(10)) t.Note("our red error: " + KitTestLog.Format(e));
-            t.Check(all.Count == 0 && !KitGuard.Paused.Any(), "load + 2500 ticks: no red error of ours (" + all.Count + ", " + ours.Count + " while playing), nothing paused");
+            KitSuiteUtil.NoRedErrors(t, 0, "load + 2500 ticks: no red error of ours");
+            t.Check(!k.Guard.Paused.Any(), "nothing paused");
         }
     }
 
@@ -600,28 +618,30 @@ namespace JBKit.Testing
 
         public override IEnumerable<int> Run(TestContext t)
         {
+            var k = t.Mod;
             string path = KitTestEnv.Get(KitTestEnv.Dump);
-            if (string.IsNullOrEmpty(path)) path = Path.Combine(GenFilePaths.ConfigFolderPath, (Kit.Info?.ShortId ?? "JBKit") + "_settings_dump.json");
-            var keys = KitSuiteUtil.RegistryKeys();
+            if (string.IsNullOrEmpty(path)) path = Path.Combine(GenFilePaths.ConfigFolderPath, (k.Info?.ShortId ?? "JB") + "_settings_dump.json");
+            var keys = KitSuiteUtil.RegistryKeys(k);
+            var reg = k.SettingsReg.All;
             var sb = new StringBuilder();
-            sb.Append("{\n  \"prefix\": ").Append(J(KitText.Prefix)).Append(",\n  \"mod\": ").Append(J(Kit.Info?.Name)).Append(",\n  \"modVersion\": ").Append(J(Kit.Info?.Version))
-              .Append(",\n  \"kitVersion\": ").Append(J(KitInfo.KitVersion)).Append(",\n  \"keyed\": {\n");
+            sb.Append("{\n  \"prefix\": ").Append(J(k.Info.KeyPrefix)).Append(",\n  \"mod\": ").Append(J(k.Info?.Name)).Append(",\n  \"modVersion\": ").Append(J(k.Info?.Version))
+              .Append(",\n  \"frameworkVersion\": ").Append(J(Framework.Version)).Append(",\n  \"apiLevel\": ").Append(Framework.ApiLevel).Append(",\n  \"keyed\": {\n");
             for (int i = 0; i < keys.Count; i++) sb.Append("    ").Append(J(keys[i].Key)).Append(": ").Append(J(keys[i].Value)).Append(i + 1 < keys.Count ? ",\n" : "\n");
             sb.Append("  },\n  \"settings\": [\n");
-            for (int i = 0; i < KitSettings.All.Count; i++)
+            for (int i = 0; i < reg.Count; i++)
             {
-                var s = KitSettings.All[i];
-                sb.Append("    {\"key\": ").Append(J(s.Key)).Append(", \"section\": ").Append(J(s.Section)).Append(", \"category\": ").Append(J(s.Category))
+                var s = reg[i];
+                sb.Append("    {\"key\": ").Append(J(s.Key)).Append(", \"section\": ").Append(J(s.SectionId)).Append(", \"category\": ").Append(J(s.Category))
                   .Append(", \"kind\": ").Append(J(s.Kind.ToString())).Append(", \"default\": ").Append(KitSuiteUtil.F(s.Default))
                   .Append(", \"min\": ").Append(KitSuiteUtil.F(s.SliderMin)).Append(", \"max\": ").Append(KitSuiteUtil.F(s.SliderMax))
                   .Append(", \"global\": ").Append(s.Global ? "true" : "false").Append(", \"legacy\": ").Append(J(s.LegacyScribe)).Append('}')
-                  .Append(i + 1 < KitSettings.All.Count ? ",\n" : "\n");
+                  .Append(i + 1 < reg.Count ? ",\n" : "\n");
             }
-            sb.Append("  ],\n  \"sections\": [").Append(string.Join(", ", KitSections.All.Select(s => J(s.Id)))).Append("]\n}\n");
+            sb.Append("  ],\n  \"sections\": [").Append(string.Join(", ", k.Sections.All.Select(s => J(s.Id)))).Append("]\n}\n");
             bool ok;
             try { File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false)); ok = true; }
             catch (Exception e) { t.Note("write failed: " + e.Message); ok = false; }
-            t.Check(ok, "dump written: " + keys.Count + " keys, " + KitSettings.All.Count + " settings (" + Path.GetFileName(path) + ")");
+            t.Check(ok, "dump written: " + keys.Count + " keys, " + reg.Count + " settings (" + Path.GetFileName(path) + ")");
             yield return 1;
         }
 
@@ -645,4 +665,3 @@ namespace JBKit.Testing
         }
     }
 }
-#endif

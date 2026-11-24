@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>JB Framework Testing (local)</name>
+  <author>Julius Berger</author>
+  <packageId>juliusberger.jbframework.testing</packageId>
+  <modVersion>1.0.0</modVersion>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>juliusberger.jbframework</packageId>
+      <displayName>JB Framework</displayName>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>juliusberger.jbframework</li>
+  </loadAfter>
+  <description>The in-game test harness of JB Framework (JBFramework.Testing.dll). Local only, never published: tools/jbmod puts it into test runs.</description>
+</ModMetaData>

@@ -3,3 +3,7 @@ obj/
 bin/
 .DS_Store
 settings_dump.json
+
+# local test mod: the harness DLL is built by tools/jbmod
+TestMod/1.7/
+TestMod/1.6/

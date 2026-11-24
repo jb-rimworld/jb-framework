@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Prints the public API of an assembly: every public type and every public or protected member, one sorted line each.
 // A line changes when anything a dependent mod could bind to changes (name, kind, modifiers, types, parameter names and defaults).
-// Usage: PublicApi <assembly.dll>
+// Usage: PublicApi <assembly.dll>          the public API
+//        PublicApi --types <assembly.dll>  every type DEFINED in the assembly (full name), for tools/release.py
 using Mono.Cecil;
 
 static class Program
 {
     static int Main(string[] args)
     {
-        if (args.Length != 1) { Console.Error.WriteLine("usage: PublicApi <assembly.dll>"); return 2; }
+        if (args.Length == 2 && args[0] == "--types")
+        {
+            foreach (var t in AssemblyDefinition.ReadAssembly(args[1]).MainModule.GetTypes()) Console.WriteLine(t.FullName);
+            return 0;
+        }
+        if (args.Length != 1) { Console.Error.WriteLine("usage: PublicApi [--types] <assembly.dll>"); return 2; }
         var asm = AssemblyDefinition.ReadAssembly(args[0]);
         var lines = new List<string>();
         foreach (var t in asm.MainModule.GetTypes())

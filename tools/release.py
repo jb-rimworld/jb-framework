@@ -7,8 +7,11 @@
 Steps (all checks run, then the first failing group stops before anything is copied):
   1 build      release build with -p:JBTests=false (skip: --no-build). csproj: --csproj, else Source/**: one that imports JBMod.props, else
                *.rw17.csproj, else the only *.csproj (obj/bin/_frozen16 ignored).
-  2 dll scan   no test harness in 1.7/Assemblies (KitTestRunnerBase, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST, JB_UI_SHOTS, JB_PROBE,
-               HearthTestRunner), ASCII and UTF-16.
+  2 dll scan   no test harness in 1.7/Assemblies (JBFramework.Testing, KitTestRunner, KitTestSuite, KitSuites, SaveFingerprint, JB_TEST,
+               JB_UI_SHOTS, JB_PROBE, HearthTestRunner), ASCII and UTF-16. A dependent mod ships no JBFramework.dll and DEFINES no type in the
+               framework's namespace (tools/PublicApi --types; a copied framework source file would shadow the real framework).
+               The framework itself (a folder with build/Identity.props): built for 1.7 AND 1.6, `tools/public_api.py check` must pass (the
+               public API is additive only), and the copy leaves out sample/, build/, api/, TestMod/ and API.md.
   3 freeze     freeze16.py --check (1.6 byte-identical to Source/Frozen16.sha256); About lists 1.6 but no manifest = error.
   4 layout     LoadFolders.xml (v1.6 if About lists 1.6, v1.7; every listed folder exists), no content dirs in the mod root, About fields
                (packageId, name, author, supportedVersions, modVersion == version), PublishedFileId numeric, Preview.png < 1,000,000 bytes.
@@ -35,7 +38,12 @@ CONTENT = ["Defs", "Patches", "Languages", "Textures", "Sounds"]
 ROOT_FORBIDDEN = CONTENT + ["Assemblies", "Resources"]
 ROOT_ALLOWED = {"About", "Common", "Source", "Workshop", "tools", ".git", ".gitignore", ".gitattributes", "LoadFolders.xml", "CHANGELOG.md",
                 "README.md", "LICENSE", "LICENSE.md", "LICENSE.txt", "CREDITS.md", "AGENTS.md", ".DS_Store"}
-FORBIDDEN_STRINGS = ["KitTestRunnerBase", "KitTestSuite", "KitSuites", "SaveFingerprint", "JB_TEST", "JB_UI_SHOTS", "JB_PROBE", "HearthTestRunner"]
+FORBIDDEN_STRINGS = ["JBFramework.Testing", "KitTestRunner", "KitTestSuite", "KitSuites", "SaveFingerprint", "JB_TEST", "JB_UI_SHOTS", "JB_PROBE",
+                     "HearthTestRunner"]
+# the framework DLL names its test assembly in [InternalsVisibleTo("JBFramework.Testing")]: that one string is allowed there
+FRAMEWORK_ALLOWED_STRINGS = {"JBFramework.Testing"}
+FRAMEWORK_EXCLUDES = ["/sample/", "/build/", "/api/", "/TestMod/", "/src/", "/API.md"]
+FRAMEWORK_ROOT_ALLOWED = {"sample", "build", "api", "TestMod", "API.md"}
 RSYNC_EXCLUDES = ["/Source/", "/Workshop/", "/tools/", "obj/", "bin/", ".git/", "*.csproj", "_frozen16/", "*.pre-kit", "*.pdb", ".DS_Store",
                   ".gitignore", ".gitattributes"]
 TEX_TAGS = {"texPath", "uiIconPath", "iconPath"}
@@ -95,9 +103,29 @@ def find_csproj(mod, forced):
     return None
 
 
-def scan_dll(path):
+def is_framework(mod):
+    return os.path.isfile(os.path.join(mod, "build", "Identity.props"))
+
+
+def fw_identity():
+    s = open(os.path.join(HERE, "..", "build", "Identity.props"), encoding="utf-8").read()
+    return {k: re.search(r"<%s>([^<]*)</%s>" % (k, k), s).group(1).strip() for k in ("JBFrameworkNamespace", "JBFrameworkAssemblyName")}
+
+
+def scan_dll(path, framework=False):
     data = open(path, "rb").read()
-    return [s for s in FORBIDDEN_STRINGS if s.encode() in data or s.encode("utf-16-le") in data]
+    return [s for s in FORBIDDEN_STRINGS if (s.encode() in data or s.encode("utf-16-le") in data) and not (framework and s in FRAMEWORK_ALLOWED_STRINGS)]
+
+
+def defined_types(dll):
+    """Full names of the types DEFINED in a DLL (tools/PublicApi --types), or None when the tool cannot run."""
+    pa = load("public_api")
+    try:
+        pa.list_api(os.path.join(HERE, "..", "1.7", "Assemblies", fw_identity()["JBFrameworkAssemblyName"] + ".dll"))   # builds the tool if needed
+    except SystemExit as e:
+        print("   ", e); return None
+    p = subprocess.run(["dotnet", os.path.join(pa.TOOL, "bin", "PublicApi.dll"), "--types", dll], env=pa.dotnet(), capture_output=True, text=True)
+    return [l.strip() for l in p.stdout.splitlines() if l.strip()] if p.returncode == 0 else None
 
 
 def step_build(mod, a, R):
@@ -106,14 +134,16 @@ def step_build(mod, a, R):
     if cs is None: R.warn("no csproj under Source/: nothing to build (assemblies used as they are)"); return
     if cs.startswith("AMBIGUOUS:"): R.err("several csproj files, pass --csproj: " + cs[10:]); return
     env = dict(os.environ, PATH=os.path.expanduser("~/.dotnet") + os.pathsep + os.environ.get("PATH", ""), DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
-    cmd = ["dotnet", "build", cs, "-c", "Release", "-nologo", "-v", "q", "-clp:ErrorsOnly", "-p:JBTests=false"]
-    print("$", " ".join(cmd))
-    p = subprocess.run(cmd, env=env, capture_output=True, text=True)
-    if p.returncode != 0:
-        for l in (p.stdout + p.stderr).splitlines()[-25:]: print("   ", l)
-        R.err(f"dotnet build failed ({os.path.relpath(cs, mod)})")
-    else:
-        R.ok(f"built {os.path.relpath(cs, mod)}")
+    versions = [None, "1.6"] if is_framework(mod) else [None]   # the framework ships a 1.6 DLL too (compile-only, best effort)
+    for v in versions:
+        cmd = ["dotnet", "build", cs, "-c", "Release", "-nologo", "-v", "q", "-clp:ErrorsOnly", "-p:JBTests=false", "-p:JBRelease=true"] + ([f"-p:RimVersion={v}"] if v else [])
+        print("$", " ".join(cmd))
+        p = subprocess.run(cmd, env=env, capture_output=True, text=True)
+        if p.returncode != 0:
+            for l in (p.stdout + p.stderr).splitlines()[-25:]: print("   ", l)
+            R.err(f"dotnet build failed ({os.path.relpath(cs, mod)}{', RimWorld ' + v if v else ''})")
+        else:
+            R.ok(f"built {os.path.relpath(cs, mod)}{' for RimWorld ' + v + ' (compile-only)' if v else ''}")
 
 
 def step_dll(mod, R, label="dll scan"):
@@ -122,19 +152,44 @@ def step_dll(mod, R, label="dll scan"):
     for d in (os.path.join(mod, "1.7", "Assemblies"), os.path.join(mod, "Common", "Assemblies")):
         if os.path.isdir(d): dlls += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith(".dll")]
     if not dlls: R.warn("no DLL in 1.7/Assemblies"); return
+    fw = is_framework(mod)
+    ident = fw_identity()
+    ns, asm = ident["JBFrameworkNamespace"], ident["JBFrameworkAssemblyName"]
     for d in dlls:
-        if os.path.basename(d).lower() == "jbframework.dll" and not os.path.isfile(os.path.join(mod, "build", "Identity.props")):
+        base = os.path.basename(d).lower()
+        if base.startswith(asm.lower() + ".testing"):
+            R.err(f"{os.path.relpath(d, mod)}: the test harness never ships (it lives in the local TestMod/)"); continue
+        if base == asm.lower() + ".dll" and not fw:
             R.err(f"{os.path.relpath(d, mod)}: a dependent mod must not ship JB Framework (reference it with Private=false; build/JBMod.props does)")
             continue
-        hits = scan_dll(d)
+        hits = scan_dll(d, framework=fw and base == asm.lower() + ".dll")
         if hits: R.err(f"{os.path.relpath(d, mod)} contains test code: {', '.join(hits)} (built with JBTests=true?)")
         else: R.ok(f"{os.path.relpath(d, mod)} clean")
+        if not fw:
+            types = defined_types(d)
+            if types is None: R.err(f"{os.path.relpath(d, mod)}: could not list its types (tools/PublicApi)")
+            else:
+                bad = [t for t in types if t == ns or t.startswith(ns + ".")]
+                if bad: R.err(f"{os.path.relpath(d, mod)} defines framework types (copied framework source?): {', '.join(bad[:8])}")
+                else: R.ok(f"{os.path.relpath(d, mod)} defines no {ns}.* type ({len(types)} types)")
+    if fw:
+        R.group = "public api"
+        p = subprocess.run([sys.executable, "-I", os.path.join(HERE, "public_api.py"), "check"], capture_output=True, text=True)
+        for l in (p.stdout + p.stderr).splitlines()[-12:]: print("   ", l)
+        (R.ok if p.returncode == 0 else R.err)(f"tools/public_api.py check exit {p.returncode}")
 
 
 def step_freeze(mod, about, R):
     R.group = "freeze"
     man = os.path.join(mod, "Source", "Frozen16.sha256")
     if "1.6" in about["versions"] and not os.path.isfile(man):
+        cs = find_csproj(mod, None)
+        built16 = is_framework(mod) or (cs and not cs.startswith("AMBIGUOUS:") and "JBMod.props" in open(cs, encoding="utf-8", errors="replace").read())
+        if built16:
+            # a framework mod (or the framework) builds 1.6 from source (compile-only, best effort): the DLL must exist, nothing is frozen
+            dll16 = [f for f in (os.listdir(os.path.join(mod, "1.6", "Assemblies")) if os.path.isdir(os.path.join(mod, "1.6", "Assemblies")) else []) if f.endswith(".dll")]
+            (R.ok if dll16 else R.err)(f"1.6 built from source (compile-only, best effort): {', '.join(dll16) or 'no DLL in 1.6/Assemblies (jbmod <Mod> build)'}")
+            return
         R.err("About lists 1.6 but Source/Frozen16.sha256 is missing (run freeze16.py)"); return
     if not os.path.isfile(man):
         R.ok("no frozen 1.6 (About does not list it)"); return
@@ -163,6 +218,7 @@ def step_layout(mod, about, version, R):
             R.err(f"content in the mod root: {c}/ (loaded by no version once LoadFolders.xml exists; move it to Common/)")
     for n in sorted(os.listdir(mod)):
         if n in ROOT_ALLOWED or n in ROOT_FORBIDDEN or re.fullmatch(r"\d+\.\d+", n): continue
+        if is_framework(mod) and n in FRAMEWORK_ROOT_ALLOWED: continue
         R.warn(f"unexpected entry in the mod root: {n}")
     a = about
     if not a["name"]: R.err("About: <name> missing")
@@ -287,7 +343,8 @@ def step_copy(mod, dest, R, dry):
     if dry:
         R.ok(f"dry: would rsync --delete to {dest}"); return True
     os.makedirs(dest, exist_ok=True)
-    cmd = ["rsync", "-a", "--delete", "--delete-excluded"] + [f"--exclude={e}" for e in RSYNC_EXCLUDES] + [mod.rstrip("/") + "/", dest.rstrip("/") + "/"]
+    excl = RSYNC_EXCLUDES + (FRAMEWORK_EXCLUDES if is_framework(mod) else [])
+    cmd = ["rsync", "-a", "--delete", "--delete-excluded"] + [f"--exclude={e}" for e in excl] + [mod.rstrip("/") + "/", dest.rstrip("/") + "/"]
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode: R.err("rsync failed: " + p.stderr.strip()); return False
     bad = []
@@ -297,6 +354,7 @@ def step_copy(mod, dest, R, dry):
         for x in ds + fs:
             r = os.path.normpath(os.path.join(rel, x))
             if x in ("obj", "bin", ".git", "_frozen16", ".DS_Store", ".gitignore") or x.endswith((".csproj", ".pre-kit", ".pdb")) or r in ("Source", "Workshop", "tools"): bad.append(r)
+            if is_framework(mod) and r in ("sample", "build", "api", "TestMod", "src", "API.md"): bad.append(r)
         n += len(fs)
     if bad: R.err("excluded names in the copy: " + ", ".join(bad[:10]))
     for d, _, fs in os.walk(os.path.join(mod, "1.6")):
@@ -304,11 +362,12 @@ def step_copy(mod, dest, R, dry):
             if f == ".DS_Store": continue
             s = os.path.join(d, f); t = os.path.join(dest, os.path.relpath(s, mod))
             if not os.path.isfile(t) or sha(s) != sha(t): R.err(f"1.6 file differs in the copy: {os.path.relpath(s, mod)}")
-    for d in ("1.7", "Common"):
+    for d in ("1.7", "1.6", "Common"):
         for root, _, fs in os.walk(os.path.join(dest, d)):
             for f in fs:
                 if f.endswith(".dll"):
-                    hits = scan_dll(os.path.join(root, f))
+                    if f.lower().startswith(fw_identity()["JBFrameworkAssemblyName"].lower() + ".testing"): R.err(f"copy: {f} is the test harness"); continue
+                    hits = scan_dll(os.path.join(root, f), framework=is_framework(mod) and f.lower() == fw_identity()["JBFrameworkAssemblyName"].lower() + ".dll")
                     if hits: R.err(f"copy: {f} contains test code {hits}")
     if not any(e.startswith("[copy]") for e in R.errors): R.ok(f"{n} files copied to {dest}")
     return not any(e.startswith("[copy]") for e in R.errors)

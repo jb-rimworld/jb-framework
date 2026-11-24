@@ -16,7 +16,7 @@
       dotnet build -c Release                      RimWorld 1.7: net10.0 into <Mod>/1.7/Assemblies (tested in game)
       dotnet build -c Release -p:RimVersion=1.6    RimWorld 1.6: net472 against Krafs.Rimworld.Ref 1.6.4871 into <Mod>/1.6/Assemblies
                                                    (compile-only, best effort; needs the framework's 1.6 DLL built first)
-      -p:JBTests=true          defines JB_TESTS (test suites; never in a release)
+      -p:JBTests=true          defines JB_TESTS and references TestMod/<RimVersion>/Assemblies/JBFramework.Testing.dll (test suites; never in a release)
       -p:JBRelease=true        fails when JBTests=true
       -p:JBModRoot=DIR         mod folder (default: the parent of the "Source" folder above the csproj)
       -p:JBFrameworkDll=FILE   reference this JBFramework.dll instead of the one next to this file (<framework>/<RimVersion>/Assemblies)
@@ -47,7 +47,18 @@
     <Reference Include="$(JBFrameworkAssemblyName)"><HintPath>$(JBFrameworkDll)</HintPath><Private>False</Private></Reference>
   </ItemGroup>
 
+  <!-- Test builds only: the mod's own suites (#if JB_TESTS) derive from JBFramework.Testing.KitTestSuite. The harness DLL lives in the
+       local test mod (TestMod/, never published); tools/jbmod loads that mod in test runs. Never copied into the mod. -->
+  <PropertyGroup Condition="'$(JBTests)' == 'true'">
+    <JBTestingDll Condition="'$(JBTestingDll)' == ''">$(JBFrameworkRoot)TestMod/$(RimVersion)/Assemblies/$(JBFrameworkAssemblyName).Testing.dll</JBTestingDll>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(JBTests)' == 'true'">
+    <Reference Include="$(JBFrameworkAssemblyName).Testing"><HintPath>$(JBTestingDll)</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+
   <Target Name="JBModInfo" BeforeTargets="CoreCompile;BeforeBuild">
+    <Error Condition="'$(JBTests)' == 'true' and !Exists('$(JBTestingDll)')"
+           Text="Test build: the harness $(JBTestingDll) is missing. Build it first: dotnet build $(JBFrameworkRoot)TestMod/Source -c Release (tools/jbmod does this)." />
     <Error Condition="!Exists('$(JBFrameworkDll)')"
            Text="$(JBFrameworkName) for RimWorld $(RimVersion) not found at $(JBFrameworkDll). Build it first: dotnet build $(JBFrameworkRoot)Source/JBFramework -c Release -p:RimVersion=$(RimVersion) (or pass -p:JBFrameworkDll=...)." />
     <PropertyGroup>

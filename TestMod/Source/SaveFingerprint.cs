@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-// Lifted from Hearth & Harbor Hearth.Core/Testing/SaveFingerprint.cs (assembly set = this mod, defs = this mod's content pack).
-// Compiled only with -p:JBTests=true.
-#if JB_TESTS
+// Lifted from Hearth & Harbor Hearth.Core/Testing/SaveFingerprint.cs (assembly set = the mod under test + the framework, defs = the
+// mod's content pack). Part of JBFramework.Testing.dll.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +12,7 @@ using System.Text.RegularExpressions;
 using RimWorld;
 using Verse;
 
-namespace JBKit.Testing
+namespace JBFramework.Testing
 {
     /// <summary>
     /// Walks every object of this mod that lives in a save (game/world/map components, areas, ThingComps, hediffs of our defs) by
@@ -24,22 +23,37 @@ namespace JBKit.Testing
     /// </summary>
     internal static class SaveFingerprint
     {
-        static readonly Assembly OurAssembly = typeof(SaveFingerprint).Assembly;
-        public static bool Ours(Type t) => t != null && t.Assembly == OurAssembly;
-        public static bool OurDef(Def d) => d != null && Kit.Mod?.Content != null && d.modContentPack == Kit.Mod.Content;
+        static KitMod mod;
+        static HashSet<Assembly> ours = new HashSet<Assembly>();
+        /// <summary>A type of the mod under test or of the framework (FrameworkGame holds every mod's profile and SaveData).</summary>
+        public static bool Ours(Type t) => t != null && ours.Contains(t.Assembly);
+        public static bool OurDef(Def d) => OurDef(d, mod);
+        public static bool OurDef(Def d, KitMod k) => d != null && k?.Content != null && d.modContentPack == k.Content;
+
+        static void Use(KitMod k)
+        {
+            mod = k;
+            ours = new HashSet<Assembly> { typeof(Framework).Assembly };
+            if (k?.Mod != null) ours.Add(k.Mod.GetType().Assembly);
+            foreach (var a in k?.Content?.assemblies?.loadedAssemblies ?? new List<Assembly>()) if (a != null && a != typeof(SaveFingerprint).Assembly) ours.Add(a);
+        }
 
         /// <summary>Field paths (regex on the path, list indices stripped to []) that are rebuilt after a load, with the reason.</summary>
         public static readonly List<(string pattern, string why)> Transient = new List<(string, string)>
         {
             (@"\.tmp[A-Z]\w*(\[\]|\.count|$)", "Scribe working lists (filled while saving, cleared after loading)"),
-            (@"\.IsNewGame$", "KitGameBase: true only in the session that started the colony"),
+            (@"^game/FrameworkGame\.exposed$", "FrameworkGame: true once the component was saved or loaded"),
         };
 
-        public static List<string> Take()
+        /// <summary>Types never walked: links back into the live framework (contexts, settings objects), not save state.</summary>
+        static bool Skip(Type ft) => typeof(KitMod).IsAssignableFrom(ft) || typeof(KitSettingsBase).IsAssignableFrom(ft) || typeof(Game).IsAssignableFrom(ft);
+
+        public static List<string> Take(KitMod k)
         {
+            Use(k);
             var lines = new List<string>();
             var game = Current.Game; if (game == null) return lines;
-            foreach (var c in game.components) if (Ours(c.GetType()) && !(c is KitTestRunnerBase)) Walk(lines, "game/" + c.GetType().Name, c);
+            foreach (var c in game.components) if (Ours(c.GetType()) && !(c is KitTestRunner)) Walk(lines, "game/" + c.GetType().Name, c);
             if (Find.World != null) foreach (var c in Find.World.components) if (Ours(c.GetType())) Walk(lines, "world/" + c.GetType().Name, c);
             foreach (var map in game.Maps)
             {
@@ -83,7 +97,7 @@ namespace JBKit.Testing
             for (var ty = t; ty != null && Ours(ty); ty = ty.BaseType)
                 foreach (var f in ty.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
-                    if (typeof(Delegate).IsAssignableFrom(f.FieldType)) continue;
+                    if (typeof(Delegate).IsAssignableFrom(f.FieldType) || Skip(f.FieldType)) continue;
                     object v; try { v = f.GetValue(o); } catch (Exception e) { lines.Add(path + "." + f.Name + " = <" + e.GetType().Name + ">"); continue; }
                     Value(lines, path + "." + Clean(f.Name), v, depth + 1, seen);
                 }
@@ -188,12 +202,8 @@ namespace JBKit.Testing
         public static string SavesDir => GenFilePaths.SavedGamesFolderPath;
         public static string SidePath(string save, string what) => Path.Combine(SavesDir, save + "." + what + ".txt");
 
-        /// <summary>True for any kit test runner (also another kit mod's copy of the type).</summary>
-        static bool IsTestRunner(GameComponent c)
-        {
-            for (var t = c?.GetType(); t != null; t = t.BaseType) if (t.Name == nameof(KitTestRunnerBase)) return true;
-            return false;
-        }
+        /// <summary>True for components of the harness assembly (they do not exist outside test runs).</summary>
+        static bool IsTestRunner(GameComponent c) => c != null && c.GetType().Assembly == typeof(SaveLoadKit).Assembly;
 
         /// <summary>
         /// Saves the game as <paramref name="name"/> and writes its fingerprint next to it (name.fp.txt). Test runner components are left
@@ -208,7 +218,7 @@ namespace JBKit.Testing
             {
                 foreach (var r in runners) comps.Remove(r);
                 GameDataSaveLoader.SaveGame(name);   // logs (does not throw) on failure
-                fp = SaveFingerprint.Take();
+                fp = SaveFingerprint.Take(t.Mod);
             }
             catch (Exception e) { t.Check(false, "save " + name + " threw " + e.Message); return false; }
             finally { foreach (var r in runners) if (!comps.Contains(r)) comps.Add(r); }
@@ -251,4 +261,3 @@ namespace JBKit.Testing
         }
     }
 }
-#endif

@@ -207,7 +207,7 @@ If you need a new hook, add it to KitHooks (one line) rather than editing a draw
 | `build/*`, `Source/JBFramework/JBFramework.csproj`, `Source/JBFramework/Core/*`, `Source/JBFramework/UI/*`, `api/*`, `tools/public_api.py`, `tools/PublicApi/`, `tools/api_scan.sh`, `tools/ApiScan/`, `tools/art/`, `sample/*`, `About`, `LoadFolders.xml`, `README.md`, this file | conversion (done). Others change them only through a hook, a one-line hook addition in KitHooks, or a clearly scoped fix. |
 | `Common/Languages/*/Keyed/JBFramework.xml` | shared: append your keys in your own `JBF.<YourArea>.*` block, English and German both. Or add your own file next to it (`JBFramework_Compat.xml`). |
 | new: `Source/JBFramework/Compat/` (detection helpers, `ModNoteDef`, KB queries, adapters), `Common/Defs/ModNotes/*.xml`, `Source/JBFramework/Shared/` (dropdown-to-material designator, one-architect-entry helper, tier gizmo base, safe def mutation with restore, removal preparation), `Source/JBFramework/Random/` (JRand from H&H) | **agent 2: compat knowledge base and shared functions** |
-| `src/Testing/` → new project `Source/JBFramework.Testing/` (assembly `JBFramework.Testing`), a local unpublished test mod folder (suggested `testmod/`), `tools/jbmod`, `tools/probe/`, the `JB_TESTS` reference in `build/JBMod.props` | **agent 3: harness split and jbmod** |
+| `TestMod/` (local test mod, `JBFramework.Testing.dll`; agent 2 owns `TestMod/Source/Suites/`), `tools/jbmod`, `tools/probe/`, the `JB_TESTS` reference in `build/JBMod.props` | **agent 3: harness and jbmod (done)** |
 
 ### Agent 2 (compat knowledge base, shared functions, random): where to hook in
 Status (API level 2): done in `Source/JBFramework/{Compat,Compat/Adapters,Shared,Random}/`, `Common/Defs/ModNotes/`,
@@ -229,31 +229,37 @@ Edits outside those paths: two hooks in `KitHooks` (`GameExpose`, `GameReset`) a
   framework's own context, Harmony id = framework packageId) and make them early-out unless a mod opted in through a public registration.
 - Must compile for 1.6 too (`-p:RimVersion=1.6`, use `#if RW17` shims) and pass `tools/api_scan.sh 1.6`.
 
-### Agent 3 (harness and jbmod): what changed under you
-`src/Testing` is **not compiled** any more; it still uses the old static kit. Port it into `Source/JBFramework.Testing/` (own csproj importing
-`build/JBMod.props`-like settings or JBCommon.props, referencing `JBFramework.dll` with Private=false; `InternalsVisibleTo` already
-grants internals). Mapping old → new:
-
-| Old (source-shared kit) | New |
-|---|---|
-| `namespace JBKit` / `JBKit.Testing` | `JBFramework` / `JBFramework.Testing` |
-| `Kit.Info`, `Kit.Mod`, `Kit.Settings`, `Kit.Template/SaveProfile/Current`, `Kit.Get/Set/On` | `k.Info`, `k.Mod`, `k.Settings`, `k.Template/…`, `k.Get/Set/On` for the mod under test `k` |
-| `KitSettings.All/Find/Value/Set` | `k.SettingsReg.All/Find/Value/Set`; `KitSetting.Section` → `SectionId` |
-| `KitSections.*`, `KitPresets.*`, `KitCompat.All`, `KitPages.*` | `k.Sections.*`, `k.Presets.*`, `k.Compat.All`, `k.Pages.*` |
-| `KitGuard.*`, `KitCaretaker.*`, `KitPatches.*`, `KitLog.*` (static) | `k.Guard.*`, `k.Caretaker.*`, `k.Patches.*`, `k.Log.*` |
-| `KitGameBase` (per-mod GameComponent), `KitGameBase.Instance/CurrentProfile` | `FrameworkGame.Instance`, `k.SaveProfile`; per-save mod data via `KitRegistry.SaveData` |
-| `KitBoot.InstallTesting()` partial, `KitHooks.ExtraReportLines` | your own `[StaticConstructorOnStartup]` + `KitHooks.ModBooted`, `KitHooks.ReportLines` |
-| `KitBuiltins.*` (per-mod kit.windowScale, kit.verboseLog, kit.showNerd, kit.firstStartCard) | gone; global prefs `Framework.WindowScaleKey` etc. on `Framework.Self` |
-| `KitSettingsWindow.Last/SelectedPage/Search/EditTemplate`, `KitSettingsWindow.Target` | `k.Window.Last/PageId/Search/EditTemplate`, `KitSettingsWindow.Target(k)` |
-| `KitIcons.Mark/Page(id)/AllPaths()`, `KitDiagnosis.Draw(w)/BuildText()` | `KitIcons.Mark(k)/Page(k, id)/AllPaths(k)`, `KitDiagnosis.Draw(k, w)/BuildText(k)` |
-| `KitFirstStartCard.OpenNow()/Due()` (bool) | `KitFirstStartCard.OpenNow(k)`, `Due()` returns the `KitMod` whose card is due |
-| `<P>.Kit.*` keys stamped per mod | `JBF.*` once in the framework |
-| per-mod `KitTestRunnerBase : GameComponent` | suggestion: ONE runner GameComponent in the test assembly that picks the mod under test by `JB_TEST_MOD` (`Framework.Find`) and finds its suites by reflection over that mod's assembly (types deriving from `JBFramework.Testing.KitTestSuite`, compiled into the mod only with `JB_TESTS`) |
-
-`build/JBMod.props` with `-p:JBTests=true` only defines `JB_TESTS`; add there the reference to `JBFramework.Testing.dll` (Private=false)
-for test builds. `sample/KitSampleB/Source/SampleB.cs` keeps its `CounterSuite` under `#if JB_TESTS`, already ported to the new API except the
-harness types themselves. jbmod must now also put the framework into the slot profile's ModsConfig (`juliusberger.jbframework`, loaded from
-this folder or a slot copy) before the mod under test; the sample About files depend on it.
+### Test harness (JBFramework.Testing) and tools/jbmod
+The harness is its own assembly `JBFramework.Testing.dll` in the **local test mod** `TestMod/` (packageId `juliusberger.jbframework.testing`,
+csproj `TestMod/Source/JBFramework.Testing.csproj`, RimWorld 1.7 only, output `TestMod/1.7/Assemblies/` git-ignored). It is never published
+and never shipped: `tools/jbmod` puts it into test runs only, `tools/release.py` refuses it and every harness string in a release DLL.
+- **Mod suites**: a dependent mod writes `sealed class X : JBFramework.Testing.KitTestSuite` under `#if JB_TESTS`; `-p:JBTests=true`
+  (build/JBMod.props) defines `JB_TESTS` and references the harness DLL (Private=false). `TestContext t` gives `t.Mod` (the `KitMod`
+  under test), `t.Check/Note`, `t.Map`, `t.Center`, `t.FreeCellNearCenter()`, `TestCells.*`. Selection `JB_TEST=all | a,b | prefix.* |
+  section:<id>`; `ExplicitOnly` suites run only when named or by a non-`kit.` prefix (`fw.*`).
+- **One runner** (`KitTestRunner : GameComponent`, `TestingMod : Mod` starts the red-error recorder before the mods under test): the mod
+  under test is `JB_TEST_MOD` (packageId, slot suffix ignored; the framework's own id tests the framework itself); suites come from the
+  harness and from that mod's assemblies. Result file `JB_TEST_OUT`, `RESULT PASS` only when every check passed, no log error of the
+  framework or the mod, and no red error naming either (expected errors a suite provokes carry `[JBTEST-EXPECTED]`/`jbtest_expected`).
+  Runner components are left out of every save the harness makes.
+- **Built-in suites per tenant** (`TestMod/Source/KitSuites.cs`, `KitWindowSuite.cs`): `kit.smoke`, `kit.settings`, `kit.window` (settings
+  window at 1280x720, 1920x1080, 2560x1440 via `KitUI.TestScreen`; every page in "this save" and "template", a search; fits the screen,
+  keeps its minimum, parts inside the window and not overlapping, nothing threw; `JB_UI_SHOTS` leaves `kit_window_<id>_<size>_<page>.png`),
+  `kit.defs`, `kit.migration`, `kit.saveload` (two phases, fingerprint of the mod's and the framework's save state), `kit.addition`
+  (explicit), `kit.settingsdump`.
+- **Framework suites** (`TestMod/Source/FrameworkSuites.cs`, explicit): `fw.tenants` (A and B together: separate contexts, no value leaks,
+  both windows open and drawn at once, a throwing page of B is fenced on B while A keeps drawing, both per-save profiles and B's SaveData
+  survive save/load), `fw.removal` (save with A+B, load with A only: zero red errors of the framework, B's profile kept, its data node
+  dropped at the next save), `fw.apilevel` (A built with `-p:JBMinApiLevel=99`: blocked with the plain-words message, registers nothing,
+  writes nothing, B unaffected), `fw.alone` (no tenant: one Mod settings entry, no red error). Agent 2's `fw.known/adapters/random/shared`
+  live in `TestMod/Source/Suites/`.
+- **jbmod**: every run gets a slot copy of the framework (`<fw>.slotN`; dependents' About files are pointed at it, so the player's Mods
+  folder never holds a framework), the harness when suites run, extra mods (packageIds, or local folders built and copied like the mod
+  under test) and the mod under test; the probe loads first. Commands: `build` (1.7, then 1.6 compile-only), `test`, `plain`, `saveload`,
+  `removal` (the framework stays), `addition` (vanilla save without mod and framework), `compat`, `migrate-test`, `lang`, `release`,
+  `desc-lint`, `freeze16`, and `fw tenants|removal|apilevel|alone|all`. `release.py` adds for the framework the 1.6 build,
+  `public_api.py check` and a copy without `sample/ build/ api/ TestMod/ API.md`; for dependents "no `JBFramework.dll`, no type defined in
+  the `JBFramework` namespace" (tools/PublicApi `--types`).
 
 ### Decisions taken in the conversion (simplest option)
 1. Type names keep the `Kit` prefix (`KitMod`, `KitModBase`, …) in namespace `JBFramework`: short, already in every doc and sample.

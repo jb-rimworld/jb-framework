@@ -1,59 +1,75 @@
 // SPDX-License-Identifier: MIT
-// Lifted from Hearth & Harbor Hearth.Core/Testing/HearthTests.cs (suite base, context, safe cells). Compiled only with -p:JBTests=true.
-#if JB_TESTS
+// Lifted from Hearth & Harbor Hearth.Core/Testing/HearthTests.cs (suite base, context, safe cells). Part of JBFramework.Testing.dll
+// (local test mod, never shipped).
 using System;
 using System.Collections.Generic;
 using Verse;
 using Verse.AI;
 
-namespace JBKit.Testing
+namespace JBFramework.Testing
 {
     /// <summary>
-    /// One in-game test suite of this mod. <see cref="Run"/> is a coroutine: <c>yield return N</c> waits N game ticks (0 = next tick).
-    /// Use <c>t.Check(cond, "what")</c> for assertions; an exception fails the suite. Suites are found in this mod's own assembly only.
-    /// Name them "&lt;shortid&gt;.&lt;what&gt;" (kit suites are "kit.*"). Start: JB_TEST=all, a list "a,b", a prefix "lo.*" or "section:&lt;id&gt;"
-    /// (tools/jbmod does this for you).
+    /// One in-game test suite. <see cref="Run"/> is a coroutine: <c>yield return N</c> waits N game ticks (0 = next tick).
+    /// Use <c>t.Check(cond, "what")</c> for assertions; an exception fails the suite. The runner finds suites in the test assembly
+    /// (the built-in kit.* and fw.* suites) and in the assemblies of the mod under test (JB_TEST_MOD). A mod's own suites are compiled
+    /// only in test builds (-p:JBTests=true defines JB_TESTS and references JBFramework.Testing.dll):
     /// <code>
     /// #if JB_TESTS
-    /// sealed class RegrowSuite : JBKit.Testing.KitTestSuite
+    /// sealed class RegrowSuite : JBFramework.Testing.KitTestSuite
     /// {
-    ///     public override string Name => "lo.regrow";
-    ///     public override IEnumerable&lt;int&gt; Run(TestContext t) { …; yield return 2500; t.Check(…, "limb regrew"); }
+    ///     public override string Name =&gt; "lo.regrow";
+    ///     public override IEnumerable&lt;int&gt; Run(JBFramework.Testing.TestContext t) { var k = t.Mod; …; yield return 2500; t.Check(…, "limb regrew"); }
     /// }
     /// #endif
     /// </code>
+    /// Name them "&lt;shortid&gt;.&lt;what&gt;" (built-ins are "kit.*" and "fw.*"). Selection: JB_TEST=all, a list "a,b", a prefix "lo.*"
+    /// or "section:&lt;id&gt;" (tools/jbmod does this for you).
     /// </summary>
-    internal abstract class KitTestSuite
+    public abstract class KitTestSuite
     {
+        /// <summary>Unique suite name ("lo.regrow").</summary>
         public abstract string Name { get; }
         /// <summary>Hard tick budget; the suite fails if it runs longer.</summary>
         public virtual int MaxTicks => 30000;
         /// <summary>Section the suite belongs to (JB_TEST=section:&lt;id&gt; selects all suites of a section). Default: core.</summary>
-        public virtual string Section => KitSections.Core;
+        public virtual string Section => KitMod.Core;
+        /// <summary>The suite body (a coroutine of tick waits).</summary>
         public abstract IEnumerable<int> Run(TestContext t);
         /// <summary>True for suites that need a special run (a loaded save, extra mods, an old settings file): they run only when named
-        /// explicitly, never with "all", a prefix or a section filter.</summary>
+        /// explicitly or by a prefix that is not "all" (e.g. "fw.*"), never with "all" or a section filter.</summary>
         public virtual bool ExplicitOnly => false;
         /// <summary>True for suites that check a loaded save: before them the harness only stops the storyteller and leaves pawns, jobs and
         /// weather alone (the general clean-up would change the very state the suite wants to compare).</summary>
         public virtual bool KeepsLoadedGame => false;
     }
 
-    /// <summary>What a suite gets: checks, notes and the map.</summary>
-    internal sealed class TestContext
+    /// <summary>What a suite gets: the mod under test, checks, notes and the map.</summary>
+    public sealed class TestContext
     {
-        public Map Map => Find.CurrentMap;
-        public string Suite;
-        public int Checks, Failures;
-        public readonly List<string> Lines = new List<string>();
+        internal TestContext(string suite, KitMod mod) { Suite = suite; Mod = mod; }
 
+        /// <summary>The context of the mod under test (JB_TEST_MOD; the framework's own context when the framework is tested).</summary>
+        public KitMod Mod { get; }
+        /// <summary>The current map.</summary>
+        public Map Map => Find.CurrentMap;
+        /// <summary>Name of the running suite.</summary>
+        public string Suite { get; }
+        /// <summary>Checks so far.</summary>
+        public int Checks { get; internal set; }
+        /// <summary>Failed checks so far (an exception or timeout adds one).</summary>
+        public int Failures { get; internal set; }
+        internal readonly List<string> Lines = new List<string>();
+
+        /// <summary>One assertion: counted, written to the result file and the game log.</summary>
         public void Check(bool ok, string what)
         {
             Checks++;
             if (!ok) Failures++;
             Log((ok ? "  ok   " : "  FAIL ") + what);
         }
+        /// <summary>A note (no assertion).</summary>
         public void Note(string what) => Log("  note " + what);
+        /// <summary>A raw line in the result file (also in the game log with the [JBTEST] prefix).</summary>
         public void Log(string line) { Lines.Add(line); Verse.Log.Message("[JBTEST] " + Suite + ": " + line); }
 
         /// <summary>A walkable cell at (or near) the map centre that the colonists can reach. See <see cref="TestCells.Anchor"/>.</summary>
@@ -73,7 +89,7 @@ namespace JBKit.Testing
     /// Where suites put their things and pawns. The -quicktest map is random: its centre can lie inside a mountain, in water or in a closed
     /// pocket, where vanilla AI throws and every job that should walk there fails. Suites anchor at <see cref="Anchor"/> instead of map.Center.
     /// </summary>
-    internal static class TestCells
+    public static class TestCells
     {
         static int cachedMap = -1; static IntVec3 cached = IntVec3.Invalid;
 
@@ -132,4 +148,3 @@ namespace JBKit.Testing
             => c.InBounds(map) && c.Standable(map) && !c.Fogged(map) && c.GetDistrict(map) != null && (!root.IsValid || Reachable(map, root, c));
     }
 }
-#endif

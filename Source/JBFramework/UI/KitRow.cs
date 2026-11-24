@@ -87,7 +87,13 @@ namespace JBFramework
             if (!s.Desc.NullOrEmpty()) KitStyle.LabelColored(new Rect(lab.x, lab.y + lh, lab.width, lab.height - lh), s.Desc, KitStyle.DimGrey, TextAnchor.UpperLeft, GameFont.Tiny);
             if (over) Widgets.DrawBoxSolid(new Rect(row.x, row.y + 4f, 2f, row.height - 8f), KitStyle.Accent);
             string tags = Tags(s);
-            if (tags.Length > 0) KitStyle.LabelColored(new Rect(row.xMax - 200f, row.y, 196f, 14f), tags, KitStyle.DimGrey, TextAnchor.UpperRight, GameFont.Tiny);
+            if (tags.Length > 0)
+            {
+                // small grey tag right after the label's first line (it used to sit clipped in the row's top-right corner)
+                float tagW = KitUI.TextW(tags, GameFont.Tiny) + 4f;
+                float tx = Mathf.Min(lab.x + Mathf.Min(KitUI.TextW(s.Label), lab.width) + 8f, lab.xMax - tagW);
+                KitStyle.LabelColored(new Rect(tx, lab.y + 2f, tagW, 20f), tags, KitStyle.DimGrey, TextAnchor.MiddleLeft, GameFont.Tiny);
+            }
 
             float x0 = row.x + lw + 8f, x1 = row.xMax - 52f;
             float cy = row.y + row.height / 2f;

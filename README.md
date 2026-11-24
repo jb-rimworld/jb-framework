@@ -67,7 +67,7 @@ build/JBMod.props            build of a dependent mod (imports JBCommon.props; s
 build/JBCommon.props         RimVersion 1.7 (net10.0, game DLLs) / 1.6 (net472, Krafs.Rimworld.Ref 1.6.4871), shared switches
 api/PublicApi.txt            public API snapshot (tools/public_api.py generate|check), api/JBFramework.xml (doc comments)
 sample/KitSampleA, KitSampleB    dependent sample mods (A: every feature; B: SaveData counter, migration, harness test bed)
-src/Testing/                 the old in-game harness, NOT compiled now (next step: its own assembly JBFramework.Testing)
+TestMod/                     local test mod (never published): JBFramework.Testing.dll, the in-game harness (kit.* and fw.* suites)
 tools/                       jbmod (per-mod build/test/release), probe, release.py, freeze16.py, desc_lint.py, changelog.py,
                              kit_lang.py, i18n_delta.py, public_api.py + PublicApi/, api_scan.sh + ApiScan/, art/
 ```
@@ -92,5 +92,5 @@ Both builds must stay at 0 warnings and 0 errors. CS1591 is on for the framework
 4. Saves hold plain values: one `FrameworkGame` component stores every mod's profile by packageId; mods with own per-save data use
    `KitRegistry.SaveData`, which is skipped (types untouched) when the mod is absent.
 5. Settings files stay per mod (the mod's own `KitSettingsBase` subclass); legacy fields migrate once, the old file is kept as `*.pre-kit`.
-6. Test code never ships: suites only under `JB_TESTS`; the harness becomes its own unpublished assembly.
+6. Test code never ships: suites only under `JB_TESTS`; the harness is its own unpublished assembly in TestMod/ (tools/jbmod loads it).
 7. Texts exist once in the framework (English + German); mods translate only their own labels.

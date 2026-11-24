@@ -1,90 +1,124 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT
-# jbmod: one command per mod for build, in-game tests and release (JB.Kit, spec SharedKit.md 3.2). Generalised from Hearth & Harbor
-# tools/run_test.sh, run_plain.sh and run_saveload.sh. RimWorld 1.7 only. Never uploads, never pushes.
+# jbmod: one command per mod for build, in-game tests and release (JB Framework; spec SharedKit.md 3.2). Generalised from Hearth & Harbor
+# tools/run_test.sh, run_plain.sh and run_saveload.sh. Tests run on RimWorld 1.7 only; 1.6 is compile-only (best effort). Never uploads, never pushes.
 #
-#   jbmod <Mod> build [--tests]                 build (errors only). --tests: test DLL into the scratch folder (the mod folder stays clean)
-#   jbmod <Mod> test <suites|all> [label] [extra packageIds…]
+#   jbmod <Mod> build [--tests]                 1.7 build into <Mod>/1.7/Assemblies, then 1.6 (compile-only, NOT runnable here) into <Mod>/1.6/Assemblies.
+#                                               --tests: 1.7 test build (JB_TESTS + JBFramework.Testing.dll) into the scratch folder only.
+#                                               <Mod> = the framework: framework 1.7 + 1.6 and the local test mod (TestMod/).
+#   jbmod <Mod> test <suites|all> [label] [extra…]
 #                                               test build → one of the 3 shared slots → RimWorld -quicktest in an isolated profile
 #                                               → RESULT, red-error report (ours/others). Exit 0 = every suite passed, no red error of ours.
-#   jbmod <Mod> plain <seconds> [extra ids…]    release build, load without tests, probe plays one day: red errors, "did not load any content"
-#   jbmod <Mod> saveload [label]                save with the mod (kit.saveload) → load with the mod (fingerprint and values equal)
-#   jbmod <Mod> removal [label]                 load the saveload save WITHOUT the mod, probe plays 1 day: red errors = "safe to remove?"
-#   jbmod <Mod> addition [label]                vanilla save (probe, without the mod) → load WITH the mod: kit.smoke + kit.addition
+#   jbmod <Mod> plain <seconds> [extra…]        release build, load without tests, the probe plays one day: red errors, "did not load any content"
+#   jbmod <Mod> saveload [label] [extra…]       save with the mod (kit.saveload) → load with the mod (fingerprint and values equal)
+#   jbmod <Mod> removal [label]                 load the saveload save WITHOUT the mod (the framework stays), probe plays 1 day: "safe to remove?"
+#   jbmod <Mod> addition [label]                vanilla save (no mod, no framework) → load WITH the mod: kit.smoke + kit.addition
 #   jbmod <Mod> compat <set> [label]            kit.smoke with a named set of other mods (tools/compat_sets.json)
 #   jbmod <Mod> migrate-test [--from FILE] [--class ModClass] [label]
 #                                               start with an OLD settings file (default: a copy of the player's Config/Mod_<folder>_<Class>.xml,
 #                                               read only) and run kit.migration
+#   jbmod <any> fw <tenants|removal|apilevel|alone|all>
+#                                               framework scenarios with sample/KitSampleA and sample/KitSampleB (suites fw.*)
 #   jbmod <Mod> freeze16 [args] | lang [--refresh] [args] | release [args] | desc-lint [args]
 #                                               tools/freeze16.py, kit_lang.py (--refresh: run kit.settingsdump first), release.py, desc_lint.py
 #
-# <Mod>: a folder (absolute, relative to the current folder, to 22_RimWorld/ or to the kit, e.g. sample/KitSampleB).
-# Env: TIMEOUT=seconds (default 600) · BUILD=0 skip the build · GAME_LANG=<language folder> (default English) · JB_CSPROJ=<file>
-#      KEEP_SLOT=1 keep the slot copy after the run (debug).
+# <Mod>: a folder (absolute, relative to the current folder, to 22_RimWorld/ or to the framework, e.g. sample/KitSampleB; "JBFramework" or "."
+#        of the framework = the framework itself). [extra…]: other mods for the run: a packageId (must be installed, e.g. a Workshop mod) or a
+#        LOCAL mod folder (built and copied into the slot like the mod under test, packageId renamed).
+# Every run gets the framework (a slot copy, packageId <fw>.slotN; dependents' About files are rewritten to it) and, when suites run, the
+# local test mod TestMod/ (JBFramework.Testing.dll, <fw>.testing.slotN). The player's Mods folder never holds a framework of its own.
+# Env: TIMEOUT=seconds (default 600) · BUILD=0 skip the builds · GAME_LANG=<language folder> (default English) · JB_CSPROJ=<file>
+#      KEEP_SLOT=1 keep the slot copies after the run (debug) · JB_UI_SHOTS=1 screenshots of kit.window into $S/jb_shots_<label>/
+#      JB_MSBUILD_ARGS="-p:X=Y …" extra build properties for the mod under test only (fw apilevel uses -p:JBMinApiLevel=99).
 # Isolation: fake HOME per slot under /private/tmp/claude-501/hh_tests/slotN (Prefs.xml copied read-only from the player's config, autosave
-# off), the mod under test enters the game's Mods folder only as the symlink _jb_slotN → slot copy with packageId <id>.slotN (and the probe as
-# _jb_probeN, compat mods as _jb_cN_*); all removed by trap on exit. Slot locks /private/tmp/claude-501/hh_tests/lockN are shared with H&H and
-# WPub (max 3 games at once, a lock older than 25 min counts as stale). The player's own profile is never written.
+# off, volume 0, WAYLITH_BACKEND=offscreen: no window). The game's Mods folder only gets the symlinks _jb_slotN (mod), _jb_fwN (framework),
+# _jb_tmN (test mod), _jb_probeN, _jb_xN_i (extra local mods), _jb_cN_i (compat mods from the cache), all removed by trap on exit.
+# Slot locks /private/tmp/claude-501/hh_tests/lockN are shared with H&H and WPub (max 3 games at once, a lock older than 25 min counts as stale).
+# The player's own profile is never written.
 set -u
-KIT="$(cd "$(dirname "$0")/.." && pwd)"
-RW="$(cd "$KIT/../.." && pwd)"
+KIT="$(cd "$(dirname "$0")/.." && pwd)"          # the framework repo (22_RimWorld/JBFramework)
+RW="$(cd "$KIT/.." && pwd)"                       # 22_RimWorld
 S=/private/tmp/claude-501/hh_tests; mkdir -p "$S"
 G="$HOME/Library/Application Support/Steam/steamapps/common/RimWorld"
 REALCFG="$HOME/Library/Application Support/RimWorld/Config"      # read only
 export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+idprop() { sed -n "s:.*<$1>\([^<]*\)</$1>.*:\1:p" "$KIT/build/Identity.props" | head -1; }
+FWPID=$(idprop JBFrameworkPackageId); FWNAME=$(idprop JBFrameworkName); FWNS=$(idprop JBFrameworkNamespace); FWASM=$(idprop JBFrameworkAssemblyName)
+TMPID="$FWPID.testing"
 
-usage() { sed -n '3,25p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '3,37p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 [ $# -lt 2 ] && usage
 MODARG=$1; CMD=$2; shift 2
 
+# a mod folder for an argument (absolute, relative to here, to 22_RimWorld or to the framework), or empty
+resolve_dir() { local c; for c in "$1" "$RW/$1" "$KIT/$1"; do [ -d "$c/About" ] && { (cd "$c" && pwd); return; }; done; }
+pid_of() { sed -n 's:.*<packageId>\([^<]*\)</packageId>.*:\1:p' "$1/About/About.xml" | head -1; }
+
 # ---------------------------------------------------------------------------------------------------------------- mod facts
-MOD=""
-for c in "$MODARG" "$RW/$MODARG" "$KIT/$MODARG"; do [ -d "$c/About" ] && { MOD="$(cd "$c" && pwd)"; break; }; done
+MOD=$(resolve_dir "$MODARG")
 [ -z "$MOD" ] && { echo "jbmod: no mod folder with About/ found for '$MODARG'"; exit 2; }
+IS_FW=0; [ "$MOD" = "$KIT" ] && IS_FW=1
 MODNAME=$(basename "$MOD")
 ABOUT="$MOD/About/About.xml"
-PID=$(sed -n 's:.*<packageId>\([^<]*\)</packageId>.*:\1:p' "$ABOUT" | head -1)
+PID=$(pid_of "$MOD")
 PIDL=$(echo "$PID" | tr '[:upper:]' '[:lower:]')
 DISPLAY_NAME=$(sed -n 's:.*<name>\([^<]*\)</name>.*:\1:p' "$ABOUT" | head -1)
 [ -z "$PID" ] && { echo "jbmod: no packageId in $ABOUT"; exit 2; }
 
-find_csprojs() {
-  if [ -n "${JB_CSPROJ:-}" ]; then echo "$JB_CSPROJ"; return; fi
-  [ -d "$MOD/Source" ] || return
-  local all kit
-  all=$(find "$MOD/Source" -name '*.csproj' -not -path '*/obj/*' -not -path '*/bin/*' -not -path '*/_frozen16/*' 2>/dev/null)
-  kit=$(for f in $all; do grep -l 'JBMod.props' "$f" 2>/dev/null; done)
+find_csprojs() {   # <moddir>
+  local m=$1
+  if [ "$m" = "$MOD" ] && [ -n "${JB_CSPROJ:-}" ]; then echo "$JB_CSPROJ"; return; fi
+  [ -d "$m/Source" ] || return
+  local all kit f
+  all=$(find "$m/Source" -name '*.csproj' -not -path '*/obj/*' -not -path '*/bin/*' -not -path '*/_frozen16/*' 2>/dev/null)
+  kit=$(echo "$all" | while read -r f; do [ -n "$f" ] && grep -l 'JBMod.props' "$f" 2>/dev/null; done)
   if [ -n "$kit" ]; then echo "$kit"; return; fi
   local rw17; rw17=$(echo "$all" | grep '\.rw17\.csproj$')
   if [ -n "$rw17" ]; then echo "$rw17"; return; fi
   [ "$(echo "$all" | grep -c .)" = 1 ] && echo "$all"
 }
-CSPROJS=$(find_csprojs)
-asm_of() { local a; a=$(sed -n 's:.*<AssemblyName>\([^<]*\)</AssemblyName>.*:\1:p' "$1" | head -1); [ -z "$a" ] && a=$(basename "$1" .csproj | sed 's/\.rw17$//'); echo "$a"; }
-ns_of() { sed -n 's:.*<RootNamespace>\([^<]*\)</RootNamespace>.*:\1:p' "$1" | head -1; }
+CSPROJS=$(find_csprojs "$MOD")
+asm_of() { local a; a=$(sed -n 's:.*<AssemblyName>\([^<]*\)</AssemblyName>.*:\1:p' "$1" | head -1); [ -z "$a" ] || [[ "$a" == *'$('* ]] && a=$(basename "$1" .csproj | sed 's/\.rw17$//'); echo "$a"; }
+ns_of() { sed -n 's:.*<RootNamespace>\([^<]*\)</RootNamespace>.*:\1:p' "$1" | grep -v '\$(' | head -1; }
 ASMS=""; NSS=""
 for cs in $CSPROJS; do ASMS="$ASMS $(asm_of "$cs")"; NSS="$NSS $(ns_of "$cs")"; done
 if [ -d "$MOD/Source" ]; then   # namespaces actually declared in the code
   NSS="$NSS $(grep -rhoE '^[[:space:]]*namespace [A-Za-z0-9_.]+' "$MOD/Source" --include='*.cs' 2>/dev/null | awk '{print $2}' | sort -u | tr '\n' ' ')"
 fi
 mod_class() {   # the Verse.Mod subclass: names the settings file Mod_<folder>_<Class>.xml
-  grep -rhoE 'class [A-Za-z0-9_]+ *: *(JBKit\.|JBFramework\.)?(KitModBase|Mod)\b' "$MOD/Source" --include='*.cs' 2>/dev/null | head -1 | awk '{print $2}'
+  grep -rhoE 'class [A-Za-z0-9_]+ *: *(JBFramework\.)?(KitModBase|Mod)\b' "$MOD/Source" --include='*.cs' 2>/dev/null | head -1 | awk '{print $2}'
 }
 
-# ---------------------------------------------------------------------------------------------------------------- build
-# build_mod <tests 0|1> <outdir|-> : builds every project; outdir "-" = the projects' own output (<Mod>/1.7/Assemblies)
+# ---------------------------------------------------------------------------------------------------------------- builds
+# dotnet build with an error/warning digest. A failure is retried once after 60 s (another agent may be half-way through a file).
+dn_build() {   # <log> <args…>
+  local log=$1; shift
+  dotnet build "$@" -v q -nologo > "$log" 2>&1; local c=$?
+  if [ $c != 0 ] && [ "${JB_NO_RETRY:-0}" != 1 ]; then
+    echo "build failed ($(basename "$log")), retrying in 60 s:"; grep -E ': error ' "$log" | sed 's#^.*/\([^/]*\.cs\)#\1#' | sort -u | head -5
+    sleep 60; dotnet build "$@" -v q -nologo > "$log" 2>&1; c=$?
+  fi
+  grep -E ': (error|warning) ' "$log" | sed 's#^.*/\([^/]*\.cs\)#\1#' | sort -u | head -40
+  [ $c != 0 ] && { echo "BUILD FAILED (exit $c, log $log)"; tail -5 "$log"; }
+  return $c
+}
+
+build_framework() {   # [RimVersion]
+  local v=${1:-1.7}
+  dn_build "$S/jb_build_framework_$v.txt" "$KIT/Source/JBFramework" -c Release "-p:RimVersion=$v" || return 2
+}
+build_testing() { dn_build "$S/jb_build_testing.txt" "$KIT/TestMod/Source" -c Release || return 2; }
+
+# build_mod <moddir> <tests 0|1> <outdir|-> <RimVersion> [extra msbuild args…]: every project of a dependent mod; outdir "-" = the projects' own output
 build_mod() {
-  local tests=$1 out=$2 log rc=0 cs
-  [ -z "$CSPROJS" ] && { echo "jbmod: no csproj under $MOD/Source (set JB_CSPROJ)"; return 2; }
-  for cs in $CSPROJS; do
-    log="$S/jb_build_${MODNAME}_$(basename "$cs" .csproj).txt"
-    local args=(build "$cs" -c Release -v q -nologo)
-    [ "$tests" = 1 ] && args+=(-p:JBTests=true -p:IntermediateOutputPath=obj/1.7jbtest/)
+  local m=$1 tests=$2 out=$3 v=$4; shift 4
+  local projs rc=0 cs; projs=$(find_csprojs "$m")
+  [ -z "$projs" ] && { echo "jbmod: no csproj under $m/Source (set JB_CSPROJ)"; return 2; }
+  for cs in $projs; do
+    local args=("$cs" -c Release "-p:RimVersion=$v")
+    [ "$tests" = 1 ] && args+=(-p:JBTests=true "-p:IntermediateOutputPath=obj/${v}jbtest/")
     [ "$out" != "-" ] && { mkdir -p "$out"; args+=("-p:OutputPath=$out/"); }
-    dotnet "${args[@]}" > "$log" 2>&1
-    local c=$?
-    grep -E ': (error|warning) ' "$log" | sed 's#^.*/\([^/]*\.cs\)#\1#' | sort -u | head -40
-    if [ $c != 0 ]; then echo "BUILD FAILED ($(basename "$cs"), exit $c, log $log)"; tail -5 "$log"; rc=2; fi
+    dn_build "$S/jb_build_$(basename "$m")_$(basename "$cs" .csproj)_$v$([ "$tests" = 1 ] && echo _tests).txt" "${args[@]}" "$@" || rc=2
   done
   return $rc
 }
@@ -109,67 +143,114 @@ acquire_slot() {
 }
 release_slot() {
   [ -z "$slot" ] && return
-  rm -f "$G/Mods/_jb_slot$slot" "$G/Mods/_jb_probe$slot" "$G/Mods/_jb_c${slot}_"* 2>/dev/null
-  [ "${KEEP_SLOT:-0}" = 1 ] || rm -rf "$S/slot$slot/mod" "$S/slot$slot/probe"
+  rm -f "$G/Mods/_jb_slot$slot" "$G/Mods/_jb_probe$slot" "$G/Mods/_jb_fw$slot" "$G/Mods/_jb_tm$slot" "$G/Mods/_jb_c${slot}_"* "$G/Mods/_jb_x${slot}_"* 2>/dev/null
+  [ "${KEEP_SLOT:-0}" = 1 ] || rm -rf "$S/slot$slot/mod" "$S/slot$slot/probe" "$S/slot$slot/fw" "$S/slot$slot/tm" "$S/slot$slot/x_"*
   rmdir "$S/lock$slot" 2>/dev/null
   slot=""
 }
 trap release_slot EXIT
 trap 'release_slot; exit 130' INT TERM
 
+# slot_copy <src> <dst> <newPackageId> [extra rsync excludes…]: content copy (no sources), packageId renamed, the framework dependency
+# pointed at this slot's framework copy, incompatibleWith dropped (a slot copy must load next to the player's real mods).
+slot_copy() {
+  local src=$1 dst=$2 newpid=$3; shift 3
+  rm -rf "$dst"; mkdir -p "$dst"
+  rsync -a --delete --exclude /Source --exclude /Workshop --exclude /tools --exclude .git --exclude /docs --exclude /_scratch \
+    --exclude obj/ --exclude bin/ --exclude '*.csproj' --exclude '*.pre-kit' "$@" "$src/" "$dst/"
+  local old; old=$(pid_of "$src")
+  sed -i '' -e "s#<packageId>$old</packageId>#<packageId>$newpid</packageId>#" \
+    -e "s#>$FWPID<#>$FWPID.slot$slot<#g" -e '/<incompatibleWith>/,/<\/incompatibleWith>/d' "$dst/About/About.xml"
+  grep -q "<packageId>$newpid</packageId>" "$dst/About/About.xml" || { echo "could not rename the packageId in the slot copy of $(basename "$src")"; return 2; }
+}
+
 # ---------------------------------------------------------------------------------------------------------------- red-error report
-# report_errors <probe file> → prints ours/others/noise; sets OURS (count of ours), OURS_PLAY
+# report_errors <probe file> → prints ours/others/noise; sets OURS (count of ours), OURS_PLAY. "Ours" = the framework or the mod under test.
 OURS=0; OURS_PLAY=0
 report_errors() {
   local f=$1
   OURS=0; OURS_PLAY=0
   [ -f "$f" ] || { echo "--- red errors: no probe file"; return; }
-  local markers=""
+  local markers="" a
   for a in $ASMS $NSS; do markers="$markers|$a."; done
-  markers="$markers|[$DISPLAY_NAME]|$PIDL"
+  markers="$markers|[$DISPLAY_NAME]|$PIDL|$FWNS.|[$FWNAME]|$FWPID|$FWASM.dll"
   awk -F'\t' -v M="${markers#|}" -v O="$f.ours" -v X="$f.others" -v N="$f.noise" '
     BEGIN { n = split(M, m, "|"); printf "" > O; printf "" > X; printf "" > N }
     { line = tolower($0); ours = 0
+      if ($0 ~ /\[JBTEST-EXPECTED\]|jbtest_expected/) { print > N; next }
       for (i = 1; i <= n; i++) if (m[i] != "" && index(line, tolower(m[i])) > 0) { ours = 1; break }
       if (ours) print > O
       else if ($0 ~ /Root level exception in OnGUI|get_UIScale/) print > N
       else print > X }' "$f"
   OURS=$(grep -c . "$f.ours"); OURS_PLAY=$(grep -c '^play' "$f.ours")
-  echo "--- red errors: ours $OURS (load $(grep -c '^load' "$f.ours"), play $OURS_PLAY) · others $(grep -c . "$f.others") · known vanilla noise $(grep -c . "$f.noise")   [$f]"
+  echo "--- red errors: ours $OURS (load $(grep -c '^load' "$f.ours"), play $OURS_PLAY) · others $(grep -c . "$f.others") · noise/expected $(grep -c . "$f.noise")   [$f]"
   [ "$OURS" -gt 0 ] && { echo "    ours (first 20):"; head -20 "$f.ours" | cut -c1-400 | sed 's/^/      /'; }
   [ -s "$f.others" ] && { echo "    others (count × phase/type/text):"; cut -f1-3 "$f.others" | sort | uniq -c | sort -rn | head -15 | cut -c1-300 | sed 's/^/      /'; }
   return 0
 }
 
 # ---------------------------------------------------------------------------------------------------------------- one game run
-# Inputs (globals): LABEL SUITES LOAD NO_MOD PROBE_DAYS PROBE_SAVE SAVES_OUT KIND(tests|plain) MIGRATION_FROM COMPAT_DIRS EXTRA[@] TIMEOUT_S
+# Inputs (globals): LABEL SUITES LOAD NO_MOD NO_FW PROBE_DAYS PROBE_SAVE SAVES_OUT KIND(tests|plain) MIGRATION_FROM COMPAT_DIRS EXTRA[@] TIMEOUT_S
 # Output: RUN_RC (0 pass), files $S/jb_*_$LABEL.*
 run_slot() {
-  local BUILDOUT="$S/jbbuild_${MODNAME}_${KIND}"
+  local BUILDOUT="$S/jbbuild_${MODNAME}_${KIND}" e i
   RUN_RC=0
-  if [ "$NO_MOD" != 1 ] && [ "${BUILD:-1}" = 1 ]; then
-    rm -rf "$BUILDOUT"
-    if [ "$KIND" = tests ]; then build_mod 1 "$BUILDOUT" || { RUN_RC=2; return; }; else build_mod 0 "$BUILDOUT" || { RUN_RC=2; return; }; fi
+  [ "$NO_FW" = 1 ] && NO_TM=1
+  [ -n "$SUITES" ] || NO_TM=1
+  # local extra mods: folders → built (release) and copied like the mod under test; the rest are packageIds
+  local XDIRS=() XIDS=()
+  for e in ${EXTRA[@]+"${EXTRA[@]}"}; do
+    local d; d=$(resolve_dir "$e")
+    if [ -n "$d" ]; then XDIRS+=("$d"); else XIDS+=("$e"); fi
+  done
+  if [ "${BUILD:-1}" = 1 ]; then
+    if [ "$NO_FW" != 1 ]; then build_framework 1.7 || { RUN_RC=2; return; }; fi
+    if [ "${NO_TM:-0}" != 1 ]; then build_testing || { RUN_RC=2; return; }; fi
+    if [ "$NO_MOD" != 1 ] && [ "$IS_FW" != 1 ]; then
+      rm -rf "$BUILDOUT"
+      # shellcheck disable=SC2086
+      build_mod "$MOD" $([ "$KIND" = tests ] && echo 1 || echo 0) "$BUILDOUT" 1.7 ${JB_MSBUILD_ARGS:-} || { RUN_RC=2; return; }
+    fi
+    for d in ${XDIRS[@]+"${XDIRS[@]}"}; do
+      [ -d "$d/Source" ] || continue
+      rm -rf "$S/jbbuild_x_$(basename "$d")"; build_mod "$d" 0 "$S/jbbuild_x_$(basename "$d")" 1.7 || { RUN_RC=2; return; }
+    done
   fi
-  if [ "$NO_MOD" != 1 ] && ! ls "$BUILDOUT"/*.dll >/dev/null 2>&1; then echo "no build output in $BUILDOUT (run without BUILD=0 first)"; RUN_RC=2; return; fi
+  if [ "$NO_MOD" != 1 ] && [ "$IS_FW" != 1 ] && ! ls "$BUILDOUT"/*.dll >/dev/null 2>&1; then echo "no build output in $BUILDOUT (run without BUILD=0 first)"; RUN_RC=2; return; fi
   ensure_probe || { RUN_RC=2; return; }
   acquire_slot || { RUN_RC=3; return; }
   local SD="$S/slot$slot"; mkdir -p "$SD"
-  local SLOTPID="$PIDL.slot$slot" modid="" probeid="juliusberger00.jbprobe.slot$slot"
-  if [ "$NO_MOD" != 1 ]; then
-    rm -rf "$SD/mod"; mkdir -p "$SD/mod"
-    rsync -a --delete --exclude /Source --exclude /Workshop --exclude /tools --exclude .git --exclude /docs --exclude /_scratch \
-      --exclude obj/ --exclude bin/ --exclude '*.csproj' --exclude '*.pre-kit' "$MOD/" "$SD/mod/"
-    mkdir -p "$SD/mod/1.7/Assemblies"; cp "$BUILDOUT"/*.dll "$SD/mod/1.7/Assemblies/"
-    sed -i '' "s#<packageId>$PID</packageId>#<packageId>$SLOTPID</packageId>#" "$SD/mod/About/About.xml"
-    sed -i '' '/<incompatibleWith>/,/<\/incompatibleWith>/d' "$SD/mod/About/About.xml"
-    grep -q "<packageId>$SLOTPID</packageId>" "$SD/mod/About/About.xml" || { echo "could not rename the packageId in the slot copy"; RUN_RC=2; return; }
-    ln -sfn "$SD/mod" "$G/Mods/_jb_slot$slot"; modid=$SLOTPID
+  local SLOTPID="$PIDL.slot$slot" modid="" probeid="juliusberger00.jbprobe.slot$slot" fwid="" tmid="" xids=()
+  if [ "$NO_FW" != 1 ]; then
+    slot_copy "$KIT" "$SD/fw" "$FWPID.slot$slot" --exclude /TestMod --exclude /sample --exclude /build --exclude /api --exclude /src --exclude '/*.md' || { RUN_RC=2; return; }
+    ln -sfn "$SD/fw" "$G/Mods/_jb_fw$slot"; fwid="$FWPID.slot$slot"
   fi
+  if [ "${NO_TM:-0}" != 1 ]; then
+    slot_copy "$KIT/TestMod" "$SD/tm" "$TMPID.slot$slot" || { RUN_RC=2; return; }
+    ln -sfn "$SD/tm" "$G/Mods/_jb_tm$slot"; tmid="$TMPID.slot$slot"
+  fi
+  if [ "$NO_MOD" != 1 ]; then
+    if [ "$IS_FW" = 1 ]; then
+      [ -z "$fwid" ] && { echo "the framework is the mod under test: it cannot be left out"; RUN_RC=2; return; }
+    else
+      slot_copy "$MOD" "$SD/mod" "$SLOTPID" || { RUN_RC=2; return; }
+      mkdir -p "$SD/mod/1.7/Assemblies"; cp "$BUILDOUT"/*.dll "$SD/mod/1.7/Assemblies/"
+      ln -sfn "$SD/mod" "$G/Mods/_jb_slot$slot"; modid=$SLOTPID
+    fi
+  fi
+  i=0
+  local xplain=""
+  for d in ${XDIRS[@]+"${XDIRS[@]}"}; do
+    i=$((i+1)); local xp; xp=$(pid_of "$d" | tr '[:upper:]' '[:lower:]')
+    slot_copy "$d" "$SD/x_$i" "$xp.slot$slot" || { RUN_RC=2; return; }
+    if ls "$S/jbbuild_x_$(basename "$d")"/*.dll >/dev/null 2>&1; then mkdir -p "$SD/x_$i/1.7/Assemblies"; cp "$S/jbbuild_x_$(basename "$d")"/*.dll "$SD/x_$i/1.7/Assemblies/"; fi
+    ln -sfn "$SD/x_$i" "$G/Mods/_jb_x${slot}_$i"; xids+=("$xp.slot$slot"); xplain="$xplain,$xp"
+  done
+  for e in ${XIDS[@]+"${XIDS[@]}"}; do xids+=("$e"); xplain="$xplain,$e"; done
   rm -rf "$SD/probe"; mkdir -p "$SD/probe/About" "$SD/probe/1.7"; cp -R "$KIT/tools/probe/bin/1.7/Assemblies" "$SD/probe/1.7/"
   printf '<?xml version="1.0" encoding="utf-8"?>\n<ModMetaData><name>JB probe (tests)</name><author>juliusberger00</author><packageId>%s</packageId><supportedVersions><li>1.7</li></supportedVersions><description>Test-only.</description></ModMetaData>\n' "$probeid" > "$SD/probe/About/About.xml"
   ln -sfn "$SD/probe" "$G/Mods/_jb_probe$slot"
-  local i=0 d
+  i=0
   for d in ${COMPAT_DIRS:-}; do i=$((i+1)); ln -sfn "$d" "$G/Mods/_jb_c${slot}_$i"; done
 
   local FH="$SD/home"; local C="$FH/Library/Application Support/RimWorld/Config"; rm -rf "$FH"; mkdir -p "$C"
@@ -177,7 +258,8 @@ run_slot() {
   if [ -f "$C/Prefs.xml" ]; then
     sed -i '' -e "s#<langFolderName>[^<]*</langFolderName>#<langFolderName>${GAME_LANG:-English}</langFolderName>#" \
       -e "s#<autosaveIntervalDays>[^<]*</autosaveIntervalDays>#<autosaveIntervalDays>1000</autosaveIntervalDays>#" \
-      -e "s#<runInBackground>[^<]*</runInBackground>#<runInBackground>True</runInBackground>#" "$C/Prefs.xml"
+      -e "s#<runInBackground>[^<]*</runInBackground>#<runInBackground>True</runInBackground>#" \
+      -e 's#<volumeMaster>[^<]*</volumeMaster>#<volumeMaster>0</volumeMaster>#' "$C/Prefs.xml"
   fi
   local QT=-quicktest
   unset JB_TEST_LOAD
@@ -195,51 +277,90 @@ run_slot() {
   fi
   local V; V=$(sed -n 's/.*<version>\(.*\)<\/version>.*/\1/p' "$REALCFG/ModsConfig.xml" 2>/dev/null | head -1)
   { echo '<?xml version="1.0" encoding="utf-8"?><ModsConfigData><version>'"$V"'</version><activeMods>'
-    for p in brrainz.harmony ludeon.rimworld ludeon.rimworld.royalty ludeon.rimworld.ideology ludeon.rimworld.biotech ludeon.rimworld.anomaly ludeon.rimworld.odyssey ${EXTRA[@]+"${EXTRA[@]}"} $modid $probeid; do echo "<li>$p</li>"; done
+    # the probe first (it records red errors from the earliest mod constructor on), then the framework, the harness, extras, the mod
+    for p in brrainz.harmony ludeon.rimworld ludeon.rimworld.royalty ludeon.rimworld.ideology ludeon.rimworld.biotech ludeon.rimworld.anomaly ludeon.rimworld.odyssey \
+             $probeid $fwid $tmid ${xids[@]+"${xids[@]}"} $modid; do echo "<li>$p</li>"; done
     echo '</activeMods><knownExpansions><li>ludeon.rimworld.royalty</li><li>ludeon.rimworld.ideology</li><li>ludeon.rimworld.biotech</li><li>ludeon.rimworld.anomaly</li><li>ludeon.rimworld.odyssey</li></knownExpansions></ModsConfigData>'; } > "$C/ModsConfig.xml"
 
   OUT="$S/jb_result_$LABEL.txt"; LOG="$S/jb_player_$LABEL.log"; PERR="$S/jb_probe_err_$LABEL.txt"; POUT="$S/jb_probe_$LABEL.txt"
   rm -f "$OUT" "$PERR" "$POUT" "$PERR".*
-  export JB_PROBE_ERR="$PERR" JB_PROBE_OUT="$POUT" JB_TEST_DUMP="$S/jb_settings_dump_$LABEL.json"
+  export JB_PROBE_ERR="$PERR" JB_PROBE_OUT="$POUT" JB_TEST_DUMP="$S/jb_settings_dump_$LABEL.json" JB_TEST_EXTRA="${xplain#,}"
   if [ -n "$PROBE_DAYS" ]; then export JB_PROBE_DAYS=$PROBE_DAYS; else unset JB_PROBE_DAYS; fi
   if [ -n "$PROBE_SAVE" ]; then export JB_PROBE_SAVE=$PROBE_SAVE; else unset JB_PROBE_SAVE; fi
+  local shots=""
+  if [ -n "${JB_UI_SHOTS:-}" ] && [ "${JB_UI_SHOTS}" != 0 ]; then shots="$S/jb_shots_$LABEL"; rm -rf "$shots"; mkdir -p "$shots"; fi
+  local testmod=$PIDL; [ "$IS_FW" = 1 ] && testmod=$FWPID
   local started; started=$(date +%s)
   # test instances run without a window (engine offscreen backend, virtual 1920x1080 screen) and muted; see _Tools/rwquiet/README.md
-  sed -i '' -e 's#<volumeMaster>[^<]*</volumeMaster>#<volumeMaster>0</volumeMaster>#' "$FH/Library/Application Support/RimWorld/Config/Prefs.xml" 2>/dev/null
-  ( cd "$G/RimWorld.app/Contents/MacOS" && HOME="$FH" JB_TEST="$SUITES" JB_TEST_OUT="$OUT" JB_TEST_MOD="$PIDL" timeout "${TIMEOUT_S:-${TIMEOUT:-600}}" env WAYLITH_BACKEND=offscreen ./RimWorld $QT > "$LOG" 2>&1 )
+  ( cd "$G/RimWorld.app/Contents/MacOS" && HOME="$FH" JB_TEST="$SUITES" JB_TEST_OUT="$OUT" JB_TEST_MOD="$testmod" JB_UI_SHOTS="$shots" \
+      timeout "${TIMEOUT_S:-${TIMEOUT:-600}}" env WAYLITH_BACKEND=offscreen ./RimWorld $QT > "$LOG" 2>&1 )
   local code=$?
   if [ -n "$SAVES_OUT" ]; then mkdir -p "$SAVES_OUT"; cp "$FH/Library/Application Support/RimWorld/Saves/"* "$SAVES_OUT/" 2>/dev/null; rm -f "$SAVES_OUT/autostart.rws"; fi
   rm -rf "$S/jb_logs_$LABEL"; mkdir -p "$S/jb_logs_$LABEL"; cp "$C"/*.log "$C"/Mod_*.xml* "$S/jb_logs_$LABEL/" 2>/dev/null
   echo "slot $slot · game exit $code · $(( $(date +%s) - started )) s · log $LOG · mod logs $S/jb_logs_$LABEL/"
+  echo "mods: framework ${fwid:-(none)} · harness ${tmid:-(none)} · extras ${xids[*]+${xids[*]}} · under test ${modid:-${fwid:-(none)}}"
   release_slot
   grep -E "^\[JBTEST\].*(starting|RESULT)|did not load any content|^\[JBPROBE\] (running|done)" "$LOG" | sed 's/\x1b\[[0-9;]*m//g' | head -10
   report_errors "$PERR"
+  [ -n "$shots" ] && echo "screenshots: $shots ($(ls "$shots" 2>/dev/null | grep -c png))"
   if [ -n "$SUITES" ]; then
-    if [ -f "$OUT" ]; then head -150 "$OUT"; grep -q "^RESULT PASS" "$OUT" || RUN_RC=1
+    if [ -f "$OUT" ]; then head -200 "$OUT"; grep -q "^RESULT PASS" "$OUT" || RUN_RC=1
     else echo "NO RESULT FILE (crash or timeout)"; tail -30 "$LOG"; RUN_RC=4; fi
-    [ "$NO_MOD" != 1 ] && [ "$OURS" -gt 0 ] && { echo "FAIL: $OURS red error(s) of ours"; [ $RUN_RC = 0 ] && RUN_RC=1; }
+    [ "$OURS" -gt 0 ] && { echo "FAIL: $OURS red error(s) of ours"; [ $RUN_RC = 0 ] && RUN_RC=1; }
   else
     if [ -f "$POUT" ] && grep -q "^PROBE DONE" "$POUT"; then cat "$POUT"; else echo "PROBE DID NOT FINISH"; tail -20 "$LOG"; RUN_RC=4; fi
   fi
 }
 
-defaults() { SUITES=""; LOAD=""; NO_MOD=0; PROBE_DAYS=""; PROBE_SAVE=""; SAVES_OUT=""; KIND=tests; MIGRATION_FROM=""; COMPAT_DIRS=""; EXTRA=(); TIMEOUT_S=""; }
+defaults() { SUITES=""; LOAD=""; NO_MOD=0; NO_FW=0; NO_TM=0; PROBE_DAYS=""; PROBE_SAVE=""; SAVES_OUT=""; KIND=tests; MIGRATION_FROM=""; COMPAT_DIRS=""; EXTRA=(); TIMEOUT_S=""; }
 py() { python3 -I "$KIT/tools/$1" "${@:2}"; }
+newest_save() { ls -t "$1"/*.rws 2>/dev/null | grep -v '/autostart.rws$' | head -1; }
+
+# two_phase <label> <suites> <extras phase 1…> -- <extras phase 2…>: new game (suites save) → load that save (suites compare)
+two_phase() {
+  local L=$1 SU=$2; shift 2
+  local E1=() E2=() second=0 x
+  for x in "$@"; do if [ "$x" = "--" ]; then second=1; elif [ $second = 0 ]; then E1+=("$x"); else E2+=("$x"); fi; done
+  local D="$S/jb_saveload_$L"; mkdir -p "$D"
+  defaults; LABEL="${L}_build"; SUITES=$SU; SAVES_OUT="$D/build"; EXTRA=(${E1[@]+"${E1[@]}"}); rm -rf "$D/build"
+  echo "== phase 1: new game with $MODNAME ${E1[*]+${E1[*]}} → save"; run_slot; local rc1=$RUN_RC
+  local sv; sv=$(newest_save "$D/build")
+  [ -z "$sv" ] && { echo "phase 1 made no save"; return 1; }
+  [ $rc1 != 0 ] && { echo "phase 1 failed ($rc1)"; return $rc1; }
+  defaults; LABEL="${L}_load"; SUITES=$SU; LOAD=$sv; SAVES_OUT="$D/load"; EXTRA=(${E2[@]+"${E2[@]}"})
+  echo "== phase 2: load $(basename "$sv") with $MODNAME ${E2[*]+${E2[*]}}"; BUILD=0 run_slot; return $RUN_RC
+}
 
 # ---------------------------------------------------------------------------------------------------------------- commands
 case "$CMD" in
   build)
     if [ "${1:-}" = "--tests" ]; then
-      out="$S/jbbuild_${MODNAME}_tests"; rm -rf "$out"; build_mod 1 "$out" || exit 2
+      build_framework 1.7 || exit 2; build_testing || exit 2
+      [ "$IS_FW" = 1 ] && { echo "framework + harness built: $KIT/TestMod/1.7/Assemblies/$FWASM.Testing.dll"; exit 0; }
+      out="$S/jbbuild_${MODNAME}_tests"; rm -rf "$out"; build_mod "$MOD" 1 "$out" 1.7 || exit 2
       echo "test build (not in the mod folder): $(ls "$out"/*.dll)"
+    elif [ "$IS_FW" = 1 ]; then
+      build_framework 1.7 || exit 2
+      build_framework 1.6 || exit 2
+      build_testing || exit 2
+      ls -l "$KIT"/1.7/Assemblies/*.dll "$KIT"/1.6/Assemblies/*.dll "$KIT"/TestMod/1.7/Assemblies/*.dll | awk '{print $5, $NF}'
+      echo "note: 1.6 is compile-only (Krafs reference assemblies), best effort; there is no 1.6 game here to run it"
     else
-      build_mod 0 - || exit 2
+      build_framework 1.7 || exit 2
+      build_mod "$MOD" 0 - 1.7 || exit 2
       ls -l "$MOD"/1.7/Assemblies/*.dll 2>/dev/null | awk '{print $5, $NF}'
+      if grep -q '<li>1.6</li>' "$ABOUT" && [ ! -f "$MOD/Source/Frozen16.sha256" ]; then
+        build_framework 1.6 || exit 2
+        build_mod "$MOD" 0 - 1.6 || exit 2
+        ls -l "$MOD"/1.6/Assemblies/*.dll 2>/dev/null | awk '{print $5, $NF}'
+        echo "note: 1.6 is compile-only (Krafs reference assemblies), best effort, NOT runnable here (no 1.6 game on this machine)"
+      elif [ -f "$MOD/Source/Frozen16.sha256" ]; then echo "1.6: frozen (Source/Frozen16.sha256), not rebuilt"
+      else echo "1.6: not in About supportedVersions, not built"; fi
     fi ;;
   test)
     defaults; SUITES=${1:?suites}; shift
     LABEL="${MODNAME}_test"
-    if [ $# -gt 0 ] && [[ "$1" != *.* ]]; then LABEL=$1; shift; fi
+    if [ $# -gt 0 ] && [[ "$1" != *.* ]] && [ -z "$(resolve_dir "$1")" ]; then LABEL=$1; shift; fi
     EXTRA=("$@")
     run_slot; [ -f "$S/jb_settings_dump_$LABEL.json" ] && echo "settings dump: $S/jb_settings_dump_$LABEL.json"
     exit $RUN_RC ;;
@@ -250,31 +371,30 @@ case "$CMD" in
     [ "$OURS" -gt 0 ] && RUN_RC=1
     [ $RUN_RC = 4 ] && [ "$OURS" = 0 ] && grep -q "Initializing new game" "$LOG" && { echo "(timeout before the probe day ended, but the game started)"; RUN_RC=0; }
     exit $RUN_RC ;;
-  saveload|removal|addition)
-    L=${1:-${MODNAME}_saveload}; D="$S/jb_saveload_$L"; mkdir -p "$D"
-    find_save() { ls "$D/build/"jb_*_saveload.rws 2>/dev/null | head -1; }
-    if [ "$CMD" != addition ] && { [ -z "$(find_save)" ] || [ "$CMD" = saveload ]; }; then
+  saveload)
+    L=${MODNAME}_saveload
+    if [ $# -gt 0 ] && [[ "$1" != *.* ]] && [ -z "$(resolve_dir "$1")" ]; then L=$1; shift; fi
+    two_phase "$L" kit.saveload "$@" -- "$@"; exit $? ;;
+  removal)
+    L=${1:-${MODNAME}_saveload}; D="$S/jb_saveload_$L"
+    if [ -z "$(newest_save "$D/build")" ]; then
       defaults; LABEL="${L}_build"; SUITES=kit.saveload; SAVES_OUT="$D/build"; rm -rf "$D/build"
       echo "== phase build: new game with the mod → save"; run_slot; rc_build=$RUN_RC
-      [ -z "$(find_save)" ] && { echo "phase build made no save"; exit 1; }
+      [ -z "$(newest_save "$D/build")" ] && { echo "phase build made no save"; exit 1; }
       [ $rc_build != 0 ] && { echo "phase build failed ($rc_build)"; exit $rc_build; }
     fi
-    case "$CMD" in
-      saveload)
-        defaults; LABEL="${L}_roundtrip"; SUITES=kit.saveload; LOAD=$(find_save); SAVES_OUT="$D/roundtrip"; BUILD=0
-        echo "== phase roundtrip: load $(basename "$LOAD") with the mod"; run_slot; exit $RUN_RC ;;
-      removal)
-        defaults; LABEL="${L}_removal"; LOAD=$(find_save); NO_MOD=1; PROBE_DAYS=1
-        echo "== phase removal: load $(basename "$LOAD") WITHOUT the mod, play 1 day"; run_slot
-        echo "removal answer: $OURS red error(s) naming the mod ($OURS_PLAY while playing); see the list above"
-        exit $RUN_RC ;;
-      addition)
-        defaults; LABEL="${L}_vanilla"; NO_MOD=1; PROBE_DAYS=0; PROBE_SAVE=jb_vanilla; SAVES_OUT="$D/vanilla"; rm -rf "$D/vanilla"
-        echo "== phase vanilla: new game WITHOUT the mod → save"; run_slot
-        [ -f "$D/vanilla/jb_vanilla.rws" ] || { echo "phase vanilla made no save"; exit 1; }
-        defaults; LABEL="${L}_addition"; LOAD="$D/vanilla/jb_vanilla.rws"; SUITES=kit.smoke,kit.addition
-        echo "== phase addition: load the vanilla save WITH the mod"; run_slot; exit $RUN_RC ;;
-    esac ;;
+    defaults; LABEL="${L}_removal"; LOAD=$(newest_save "$D/build"); NO_MOD=1; PROBE_DAYS=1; KIND=plain
+    echo "== phase removal: load $(basename "$LOAD") WITHOUT the mod (the framework stays), play 1 day"; run_slot
+    echo "removal answer: $OURS red error(s) naming the mod or the framework ($OURS_PLAY while playing); see the list above"
+    [ "$OURS" -gt 0 ] && [ $RUN_RC = 0 ] && RUN_RC=1
+    exit $RUN_RC ;;
+  addition)
+    L=${1:-${MODNAME}_addition}; D="$S/jb_saveload_$L"
+    defaults; LABEL="${L}_vanilla"; NO_MOD=1; NO_FW=1; PROBE_DAYS=0; PROBE_SAVE=jb_vanilla; SAVES_OUT="$D/vanilla"; KIND=plain; rm -rf "$D/vanilla"
+    echo "== phase vanilla: new game WITHOUT the mod and WITHOUT the framework → save"; run_slot
+    [ -f "$D/vanilla/jb_vanilla.rws" ] || { echo "phase vanilla made no save"; exit 1; }
+    defaults; LABEL="${L}_addition"; LOAD="$D/vanilla/jb_vanilla.rws"; SUITES=kit.smoke,kit.addition
+    echo "== phase addition: load the vanilla save WITH the framework and the mod"; run_slot; exit $RUN_RC ;;
   compat)
     set_name=${1:?set}; L=${2:-${MODNAME}_compat_$set_name}
     resolved=$(python3 -I - "$KIT/tools/compat_sets.json" "$set_name" <<'PY'
@@ -317,6 +437,19 @@ PY
     fi
     defaults; LABEL=$L; SUITES=kit.migration,kit.smoke; MIGRATION_FROM=$from; MIGRATION_CLASS=$cls
     run_slot; exit $RUN_RC ;;
+  fw)
+    A="$KIT/sample/KitSampleA"; B="$KIT/sample/KitSampleB"; sc=${1:?scenario: tenants|removal|apilevel|alone|all}
+    case "$sc" in
+      tenants)  exec "$0" "$A" _two fw_tenants fw.tenants "$B" -- "$B" ;;
+      removal)  exec "$0" "$A" _two fw_removal fw.removal "$B" -- ;;
+      apilevel) JB_MSBUILD_ARGS="-p:JBMinApiLevel=99" exec "$0" "$A" test fw.apilevel fw_apilevel "$B" ;;
+      alone)    exec "$0" "$KIT" test fw.alone fw_alone ;;
+      all)
+        res=""; for x in alone tenants removal apilevel; do "$0" "$MODARG" fw "$x" > "$S/jb_fw_$x.out" 2>&1; rc=$?; res="$res $x=$rc"; echo "fw $x: exit $rc ($S/jb_fw_$x.out)"; done
+        echo "fw all:$res"; echo "$res" | grep -q '=[1-9]' && exit 1; exit 0 ;;
+      *) echo "unknown scenario $sc"; exit 2 ;;
+    esac ;;
+  _two) two_phase "$@"; exit $? ;;
   freeze16) py freeze16.py "$MOD" "$@" ;;
   release) py release.py "$MOD" "$@" ;;
   desc-lint)
