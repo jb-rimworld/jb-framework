@@ -527,7 +527,7 @@
             <summary>Delivers pending setting changes of every mod.</summary>
         </member>
         <member name="M:JBFramework.FrameworkGame.GameComponentOnGUI">
-            <summary>Welcome cards.</summary>
+            <summary>Kept for the public API (1.0); the welcome cards moved to <see cref="M:JBFramework.FrameworkGame.GameComponentUpdate"/>.</summary>
         </member>
         <member name="M:JBFramework.FrameworkGame.ExposeData">
             <summary>Saves and loads every mod's entry (plain values; each mod's SaveData in its own node).</summary>
@@ -547,6 +547,9 @@
         </member>
         <member name="F:JBFramework.KitSaveEntry.rawData">
             <summary>The &lt;data&gt; node of an absent or blocked mod, as loaded (outer XML), or null.</summary>
+        </member>
+        <member name="F:JBFramework.KitSaveEntry.hasData">
+            <summary>False when the loaded entry had no &lt;data&gt; node (the later load passes then skip the mod's callback).</summary>
         </member>
         <member name="T:JBFramework.FrameworkMap">
             <summary>
@@ -2387,6 +2390,12 @@
         <member name="M:JBFramework.KitFirstStartCard.Due">
             <summary>The first mod whose card would open now if the delay had passed, or null.</summary>
         </member>
+        <member name="M:JBFramework.KitFirstStartCard.Update">
+            <summary>
+            Called every frame from the framework game component's Update, never from OnGUI: a window added during a Repaint pass can
+            make Unity (RimWorld 1.6) log a GUI layout error once (1.6 hazard review, finding 1). Window.WindowUpdate-time adds are safe.
+            </summary>
+        </member>
         <member name="M:JBFramework.KitFirstStartCard.OpenNow(JBFramework.KitMod)">
             <summary>Tests: open a mod's card now for the running game (ignores the delay and the "done" flag).</summary>
         </member>
@@ -2443,6 +2452,9 @@
         <member name="M:JBFramework.KitRow.ClearBuffers">
             <summary>Forget typed text (after a preset, template copy or section reset changed values from outside).</summary>
         </member>
+        <member name="M:JBFramework.KitRow.Unfocus">
+            <summary>Drops the keyboard focus of a text field whose text is cleared from code (Unity would otherwise show it again).</summary>
+        </member>
         <member name="M:JBFramework.KitRow.DrawNumber(JBFramework.KitSetting,JBFramework.KitProfile,System.Single,UnityEngine.Rect,System.Single,System.Single,System.Single)">
             <summary>
             A number row. Drawing never writes: the stored value changes only when the player drags the slider or edits the typed text,
@@ -2480,6 +2492,9 @@
         </member>
         <member name="M:JBFramework.KitSettingsWindow.SetGlobalPref(System.String,System.Boolean)">
             <summary>Writes one of the framework's global preferences (they live in the framework's own settings file).</summary>
+        </member>
+        <member name="M:JBFramework.KitSettingsWindow.UnavailableDash(UnityEngine.Rect)">
+            <summary>A switch that cannot be used now (DLC or mod missing): a grey dash in the checkbox's place.</summary>
         </member>
         <member name="M:JBFramework.KitSettingsWindow.DrawSectionRow(JBFramework.KitMod,System.Single,System.Single,System.Single,JBFramework.KitSection,JBFramework.KitProfile)">
             <summary>One section switch row: checkbox, icon, label, description or why it is not available, paused state, page link.</summary>

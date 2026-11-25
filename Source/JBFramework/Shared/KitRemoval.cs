@@ -80,10 +80,15 @@ namespace JBFramework
                     {
                         try { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(ship, l, true); held.AddRange(l); } catch { }
                     }
-                foreach (var t in held.Distinct().ToList())
+                foreach (var h in held.Distinct().ToList())
                 {
-                    if (t == null || t.Destroyed || t.Spawned || t is Pawn) continue;
-                    if (!Matches(t.def, which) && !(t is MinifiedThing hm && hm.InnerThing != null && Matches(hm.InnerThing.def, which))) continue;
+                    if (h == null || h.Destroyed || h.Spawned || h is Pawn) continue;
+                    if (!Matches(h.def, which) && !(h is MinifiedThing hm && hm.InnerThing != null && Matches(hm.InnerThing.def, which))) continue;
+                    // the inner thing of a packed (minified) thing: take the whole package, never leave an empty one behind (it logs
+                    // "MinifiedThing with null InnerThing" on its next tick; HBG2 request 4)
+                    var t = h.ParentHolder is MinifiedThing pkg ? (Thing)pkg : h;
+                    if (t.Destroyed) continue;
+                    if (t.Spawned) { t.Destroy(DestroyMode.Vanish); n++; continue; }
                     try { t.holdingOwner?.Remove(t); } catch { }
                     if (!t.Destroyed) t.Destroy(DestroyMode.Vanish);
                     n++;

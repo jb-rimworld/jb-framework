@@ -24,6 +24,25 @@ On its own it adds nothing to a game except one entry in Mod settings. MIT licen
 **Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested** (compiled against `Krafs.Rimworld.Ref 1.6.4871`; it
 should start without errors, nothing more is promised). Depends only on Harmony.
 
+<a id="install"></a>
+## Install without Steam
+
+On Steam you never need this page: subscribing to a mod that needs JB Framework subscribes you to the framework too, and a mod you
+already had that was updated to need it shows a short message at the main menu with an **Install JB Framework and restart** button.
+
+Without Steam (GOG, a DRM-free copy, an offline PC), or when the automatic install did not work:
+
+1. Download this repository as a ZIP (green **Code** button → **Download ZIP**, or the newest release under **Releases**).
+2. Unpack it and put the folder into RimWorld's **Mods** folder, named `JBFramework`:
+   - Windows: `C:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods` (or wherever RimWorld is installed, then `Mods`)
+   - macOS: `~/Library/Application Support/Steam/steamapps/common/RimWorld/Mods` (or next to `RimWorld.app`)
+   - Linux: `~/.steam/steam/steamapps/common/RimWorld/Mods`
+   The message in the game shows the exact folder of your installation and has an **Open the Mods folder** button.
+3. Start RimWorld, open **Mods**, switch on **JB Framework** and drag it **directly above** the first mod that needs it (below Harmony).
+   Save the mod list and restart when the game asks.
+
+JB Framework adds nothing of its own to a game, so there is nothing to set up after that: the mods that need it simply work again.
+
 ## Quick start
 
 ```csharp
@@ -155,6 +174,48 @@ the framework for every mod; the framework reports such a copy in the log.
   The framework DLL must be built first (`dotnet build Source/JBFramework -c Release [-p:RimVersion=1.6]`), or pass
   `-p:JBFrameworkDll=<path>`.
 
+### Ship the guard with your mod
+
+Steam installs a dependency only when a player subscribes to a mod. A player who already has your mod gets your update **without** the
+framework. Without a guard the game then loads your DLL without the framework: red errors, missing defs, and a colony saved in that
+state loses your mod's things for good. The guard makes that impossible: without the framework your mod loads **nothing but a tiny
+guard assembly** (it references only the game), and one window at the main menu (shared by every guarded mod) explains it in plain words
+and offers **Install JB Framework and restart** (Steam: subscribe, download, switch it on directly above your mod, restart), the
+Workshop page, Quit, or a small **Continue without** with the warning repeated. Without Steam it opens [Install](#install).
+
+1. In your csproj, **before** the `JBMod.props` import:
+   ```xml
+   <JBGuard>true</JBGuard>
+   <JBGuardLoss>its hospital beds</JBGuardLoss>              <!-- "a colony saved now would lose …" -->
+   <JBGuardLossDe>ihre Krankenhausbetten</JBGuardLossDe>     <!-- German (other languages fall back to English) -->
+   ```
+2. `LoadFolders.xml`: every folder only **with** the framework, the `Guard` folders only **without** it (and `IfModActiveAll` for a folder
+   that also needs a DLC or another mod):
+   ```xml
+   <loadFolders>
+     <v1.7>
+       <li IfModActive="juliusberger.jbframework">Common</li>
+       <li IfModActive="juliusberger.jbframework">1.7</li>
+       <li IfModActiveAll="juliusberger.jbframework,ludeon.rimworld.biotech">Common/Biotech</li>
+       <li IfModNotActive="juliusberger.jbframework">Guard</li>
+       <li IfModNotActive="juliusberger.jbframework">Guard/1.7</li>
+     </v1.7>
+   </loadFolders>
+   ```
+   Do the same in `<v1.6>` when your 1.6 build uses the framework (`Guard/1.6`). A frozen 1.6 of your old, frameworkless version stays
+   as it was. The game compares packageIds without case and without Steam's `_steam` suffix; a framework that is installed but switched
+   off counts as missing (the guard then offers **Switch on JB Framework and restart**). RimWorld 1.6 knows `IfModNotActive` too.
+3. Build as usual (`dotnet build -c Release`, and `-p:RimVersion=1.6`): the build writes `Guard/<version>/Assemblies/<Mod>.Guard.dll`
+   and `Guard/Languages/{English,German (Deutsch)}/Keyed/<Mod>_Guard.xml`. Commit and ship the whole `Guard` folder.
+4. Prove it: `jbmod MyMod noframework` (0 red errors and 0 warnings of yours, one window, a faked Steam install leaves the framework
+   directly above your mod; `JB_UI_SHOTS=1` for screenshots, `GAME_LANG=German` for German) and `jbmod MyMod test kit.smoke` (with the
+   framework the guard does not load). `kit.smoke` fails when a 1.7 folder would load without the framework; `tools/release.py` also
+   fails without a guard.
+
+If a player continues without the framework and loads a save that has your things, RimWorld logs its usual missing-def errors for
+them; the guard has warned before. The framework's Workshop id is read at build time from the framework's `About/PublishedFileId.txt`;
+until the framework is uploaded the install button takes the manual route.
+
 ### Test it
 
 From the folder that holds both your mod and the framework repository (RimWorld 1.7 installed; the game runs without a window and muted,
@@ -165,6 +226,8 @@ JBFramework/tools/jbmod MyMod lang --refresh     # once, and after new settings:
 JBFramework/tools/jbmod MyMod test all           # every built-in check (settings, window at three screen sizes, saves, …): RESULT PASS
 JBFramework/tools/jbmod MyMod saveload           # save with the mod, load it again: values and your data survive
 JBFramework/tools/jbmod MyMod removal            # load that save WITHOUT the mod: no red error
+JBFramework/tools/jbmod MyMod noframework        # the mod WITHOUT the framework: only the guard loads, one window, no red error
+JBFramework/tools/jbmod MyMod load my.rws --suites mm.a   # a given save (an older build's, a player's) with the current build
 ```
 `jbmod` without arguments lists every command (own suites, other mods next to yours, no DLCs, German, screenshots).
 
@@ -188,7 +251,7 @@ framework's harness: import `build/JBTests.props`, which adds the harness to tes
 
 ## Repository
 
-`Source/JBFramework` the framework · `build/` build props for the framework and for dependent mods · `api/` public API snapshot and doc
+`Source/JBFramework` the framework · `guard/` the missing-framework guard every dependent mod compiles in · `build/` build props for the framework and for dependent mods · `api/` public API snapshot and doc
 XML · `sample/` dependent sample mods · `TestMod/` the local in-game test harness (never published) · `tools/` build, test (`jbmod`),
 release and API tools · `Common/` texts, icons and the known-mods data. How the framework is built inside, the hook points, the test
 harness and the release checks: **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)**.

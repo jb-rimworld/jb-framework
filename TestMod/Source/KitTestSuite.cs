@@ -115,6 +115,12 @@ namespace JBFramework.Testing
         /// </summary>
         public void KeepOpen(Window window) { if (window == null) return; window.forcePause = false; KitTestRunner.KeptWindows.Add(window); }
         /// <summary>
+        /// Switches a compatibility entry of the mod under test on or off, as the player's checkbox on the Compatibility page does (a
+        /// preference of this installation; the test profile only). Returns false for an unknown entry or a mod without a context.
+        /// <c>t.SetCompat("Andromeda.NiceBillTab", false); … t.SetCompat("Andromeda.NiceBillTab", true);</c>
+        /// </summary>
+        public bool SetCompat(string packageIdOrDlc, bool on) => Mod != null && Mod.SetCompat(packageIdOrDlc, on);
+        /// <summary>
         /// Opens the welcome card of the mod under test for the running game now (no delay; also when its "done" flag is set) and returns
         /// it, or null (no per-save profile, or the mod has no card). Close it with <c>Close()</c>; closing marks the card done in this save.
         /// </summary>

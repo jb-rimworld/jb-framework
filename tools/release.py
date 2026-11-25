@@ -13,6 +13,10 @@ Steps (all checks run, then the first failing group stops before anything is cop
                API level it states covers every framework member it binds to (tools/public_api.py uses; api/Since.txt).
   2b dependency  a dependent mod lists the framework in modDependencies (with steamWorkshopUrl, checked against the framework's
                About/PublishedFileId.txt once it exists) and in loadAfter.
+  2c guard     a dependent mod ships the missing-framework guard: for every version whose DLL needs the framework, each LoadFolders.xml
+               entry loads only with it (IfModActive / IfModActiveAll) or is a Guard folder loaded only without it (IfModNotActive);
+               Guard/<v>/Assemblies/*.Guard.dll exists, binds to neither the framework nor Harmony, has no test code, and carries the
+               framework's Workshop id once About/PublishedFileId.txt of the framework exists (placeholder before: warning).
                The framework itself (a folder with build/Identity.props): built for 1.7 AND 1.6, `tools/public_api.py check` must pass (the
                public API is additive only), and the copy leaves out sample/, build/, api/, TestMod/ and API.md.
   3 freeze     freeze16.py --check (1.6 byte-identical to Source/Frozen16.sha256); About lists 1.6 but no manifest = error.
@@ -162,6 +166,59 @@ def step_dependency(mod, R):
         elif fid and not url.endswith("/" + fid): R.err(f"About.xml: steamWorkshopUrl {url} does not point at the framework's Workshop id {fid}")
         elif not fid: R.warn("the framework has no About/PublishedFileId.txt yet: steamWorkshopUrl not checked against it")
         else: R.ok(f"framework dependency with Workshop link {url}")
+    guard_check(mod, fwpid, R)
+
+
+def guard_check(mod, fwpid, R):
+    """The missing-framework guard (README "Ship the guard with your mod"): for every version whose DLL needs the framework, each
+    LoadFolders.xml entry loads only WITH the framework (IfModActive / IfModActiveAll naming it) or is a Guard folder loaded only WITHOUT it
+    (IfModNotActive), and the guard DLL of that version exists, references neither the framework nor Harmony and carries the framework's
+    Workshop id once the framework has one."""
+    R.group = "guard"
+    p = os.path.join(mod, "LoadFolders.xml")
+    if not os.path.isfile(p):
+        R.err("no LoadFolders.xml: every folder loads even when JB Framework is missing (red errors, a save loses the mod's things); "
+              "README: Ship the guard with your mod"); return
+    fid_file = os.path.join(HERE, "..", "About", "PublishedFileId.txt")
+    fid = open(fid_file).read().strip() if os.path.isfile(fid_file) else ""
+    ids = lambda li, a: [x.strip().lower() for x in (li.get(a) or "").split(",") if x.strip()]
+    for v in ET.parse(p).getroot():
+        if not re.fullmatch(r"v\d+\.\d+", v.tag): continue
+        ver = v.tag[1:]
+        lis = v.findall("li")
+        folders = [(li.text or "").strip().strip("/") for li in lis]
+        # a version needs the guard when one of its folders holds a DLL that binds to the framework (a frozen 1.6 of the old mod does not)
+        needs = False
+        for f in folders:
+            ad = os.path.join(mod, f, "Assemblies")
+            if os.path.isdir(ad) and any(uses_framework(os.path.join(ad, x)) for x in os.listdir(ad) if x.endswith(".dll") and not x.endswith(".Guard.dll")):
+                needs = True
+        if not needs: R.ok(f"<v{ver}>: no DLL that needs the framework, no guard needed"); continue
+        guard, bad = [], []
+        for li, f in zip(lis, folders):
+            anyof, allof, noneof = ids(li, "IfModActive"), ids(li, "IfModActiveAll"), ids(li, "IfModNotActive")
+            with_fw = (anyof and all(x == fwpid for x in anyof)) or fwpid in allof
+            without_fw = fwpid in noneof
+            if without_fw and not with_fw:
+                if f.split("/")[0] != "Guard": bad.append(f"'{f}' loads only without the framework but is not a Guard folder")
+                else: guard.append(f)
+            elif not with_fw: bad.append(f"'{f}' loads without JB Framework (IfModActive=\"{fwpid}\" or IfModActiveAll=\"{fwpid},<other>\" missing)")
+            elif f.split("/")[0] == "Guard": bad.append(f"'{f}' is a Guard folder but loads with the framework")
+        for b in bad: R.err(f"<v{ver}>: {b}")
+        if not guard: R.err(f"<v{ver}>: no Guard folder (IfModNotActive=\"{fwpid}\"): a player without JB Framework gets red errors and no explanation"); continue
+        dlls = [os.path.join(mod, g, "Assemblies", x) for g in guard if os.path.isdir(os.path.join(mod, g, "Assemblies")) for x in os.listdir(os.path.join(mod, g, "Assemblies")) if x.endswith(".Guard.dll")]
+        if not dlls: R.err(f"<v{ver}>: no *.Guard.dll in {', '.join(guard)} (set <JBGuard>true</JBGuard> in the csproj and build for {ver})"); continue
+        for d in dlls:
+            data = open(d, "rb").read()
+            rel = os.path.relpath(d, mod)
+            if b"0Harmony" in data or uses_framework(d): R.err(f"{rel} references Harmony or the framework (it must load without both)")
+            if scan_dll(d): R.err(f"{rel} contains test code (built with JBGuardTests=true?)")
+            if b"JBFRAMEWORK_WORKSHOP_ID" in data or "JBFRAMEWORK_WORKSHOP_ID".encode("utf-16-le") in data:
+                (R.err if fid else R.warn)(f"{rel} holds the Workshop id placeholder" + (f": rebuild (the framework's id {fid} is in its About/PublishedFileId.txt now)" if fid else " (framework not uploaded yet: its install button opens the GitHub page)"))
+            elif fid and fid.encode("utf-16-le") not in data: R.err(f"{rel} does not carry the framework's Workshop id {fid}: rebuild")
+        langs = [g for g in guard if os.path.isdir(os.path.join(mod, g, "Languages", "English"))]
+        if not langs: R.err(f"<v{ver}>: the guard has no English texts (Guard/Languages/English/Keyed, written by the build)")
+        if not bad: R.ok(f"<v{ver}>: every folder needs the framework, guard {', '.join(guard)} ({len(dlls)} DLL)")
 
 
 def step_build(mod, a, R):
@@ -187,6 +244,11 @@ def step_dll(mod, R, label="dll scan"):
     dlls = []
     for d in (os.path.join(mod, "1.7", "Assemblies"), os.path.join(mod, "1.6", "Assemblies"), os.path.join(mod, "Common", "Assemblies")):
         if os.path.isdir(d): dlls += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith(".dll")]
+    guards = [os.path.join(dp, f) for v in ("1.7", "1.6") for dp in [os.path.join(mod, "Guard", v, "Assemblies")] if os.path.isdir(dp) for f in sorted(os.listdir(dp)) if f.endswith(".dll")]
+    for g in guards:
+        hits = scan_dll(g)
+        if hits: R.err(f"{os.path.relpath(g, mod)} contains test code: {', '.join(hits)} (built with JBGuardTests=true?)")
+        else: R.ok(f"{os.path.relpath(g, mod)} clean")
     if not any(os.sep + "1.7" + os.sep in d or os.sep + "Common" + os.sep in d for d in dlls): R.warn("no DLL in 1.7/Assemblies")
     if not dlls: return
     fw = is_framework(mod)

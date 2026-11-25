@@ -158,7 +158,7 @@ namespace JBFramework
                 var plr = new Rect(lx, row.y, row.xMax - lx - 2f, row.height);
                 KitStyle.LabelColored(plr, plabel.Truncate(plr.width), p.Dim ? KitStyle.DimGrey : Color.white, TextAnchor.MiddleLeft);
                 if (KitUI.TextW(plabel) > plr.width) TooltipHandler.TipRegion(row, plabel);
-                if (Widgets.ButtonInvisible(row)) { k.Window.PageId = p.Id; k.Window.Search = ""; k.Window.ScrollMain = Vector2.zero; k.Window.MainViewH = 1000f; }
+                if (Widgets.ButtonInvisible(row)) { k.Window.PageId = p.Id; k.Window.Search = ""; KitRow.Unfocus(); k.Window.ScrollMain = Vector2.zero; k.Window.MainViewH = 1000f; }
                 py += pageRowH + 2f;
             }
             Widgets.EndScrollView();
@@ -226,7 +226,7 @@ namespace JBFramework
                     var phR = new Rect(sr.x + 6f, sr.y, sr.width - 8f, sr.height);
                     KitStyle.LabelColored(phR, KitText.K("Header.Search", "Search all settings...").Truncate(phR.width), KitStyle.DimGrey, TextAnchor.MiddleLeft);
                 }
-                else if (Widgets.ButtonText(new Rect(sr.x - 32f, sr.y, 28f, 30f), "x")) k.Window.Search = "";
+                else if (Widgets.ButtonText(new Rect(sr.x - 32f, sr.y, 28f, 30f), "x")) k.Window.Search = ""; KitRow.Unfocus();
                 if (nerdToggle)
                 {
                     bool nerd = ShowNerd, nb = nerd;
@@ -383,6 +383,12 @@ namespace JBFramework
                 KitText.K("Overview.PresetConfirm", "Apply the preset \"{0}\"? It overwrites {1} values you changed: {2}", p.Label, names.Count, list), Apply, true));
         }
 
+        /// <summary>A switch that cannot be used now (DLC or mod missing): a grey dash in the checkbox's place.</summary>
+        internal static void UnavailableDash(Rect r)
+        {
+            KitStyle.LabelColored(r, "–", KitStyle.DimGrey, TextAnchor.MiddleCenter, GameFont.Medium);
+        }
+
         /// <summary>One section switch row: checkbox, icon, label, description or why it is not available, paused state, page link.</summary>
         static float DrawSectionRow(KitMod k, float x, float y, float w, KitSection s, KitProfile target)
         {
@@ -400,7 +406,9 @@ namespace JBFramework
             var row = new Rect(x, y, w, h);
             if (Mouse.IsOver(row)) Widgets.DrawHighlight(row);
             bool on = target.SectionOn(s.Id), nb = on;
-            Widgets.Checkbox(new Vector2(row.x + 4f, row.y + (h - 24f) / 2f), ref nb, 24f, !avail);
+            // unavailable: a dash, not a greyed tick of the stored value (the value stays for when the DLC or mod comes back; DNDM F1)
+            if (avail) Widgets.Checkbox(new Vector2(row.x + 4f, row.y + (h - 24f) / 2f), ref nb, 24f);
+            else UnavailableDash(new Rect(row.x + 4f, row.y + (h - 24f) / 2f, 24f, 24f));
             if (avail && nb != on) { target.SetSection(s.Id, nb); k.Window.PresetCacheTime = -1f; }
             KitIcons.Draw(new Rect(row.x + 34f, row.y + (h - 24f) / 2f, 24f, 24f), KitIcons.Section(k, s.Id), !avail || !nb);
             KitStyle.LabelColored(new Rect(row.x + 66f, row.y, lw, h), s.Label, avail ? (nb ? Color.white : KitStyle.Grey) : KitStyle.DimGrey, TextAnchor.MiddleLeft);
@@ -410,7 +418,7 @@ namespace JBFramework
             {
                 rx -= 30f;
                 var pr = new Rect(rx, row.y + (h - 26f) / 2f, 28f, 26f);
-                if (Widgets.ButtonText(pr, "»")) { k.Window.PageId = "section:" + s.Id; k.Window.Search = ""; k.Window.ScrollMain = Vector2.zero; }
+                if (Widgets.ButtonText(pr, "»")) { k.Window.PageId = "section:" + s.Id; k.Window.Search = ""; KitRow.Unfocus(); k.Window.ScrollMain = Vector2.zero; }
                 TooltipHandler.TipRegion(pr, KitText.K("Overview.OpenPage", "Open the settings of this section"));
                 rx -= 4f;
             }
@@ -629,7 +637,8 @@ namespace JBFramework
             {
                 // the integration's switch (PLAN G13c): a preference of the installation, greyed while the other mod is missing
                 bool on = c.SwitchedOn, nb = on;
-                Widgets.Checkbox(new Vector2(4f, y + 1f), ref nb, 24f, !present);
+                if (present) Widgets.Checkbox(new Vector2(4f, y + 1f), ref nb, 24f);
+                else UnavailableDash(new Rect(4f, y + 1f, 24f, 24f));
                 if (present && nb != on) k.SetCompat(c.PackageId, nb);
                 TooltipHandler.TipRegion(new Rect(4f, y + 1f, 24f, 24f), KitText.K("Compat.SwitchTip", "Use this integration. Applies to every game (a preference of this installation)."));
                 nx = 34f;

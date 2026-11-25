@@ -145,13 +145,18 @@ namespace JBFramework
                     bool avail = k.Sections.Available(s.Id), paused = k.Guard.IsPaused(s.Id), on = k.On(s.Id);
                     KitStyle.LabelColored(new Rect(4f, y, 220f, 26f), s.Label, avail ? Color.white : KitStyle.DimGrey, TextAnchor.MiddleLeft);
                     string state = on ? KitText.K("On", "On") : (k.WhyOff(s.Id) ?? "");
-                    KitStyle.LabelColored(new Rect(230f, y, Mathf.Max(100f, w - 230f - 250f), 26f), state, paused ? KitStyle.Bad : on ? KitStyle.Good : KitStyle.Grey, TextAnchor.MiddleLeft, GameFont.Tiny);
+                    bool showPrep = s.PrepareRemoval != null && playing && on;
+                    string prl = KitText.K("Diag.PrepareRemovalShort", "Prepare removal");
+                    // measured: German "Entfernen vorbereiten" did not fit a fixed 124 px (HBG2 3)
+                    float pw = Mathf.Clamp(KitUI.TextW(prl) + 24f, 124f, 240f);
+                    float stateRight = showPrep ? w - 126f - pw : paused ? w - 120f : w;
+                    KitStyle.LabelColored(new Rect(230f, y, Mathf.Max(100f, stateRight - 236f), 26f), state, paused ? KitStyle.Bad : on ? KitStyle.Good : KitStyle.Grey, TextAnchor.MiddleLeft, GameFont.Tiny);
                     float bx = w - 120f;
                     if (paused && Widgets.ButtonText(new Rect(bx, y + 1f, 116f, 24f), KitText.K("Diag.Resume", "Resume"))) k.Guard.Resume(s.Id);
-                    if (s.PrepareRemoval != null && playing && on)
+                    if (showPrep)
                     {
-                        var pr = new Rect(w - 250f, y + 1f, 124f, 24f);
-                        if (Widgets.ButtonText(pr, KitText.K("Diag.PrepareRemovalShort", "Prepare removal")))
+                        var pr = new Rect(w - 126f - pw, y + 1f, pw, 24f);
+                        if (Widgets.ButtonText(pr, prl))
                         {
                             var sec = s;
                             Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(

@@ -193,6 +193,7 @@ namespace JBFramework.Testing
                 t.Check(a.SetEquals(b), "loaded folders = LoadFolders.xml v1.7 (" + string.Join(", ", expected) + ")");
             }
             else t.Note("no LoadFolders.xml with a v1.7 entry");
+            if (!k.IsFramework) GuardChecks(t, k);
 
             t.Check(k.Settings != null, "settings object found (" + k.Settings?.GetType().Name + ")");
             t.Note("registered: " + k.SettingsReg.All.Count + " settings, " + k.Sections.All.Count + " sections, " + k.Presets.All.Count + " presets, " + k.Compat.All.Count + " compat entries, " + k.Pages.All.Count + " pages");
@@ -222,13 +223,65 @@ namespace JBFramework.Testing
                 t.Check(clean(report) && clean(combined), "diagnosis reports have no personal paths");
             }
 
-            t.Check(k.Log.ErrorCount == 0 && (Framework.Self?.Log.ErrorCount ?? 0) == 0, "no error in the logs of the mod (" + k.Log.ErrorCount + ") and the framework (" + Framework.Self?.Log.ErrorCount + ") since start");
+            // errors a suite provoked on purpose (TestContext.ExpectRedError) also land in the mod's log: they do not count (HBG2 request 1)
+            int expectedErr = KitTestLog.ExpectedCount(), logErr = k.Log.ErrorCount + (Framework.Self?.Log.ErrorCount ?? 0);
+            t.Check(logErr - expectedErr <= 0, "no error in the logs of the mod (" + k.Log.ErrorCount + ") and the framework (" + Framework.Self?.Log.ErrorCount + ") since start" + (expectedErr > 0 ? " apart from " + expectedErr + " a suite provoked on purpose" : ""));
             KitSuiteUtil.NoRedErrors(t, 0, "no red error of the framework or the mod since start");
 
             int tick0 = Find.TickManager.TicksGame;
             yield return 600;
             t.Check(Find.TickManager.TicksGame > tick0, "the game ticks");
             t.Check(!k.Guard.Paused.Any() && KitTestLog.Since(0, true).Count == 0, "still nothing paused and no red error of ours after 600 ticks");
+        }
+
+        /// <summary>
+        /// The missing-framework guard of a dependent mod (README "Ship the guard with your mod"): no 1.7 content folder may load
+        /// without the framework (IfModActive / IfModActiveAll naming it), the Guard folders load only without it (IfModNotActive), and in
+        /// this run (framework active) none of the guard loaded. A missing guard is only a note here; tools/release.py refuses the release.
+        /// </summary>
+        static void GuardChecks(TestContext t, KitMod k)
+        {
+            string root = k.Content?.RootDir;
+            var problems = GuardProblems(root, out bool hasGuard, out int entries);
+            if (entries < 0) { t.Check(false, "LoadFolders.xml exists: without it every folder of the mod loads even when " + Framework.Name + " is missing (README: Ship the guard with your mod)"); return; }
+            foreach (var pr in problems.Take(12)) t.Note("guard: " + pr);
+            t.Check(problems.Count == 0, "no content folder loads without " + Framework.Name + " (" + entries + " LoadFolders entries checked" + (problems.Count > 0 ? "; " + problems.Count + " problems, see the notes" : "") + ")");
+            if (!hasGuard) { t.Note("no guard folder (IfModNotActive=\"" + Framework.PackageId + "\"): players without " + Framework.Name + " get no explanation; release.py refuses this (README: Ship the guard with your mod)"); return; }
+            var loaded = KitReport.LoadFolders(k);
+            t.Check(!loaded.Any(f => f.StartsWith("Guard", StringComparison.OrdinalIgnoreCase)), "the guard folder is not loaded while " + Framework.Name + " is active");
+            var asms = k.Content?.assemblies?.loadedAssemblies ?? new List<Assembly>();
+            t.Check(!asms.Any(a => a.GetName().Name.EndsWith(".Guard", StringComparison.Ordinal)), "no guard assembly loaded while " + Framework.Name + " is active");
+            t.Check(File.Exists(Path.Combine(root, "Guard", "1.7", "Assemblies", (k.Mod?.GetType().Assembly.GetName().Name ?? "?") + ".Guard.dll"))
+                    || Directory.GetFiles(Path.Combine(root, "Guard"), "*.Guard.dll", SearchOption.AllDirectories).Length > 0, "the guard DLL is shipped (Guard/<version>/Assemblies/*.Guard.dll)");
+        }
+
+        /// <summary>LoadFolders.xml entries that would load without the framework; entries = number checked (-1: no LoadFolders.xml).</summary>
+        internal static List<string> GuardProblems(string root, out bool hasGuard, out int entries)
+        {
+            var problems = new List<string>(); hasGuard = false; entries = -1;
+            if (root == null) return problems;
+            var path = Path.Combine(root, "LoadFolders.xml");
+            if (!File.Exists(path)) return problems;
+            entries = 0;
+            var doc = new XmlDocument(); doc.Load(path);
+            bool IsFw(string id) => System.Text.RegularExpressions.Regex.Replace(KitCompat.Strip(id ?? "").ToLowerInvariant(), @"\.slot\d+$", "") == Framework.PackageId.ToLowerInvariant();
+            foreach (XmlNode v in doc.DocumentElement.ChildNodes)
+            {
+                // the version this game runs (1.7); other versions (e.g. a frozen, frameworkless 1.6) are tools/release.py's job
+                if (!(v is XmlElement) || v.Name != "v1.7") continue;
+                foreach (XmlNode li in v.SelectNodes("li"))
+                {
+                    entries++;
+                    string f = li.InnerText.Trim();
+                    var any = Ids(li, "IfModActive"); var all = Ids(li, "IfModActiveAll"); var none = Ids(li, "IfModNotActive");
+                    bool needsFw = (any != null && any.Count > 0 && any.All(IsFw)) || (all != null && all.Any(IsFw));
+                    bool onlyWithout = none != null && none.Any(IsFw);
+                    if (onlyWithout && !needsFw) { hasGuard = true; if (!f.StartsWith("Guard", StringComparison.OrdinalIgnoreCase)) problems.Add(v.Name + ": '" + f + "' loads only WITHOUT the framework but is not a Guard folder"); continue; }
+                    if (!needsFw) problems.Add(v.Name + ": '" + f + "' loads without " + Framework.Name + " (add IfModActive=\"" + Framework.PackageId + "\", or IfModActiveAll=\"" + Framework.PackageId + ",<other>\")");
+                    if (f.StartsWith("Guard", StringComparison.OrdinalIgnoreCase)) problems.Add(v.Name + ": '" + f + "' is a Guard folder but loads WITH the framework");
+                }
+            }
+            return problems;
         }
 
         static List<string> Ids(XmlNode li, string attr)

@@ -141,14 +141,13 @@ namespace JBFramework
                 if (!k.HasPendingChanges) continue;
                 try { k.FlushChanges(); } catch (Exception e) { try { k.Guard.Fail(KitMod.Core, "Flush", e); } catch { } }
             }
-        }
-
-        /// <summary>Welcome cards.</summary>
-        public override void GameComponentOnGUI()
-        {
-            try { KitFirstStartCard.OnGUI(); }
+            // welcome cards open from Update, not from OnGUI (see KitFirstStartCard.Update)
+            try { KitFirstStartCard.Update(); }
             catch (Exception e) { Framework.Self?.Guard.Fail(KitMod.Core, "WelcomeCard", e); }
         }
+
+        /// <summary>Kept for the public API (1.0); the welcome cards moved to <see cref="GameComponentUpdate"/>.</summary>
+        public override void GameComponentOnGUI() { }
 
         /// <summary>Saves and loads every mod's entry (plain values; each mod's SaveData in its own node).</summary>
         public override void ExposeData()
@@ -195,6 +194,8 @@ namespace JBFramework
         public KitProfile profile;
         /// <summary>The &lt;data&gt; node of an absent or blocked mod, as loaded (outer XML), or null.</summary>
         internal string rawData;
+        /// <summary>False when the loaded entry had no &lt;data&gt; node (the later load passes then skip the mod's callback).</summary>
+        bool hasData = true;
 
         public void ExposeData()
         {
@@ -209,6 +210,10 @@ namespace JBFramework
                 return;
             }
             rawData = null;
+            // an entry without <data> (hand-made or pre-data saves): vanilla's EnterNode is false only in LoadingVars and true in the later
+            // passes, so the callback would run without its vars pass (reference lookups then log red errors; RimWard request 20)
+            if (Scribe.mode == LoadSaveMode.LoadingVars) hasData = Scribe.loader?.curXmlParent?["data"] != null;
+            else if (Scribe.mode != LoadSaveMode.Saving && !hasData) return;
             if (Scribe.EnterNode("data"))
             {
                 try { k.Guard.Run(KitMod.Core, "SaveData." + Scribe.mode, k.SaveExpose); }

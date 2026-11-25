@@ -84,6 +84,7 @@ namespace JBFramework
         public string id;
         public Map map;
         string rawData;
+        bool hasData = true;
 
         public KitMapEntry(Map map) { this.map = map; }
 
@@ -97,6 +98,9 @@ namespace JBFramework
                 return;
             }
             rawData = null;
+            // no <data> node in the loaded entry: skip the later passes too (see KitSaveEntry; RimWard request 20)
+            if (Scribe.mode == LoadSaveMode.LoadingVars) hasData = Scribe.loader?.curXmlParent?["data"] != null;
+            else if (Scribe.mode != LoadSaveMode.Saving && !hasData) return;
             if (Scribe.EnterNode("data"))
             {
                 try { var m = map; k.Guard.Run(KitMod.Core, "MapData." + Scribe.mode, () => k.MapExpose(m)); }

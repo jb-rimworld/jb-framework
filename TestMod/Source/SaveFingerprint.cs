@@ -68,12 +68,12 @@ namespace JBFramework.Testing
             Use(k);
             var lines = new List<string>();
             var game = Current.Game; if (game == null) return lines;
-            foreach (var c in game.components) if (Ours(c.GetType()) && !(c is KitTestRunner)) Walk(lines, "game/" + c.GetType().Name, c);
-            if (Find.World != null) foreach (var c in Find.World.components) if (Ours(c.GetType())) Walk(lines, "world/" + c.GetType().Name, c);
+            foreach (var c in game.components) if (Ours(c.GetType()) && !(c is KitTestRunner) && !KitComponentStrip.Stripped(c)) Walk(lines, "game/" + c.GetType().Name, c);
+            if (Find.World != null) foreach (var c in Find.World.components) if (Ours(c.GetType()) && !KitComponentStrip.Stripped(c)) Walk(lines, "world/" + c.GetType().Name, c);
             foreach (var map in game.Maps)
             {
                 string mp = "map" + map.uniqueID;
-                foreach (var c in map.components) if (Ours(c.GetType())) Walk(lines, mp + "/" + c.GetType().Name, c);
+                foreach (var c in map.components) if (Ours(c.GetType()) && !KitComponentStrip.Stripped(c)) Walk(lines, mp + "/" + c.GetType().Name, c);
                 foreach (var a in map.areaManager.AllAreas) if (Ours(a.GetType())) Walk(lines, mp + "/area/" + a.ID, a);
                 foreach (var th in map.listerThings.AllThings)
                 {

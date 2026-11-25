@@ -254,9 +254,12 @@ namespace JBFramework
             return null;
         }
 
-        internal static void OnGUI()
+        /// <summary>
+        /// Called every frame from the framework game component's Update, never from OnGUI: a window added during a Repaint pass can
+        /// make Unity (RimWorld 1.6) log a GUI layout error once (1.6 hazard review, finding 1). Window.WindowUpdate-time adds are safe.
+        /// </summary>
+        internal static void Update()
         {
-            if (Event.current == null || Event.current.type != EventType.Repaint) return;
             var k = Due();
             if (k == null) { readySince = -1f; return; }
             float now = Time.realtimeSinceStartup;

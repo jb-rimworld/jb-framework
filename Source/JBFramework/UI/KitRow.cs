@@ -63,7 +63,8 @@ namespace JBFramework
         public static void Reset(KitSetting s, KitProfile target)
         {
             s.Owner.SettingsReg.Reset(s, target);
-            buffers.Remove(BufKey(s));
+            // a focused text field would keep (and show again) its old text: let go of the focus first (1.6 hazard review, finding 3)
+            if (buffers.Remove(BufKey(s))) Unfocus();
         }
 
         /// <summary>Width of the per-row reset button: its label in the small font plus padding, 46 to 130 px.</summary>
@@ -72,7 +73,10 @@ namespace JBFramework
         static string BufKey(KitSetting s) => s.Owner.PackageId + "|" + s.Key;
 
         /// <summary>Forget typed text (after a preset, template copy or section reset changed values from outside).</summary>
-        public static void ClearBuffers() => buffers.Clear();
+        public static void ClearBuffers() { if (buffers.Count > 0) Unfocus(); buffers.Clear(); }
+
+        /// <summary>Drops the keyboard focus of a text field whose text is cleared from code (Unity would otherwise show it again).</summary>
+        internal static void Unfocus() { try { UI.UnfocusCurrentControl(); } catch { } }
 
         static string Tags(KitSetting s)
         {
@@ -212,16 +216,22 @@ namespace JBFramework
             }
             // the switch between slider and typing: a pencil, shown while the row is hovered (or while typing is on)
             var pr = new Rect(x1 - penW + 2f, cy - 10f, 20f, 20f);
-            if (free || Mouse.IsOver(row))
+            bool showPen = free || Mouse.IsOver(row);
+            if (showPen)
             {
-                if (Widgets.ButtonImage(pr, TexButton.Rename, free ? KitStyle.Accent : Color.white, KitStyle.Accent))
-                {
-                    store.freeText[s.Key] = !free;
-                    if (free) store.freeText.Remove(s.Key);
-                    buffers.Remove(bk);
-                }
+                GUI.color = free || Mouse.IsOver(pr) ? KitStyle.Accent : Color.white;
+                GUI.DrawTexture(pr, TexButton.Rename);
+                GUI.color = Color.white;
                 TooltipHandler.TipRegion(pr, free ? KitText.K("Row.FreeOffTip", "Back to the slider.")
                                                   : KitText.K("Row.FreeTip", "Type a value instead (any number up to the technical limit of the game)."));
+            }
+            // the button control exists every frame, hovered or not: a control that comes and goes with the mouse shifts Unity's control
+            // ids, and the keyboard focus can jump between typed-entry fields (1.6 hazard review, finding 4)
+            if (Widgets.ButtonInvisible(pr) && showPen)
+            {
+                store.freeText[s.Key] = !free;
+                if (free) store.freeText.Remove(s.Key);
+                if (buffers.Remove(bk)) Unfocus();
             }
         }
 
