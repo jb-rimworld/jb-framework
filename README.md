@@ -145,7 +145,7 @@ About.xml of your mod:
   <li>
     <packageId>juliusberger.jbframework</packageId>
     <displayName>JB Framework</displayName>
-    <steamWorkshopUrl>steam://url/CommunityFilePage/JBFRAMEWORK_WORKSHOP_ID</steamWorkshopUrl>  <!-- the framework's Workshop id -->
+    <steamWorkshopUrl>steam://url/CommunityFilePage/3845593938</steamWorkshopUrl>  <!-- the framework's Workshop id -->
   </li>
 </modDependencies>
 <loadAfter><li>brrainz.harmony</li><li>juliusberger.jbframework</li></loadAfter>
