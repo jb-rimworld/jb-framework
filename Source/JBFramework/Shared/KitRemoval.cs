@@ -68,8 +68,12 @@ namespace JBFramework
                 // the mod's def in the save (integration run 25.11.2026: 17 Hospital Beds Gen 2 beds in settlement stock)
                 foreach (var wo in Find.WorldObjects.AllWorldObjects.ToList())
                 {
-                    if (wo is Caravan || !(wo is IThingHolder h)) continue;
-                    try { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(h, l, true); held.AddRange(l); } catch { }
+                    if (wo is Caravan) continue;
+                    // a settlement's stock is not among its child holders: ask the trader tracker itself
+                    if (wo is Settlement st && st.trader != null)
+                        try { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(st.trader, l, true); held.AddRange(l); } catch { }
+                    if (wo is IThingHolder h)
+                        try { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(h, l, true); held.AddRange(l); } catch { }
                 }
                 foreach (var map in Find.Maps.ToList())
                     foreach (var ship in map.passingShipManager?.passingShips?.OfType<IThingHolder>().ToList() ?? new List<IThingHolder>())
@@ -93,6 +97,8 @@ namespace JBFramework
                         if (Matches(t.def, which)) { p.equipment.Remove(t); t.Destroy(DestroyMode.Vanish); n++; }
                     foreach (var t in p.apparel?.WornApparel?.ToList() ?? new List<Apparel>())
                         if (Matches(t.def, which)) { p.apparel.Remove(t); t.Destroy(DestroyMode.Vanish); n++; }
+                    // a pawn remembers the def of the last bed it slept in (Pawn_MindState.lastBedDefSleptIn, saved as a def name)
+                    if (p.mindState?.lastBedDefSleptIn != null && Matches(p.mindState.lastBedDefSleptIn, which)) p.mindState.lastBedDefSleptIn = null;
                 }
                 return KitText.K("Removal.Things", "{0} things removed", n);
             });
