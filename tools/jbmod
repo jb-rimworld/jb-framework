@@ -28,6 +28,13 @@
 #                                               vanilla save (no mod, no framework; the extras stay) → load WITH the mod: kit.smoke + kit.addition (+ S)
 #   jbmod <Mod> compat <set> [label] [--suites S]
 #                                               kit.smoke (+ S) with a named set of other mods (tools/compat_sets.json: packageIds or folders)
+#   jbmod <Mod> load <save.rws> [label] [--suites S] [--days N] [--save NAME] [--no-mod] [--no-fw] [extra…]
+#                                               load a GIVEN save (e.g. one made by an older build or a player's save) with the current build:
+#                                               the suites run on it (test build), or without --suites the probe plays N days (default 1)
+#   jbmod <Mod> noframework [label] [extra…]    the mod WITHOUT the framework (installed in the run, but switched off): only its guard may
+#                                               load. Reports red errors and warnings (0 of ours), whether ONE guard window was shown (extra
+#                                               local mods with a guard share it), screenshots (JB_UI_SHOTS=1), the manual route and a faked
+#                                               Steam install that must leave ModsConfig with the framework directly above the first guarded mod.
 #   jbmod <Mod> migrate-test [--from FILE] [--class ModClass] [label]
 #                                               start with an OLD settings file (default: a copy of the player's Config/Mod_<folder>_<Class>.xml,
 #                                               read only) and run kit.migration
@@ -175,6 +182,8 @@ build_mod() {
     local args=("$cs" -c Release "-p:RimVersion=$v" "-p:JBFrameworkRoot=$KIT/")
     [ "$tests" = 1 ] && args+=(-p:JBTests=true "-p:IntermediateOutputPath=obj/${v}jbtest/")
     [ "$out" != "-" ] && { mkdir -p "$out"; args+=("-p:OutputPath=$out/"); }
+    # the missing-framework guard (build/JBGuard.props) is built by explicit builds (jbmod build, release.py) and by noframework runs only
+    if [ "$out" != "-" ]; then if [ -n "${GUARD_ARGS:-}" ]; then args+=($GUARD_ARGS "-p:JBGuardOutputPath=$out/guard/"); else args+=(-p:JBGuardBuild=false); fi; fi
     dn_build "$S/jb_build_$(basename "$m")_$(basename "$cs" .csproj)_$v$([ "$tests" = 1 ] && echo _tests).txt" "${args[@]}" "$@" || rc=2
   done
   return $rc
@@ -241,6 +250,18 @@ slot_copy() {
   sed -i '' -e "s#<packageId>$old</packageId>#<packageId>$newpid</packageId>#" \
     -e "s#>$FWPID<#>$FWPID.slot$slot<#g" -e '/<incompatibleWith>/,/<\/incompatibleWith>/d' "$dst/About/About.xml"
   grep -q "<packageId>$newpid</packageId>" "$dst/About/About.xml" || { echo "could not rename the packageId in the slot copy of $(basename "$src")"; return 2; }
+  # LoadFolders.xml conditions name the framework by packageId: point them at this slot's copy (vanilla compares exactly)
+  if [ -f "$dst/LoadFolders.xml" ]; then
+    python3 -I - "$dst/LoadFolders.xml" "$FWPID" "$FWPID.slot$slot" <<'PY2'
+import re, sys
+p, old, new = sys.argv[1:4]; s = open(p, encoding="utf-8").read()
+def attr(m):
+    ids = [x.strip() for x in m.group(2).split(",")]
+    return m.group(1) + ",".join(new if x.lower() == old else x for x in ids) + '"'
+t = re.sub(r'(IfMod(?:Active|ActiveAll|NotActive)=")([^"]*)"', attr, s)
+if t != s: open(p, "w", encoding="utf-8").write(t)
+PY2
+  fi
 }
 
 # ---------------------------------------------------------------------------------------------------------------- red-error report
@@ -279,28 +300,29 @@ run_slot() {
   # same mod at once never delete or swap each other's DLL
   local BKEY="${BUILDKEY:-$LABEL}"
   local BUILDOUT="$S/jbbuild_${MODNAME}_${KIND}_${BKEY}_$KITTAG" e i
-  RUN_RC=0
+  RUN_RC=0; LOG=/dev/null
   [ "$NO_FW" = 1 ] && NO_TM=1
   [ -n "$SUITES" ] || NO_TM=1
   # local extra mods: folders → built (release) and copied like the mod under test; the rest are packageIds
   # (a folder without Source/ is a prebuilt mod, e.g. one specific Workshop or cache item: linked as is, packageId kept); packageIds
   # are resolved like `compat` does (game Mods, Workshop, then the Rimling cache, linked) and written lower-case into ModsConfig.xml
-  local XDIRS=() XIDS=() LINKS=() kind xp xd line
+  local XDIRS=() XIDS=() LINKS=() ORD=() kind xp xd line
   for e in ${EXTRA[@]+"${EXTRA[@]}"}; do
     local d; d=$(resolve_dir "$e")
-    if [ -n "$d" ] && [ -n "$(find_csprojs "$d")" ]; then XDIRS+=("$d"); continue; fi
+    if [ -n "$d" ] && [ -n "$(find_csprojs "$d")" ]; then XDIRS+=("$d"); ORD+=("D${#XDIRS[@]}"); continue; fi
     line=$(python3 -I "$KIT/tools/resolve_mods.py" "${d:-$e}")
     kind=${line%% *}; xp=$(echo "$line" | awk '{print $2}'); xd=$(echo "$line" | cut -d' ' -f3-)
     case "$kind" in
-      GAME) XIDS+=("$xp") ;;
-      CACHE|DIR) XIDS+=("$xp"); LINKS+=("$xd"); echo "extra $xp: $(echo "$kind" | tr '[:upper:]' '[:lower:]') folder $xd (linked for this run)" ;;
-      *) XIDS+=("$(echo "$e" | tr '[:upper:]' '[:lower:]')"); echo "jbmod: extra '$e' is not installed and not in the cache; the game will skip it" ;;
+      GAME) XIDS+=("$xp"); ORD+=("I$xp") ;;
+      CACHE|DIR) XIDS+=("$xp"); ORD+=("I$xp"); LINKS+=("$xd"); echo "extra $xp: $(echo "$kind" | tr '[:upper:]' '[:lower:]') folder $xd (linked for this run)" ;;
+      *) XIDS+=("$(echo "$e" | tr '[:upper:]' '[:lower:]')"); ORD+=("I$(echo "$e" | tr '[:upper:]' '[:lower:]')"); echo "jbmod: extra '$e' is not installed and not in the cache; the game will skip it" ;;
     esac
   done
   for e in ${COMPAT_LINKS[@]+"${COMPAT_LINKS[@]}"}; do LINKS+=("$e"); done
   if [ "${BUILD:-1}" = 1 ]; then
     build_lock || { RUN_RC=3; return; }
-    if [ "$NO_FW" != 1 ]; then build_framework 1.7 || { build_unlock; RUN_RC=2; return; }; fi
+    # the framework is built for every run that loads it, and for a guard run (the mod compiles against it; it is installed but off)
+    if [ "$NO_FW" != 1 ] || [ "${GUARD_RUN:-0}" = 1 ]; then build_framework 1.7 || { build_unlock; RUN_RC=2; return; }; fi
     if [ "${NO_TM:-0}" != 1 ]; then build_testing || { build_unlock; RUN_RC=2; return; }; fi
     if [ "$NO_MOD" != 1 ] && [ "$IS_FW" != 1 ]; then
       rm -rf "$BUILDOUT"
@@ -320,9 +342,11 @@ run_slot() {
   local SD="$S/slot$slot"; mkdir -p "$SD"
   build_lock || { RUN_RC=3; return; }   # the copies below read the framework and harness DLLs another run may be rebuilding
   local SLOTPID="$PIDL.slot$slot" modid="" probeid="juliusberger00.jbprobe.slot$slot" fwid="" tmid="" xids=()
-  if [ "$NO_FW" != 1 ]; then
-    slot_copy "$KIT" "$SD/fw" "$FWPID.slot$slot" --exclude /TestMod --exclude /sample --exclude /build --exclude /api --exclude /src --exclude '/*.md' || { RUN_RC=2; return; }
-    ln -sfn "$SD/fw" "$G/Mods/_jb_fw$slot"; fwid="$FWPID.slot$slot"
+  if [ "$NO_FW" != 1 ] || [ "${GUARD_RUN:-0}" = 1 ]; then
+    slot_copy "$KIT" "$SD/fw" "$FWPID.slot$slot" --exclude /TestMod --exclude /sample --exclude /build --exclude /api --exclude /src --exclude /guard --exclude '/*.md' || { RUN_RC=2; return; }
+    ln -sfn "$SD/fw" "$G/Mods/_jb_fw$slot"
+    # guard run: the framework is INSTALLED (the item a Steam install would bring) but not in the active mod list
+    [ "$NO_FW" != 1 ] && fwid="$FWPID.slot$slot"
   fi
   if [ "${NO_TM:-0}" != 1 ]; then
     slot_copy "$KIT/TestMod" "$SD/tm" "$TMPID.slot$slot" || { RUN_RC=2; return; }
@@ -334,20 +358,28 @@ run_slot() {
     else
       slot_copy "$MOD" "$SD/mod" "$SLOTPID" || { RUN_RC=2; return; }
       mkdir -p "$SD/mod/1.7/Assemblies"; cp "$BUILDOUT"/*.dll "$SD/mod/1.7/Assemblies/"
+      # guard run: the guard test build (test seam) replaces the release guard of the source tree
+      if [ "${GUARD_RUN:-0}" = 1 ]; then
+        ls "$BUILDOUT"/guard/*.dll >/dev/null 2>&1 || { echo "no guard build in $BUILDOUT/guard (does the csproj set <JBGuard>true</JBGuard>?)"; RUN_RC=2; return; }
+        rm -rf "$SD/mod/Guard/1.7/Assemblies"; mkdir -p "$SD/mod/Guard/1.7/Assemblies"; cp "$BUILDOUT"/guard/*.dll "$SD/mod/Guard/1.7/Assemblies/"
+      fi
       ln -sfn "$SD/mod" "$G/Mods/_jb_slot$slot"; modid=$SLOTPID
     fi
   fi
   build_unlock
   i=0
-  local xplain=""
+  local xplain="" DSLOT=()
   for d in ${XDIRS[@]+"${XDIRS[@]}"}; do
     i=$((i+1)); local xp; xp=$(pid_of "$d" | tr '[:upper:]' '[:lower:]')
     slot_copy "$d" "$SD/x_$i" "$xp.slot$slot" || { RUN_RC=2; return; }
     local xo="$S/jbbuild_x_$(basename "$d")_${BKEY}_$KITTAG"
     if ls "$xo"/*.dll >/dev/null 2>&1; then mkdir -p "$SD/x_$i/1.7/Assemblies"; cp "$xo"/*.dll "$SD/x_$i/1.7/Assemblies/"; fi
-    ln -sfn "$SD/x_$i" "$G/Mods/_jb_x${slot}_$i"; xids+=("$xp.slot$slot"); xplain="$xplain,$xp"
+    if [ "${GUARD_RUN:-0}" = 1 ] && ls "$xo"/guard/*.dll >/dev/null 2>&1; then mkdir -p "$SD/x_$i/Guard/1.7/Assemblies"; cp "$xo"/guard/*.dll "$SD/x_$i/Guard/1.7/Assemblies/"; fi
+    ln -sfn "$SD/x_$i" "$G/Mods/_jb_x${slot}_$i"; DSLOT[$i]="$xp.slot$slot"; xplain="$xplain,$xp"
   done
-  for e in ${XIDS[@]+"${XIDS[@]}"}; do xids+=("$e"); xplain="$xplain,$e"; done
+  for e in ${XIDS[@]+"${XIDS[@]}"}; do xplain="$xplain,$e"; done
+  # extras keep their command-line order in ModsConfig (local folders and packageIds mixed as given)
+  for e in ${ORD[@]+"${ORD[@]}"}; do case "$e" in D*) xids+=("${DSLOT[${e#D}]}");; I*) xids+=("${e#I}");; esac; done
   rm -rf "$SD/probe"; mkdir -p "$SD/probe/About" "$SD/probe/1.7"; cp -R "$KIT/tools/probe/bin/1.7/Assemblies" "$SD/probe/1.7/"
   printf '<?xml version="1.0" encoding="utf-8"?>\n<ModMetaData><name>JB probe (tests)</name><author>juliusberger00</author><packageId>%s</packageId><supportedVersions><li>1.7</li></supportedVersions><description>Test-only.</description></ModMetaData>\n' "$probeid" > "$SD/probe/About/About.xml"
   ln -sfn "$SD/probe" "$G/Mods/_jb_probe$slot"
@@ -363,7 +395,8 @@ run_slot() {
       -e 's#<volumeMaster>[^<]*</volumeMaster>#<volumeMaster>0</volumeMaster>#' "$C/Prefs.xml"
   fi
   local QT=-quicktest
-  unset JB_TEST_LOAD
+  [ "${GUARD_RUN:-0}" = 1 ] && QT=""   # the guard shows its window at the main menu
+  unset JB_TEST_LOAD JB_GUARD_TEST JB_GUARD_FWID JB_GUARD_FAKE_STEAM
   if [ -n "$LOAD" ]; then
     sed -i '' -e "s#<devMode>[^<]*</devMode>#<devMode>True</devMode>#" -e "s#<pauseOnLoad>[^<]*</pauseOnLoad>#<pauseOnLoad>False</pauseOnLoad>#" "$C/Prefs.xml"
     local SV="$FH/Library/Application Support/RimWorld/Saves"; mkdir -p "$SV"; cp "$(dirname "$LOAD")"/* "$SV/"; cp "$LOAD" "$SV/autostart.rws"
@@ -385,7 +418,10 @@ run_slot() {
     echo '</activeMods><knownExpansions><li>ludeon.rimworld.royalty</li><li>ludeon.rimworld.ideology</li><li>ludeon.rimworld.biotech</li><li>ludeon.rimworld.anomaly</li><li>ludeon.rimworld.odyssey</li></knownExpansions></ModsConfigData>'; } > "$C/ModsConfig.xml"
 
   OUT="$S/jb_result_$LABEL.txt"; LOG="$S/jb_player_$LABEL.log"; PERR="$S/jb_probe_err_$LABEL.txt"; POUT="$S/jb_probe_$LABEL.txt"
-  rm -f "$OUT" "$PERR" "$POUT" "$PERR".*
+  GOUT="$S/jb_guard_$LABEL.txt"; PWARN="$S/jb_probe_warn_$LABEL.txt"
+  rm -f "$OUT" "$PERR" "$POUT" "$PERR".* "$GOUT" "$PWARN" "$PWARN".*
+  [ "${GUARD_RUN:-0}" = 1 ] && export JB_GUARD_TEST="$GOUT" JB_GUARD_FWID="$FWPID.slot$slot"
+  export JB_PROBE_WARN="$PWARN"
   export JB_PROBE_ERR="$PERR" JB_PROBE_OUT="$POUT" JB_TEST_DUMP="$S/jb_settings_dump_$LABEL.json" JB_TEST_EXTRA="${xplain#,}"
   if [ -n "$PROBE_DAYS" ]; then export JB_PROBE_DAYS=$PROBE_DAYS; else unset JB_PROBE_DAYS; fi
   if [ -n "$PROBE_SAVE" ]; then export JB_PROBE_SAVE=$PROBE_SAVE; else unset JB_PROBE_SAVE; fi
@@ -399,13 +435,22 @@ run_slot() {
   local code=$?
   if [ -n "$SAVES_OUT" ]; then mkdir -p "$SAVES_OUT"; cp "$FH/Library/Application Support/RimWorld/Saves/"* "$SAVES_OUT/" 2>/dev/null; rm -f "$SAVES_OUT/autostart.rws"; fi
   rm -rf "$S/jb_logs_$LABEL"; mkdir -p "$S/jb_logs_$LABEL"; cp "$C"/*.log "$C"/Mod_*.xml* "$S/jb_logs_$LABEL/" 2>/dev/null
+  cp "$C/ModsConfig.xml" "$S/jb_logs_$LABEL/ModsConfig_after.xml" 2>/dev/null
   echo "slot $slot · game exit $code · $(( $(date +%s) - started )) s · log $LOG · mod logs $S/jb_logs_$LABEL/"
   echo "mods: framework ${fwid:-(none)} · harness ${tmid:-(none)} · extras ${xids[*]+${xids[*]}} · under test ${modid:-${fwid:-(none)}} · DLCs ${JB_DLCS:-all} · language $(lang_folder)"
   release_slot
   grep -E "^\[JBTEST\].*(starting|RESULT)|did not load any content|^\[JBPROBE\] (running|done)" "$LOG" | sed 's/\x1b\[[0-9;]*m//g' | head -10
   report_errors "$PERR"
   [ -n "$shots" ] && echo "screenshots: $shots ($(ls "$shots" 2>/dev/null | grep -c png))"
-  if [ -n "$SUITES" ]; then
+  if [ "${GUARD_RUN:-0}" = 1 ]; then
+    report_errors "$PWARN" >/dev/null; WOURS=$OURS; report_errors "$PERR" >/dev/null
+    echo "--- warnings: ours $WOURS · all $(grep -c . "$PWARN" 2>/dev/null)   [$PWARN]"
+    [ "$WOURS" -gt 0 ] && head -10 "$PWARN.ours" | cut -c1-300 | sed 's/^/      /'
+    if [ -f "$GOUT" ]; then sed 's/^/  /' "$GOUT"; grep -q '^GUARD PASS' "$GOUT" || RUN_RC=1
+    else echo "NO GUARD REPORT (the guard window never ran its test seam: crash, timeout, or the guard did not load)"; tail -30 "$LOG"; RUN_RC=4; fi
+    [ "$OURS" -gt 0 ] && { echo "FAIL: $OURS red error(s) of ours"; [ $RUN_RC = 0 ] && RUN_RC=1; }
+    [ "$WOURS" -gt 0 ] && { echo "FAIL: $WOURS warning(s) of ours"; [ $RUN_RC = 0 ] && RUN_RC=1; }
+  elif [ -n "$SUITES" ]; then
     if [ -f "$OUT" ]; then head -200 "$OUT"; grep -q "^RESULT PASS" "$OUT" || RUN_RC=1
     else echo "NO RESULT FILE (crash or timeout)"; tail -30 "$LOG"; RUN_RC=4; fi
     [ "$OURS" -gt 0 ] && { echo "FAIL: $OURS red error(s) of ours"; [ $RUN_RC = 0 ] && RUN_RC=1; }
@@ -414,7 +459,7 @@ run_slot() {
   fi
 }
 
-defaults() { SUITES=""; LOAD=""; NO_MOD=0; NO_FW=0; NO_TM=0; PROBE_DAYS=""; PROBE_SAVE=""; SAVES_OUT=""; KIND=tests; MIGRATION_FROM=""; COMPAT_LINKS=(); EXTRA=(); TIMEOUT_S=""; }
+defaults() { GUARD_RUN=0; GUARD_ARGS=""; SUITES=""; LOAD=""; NO_MOD=0; NO_FW=0; NO_TM=0; PROBE_DAYS=""; PROBE_SAVE=""; SAVES_OUT=""; KIND=tests; MIGRATION_FROM=""; COMPAT_LINKS=(); EXTRA=(); TIMEOUT_S=""; }
 py() { python3 -I "$KIT/tools/$1" "${@:2}"; }
 newest_save() { ls -t "$1"/*.rws 2>/dev/null | grep -v '/autostart.rws$' | head -1; }
 
@@ -548,6 +593,44 @@ PY
       case "$line" in MISSING*) echo "a mod of the set is not available (not installed, not in the Rimling cache)"; exit 2;; esac
     done
     run_slot; exit $RUN_RC ;;
+  load)
+    # load <save.rws> [label] [--suites S] [--days N] [--save NAME] [--no-mod] [--no-fw] [extra…]: a GIVEN save with the current build
+    # (adopted from the integration run's _loadwith; FW requests DNDM F2, HBG2 2, SMD 17)
+    SVF=${1:?save file}; shift; [ -f "$SVF" ] || { echo "no save $SVF"; exit 2; }; SVF="$(cd "$(dirname "$SVF")" && pwd)/$(basename "$SVF")"
+    defaults; LABEL="${MODNAME}_load"; [ $# -gt 0 ] && is_label "$1" && { LABEL=$1; shift; }
+    LOAD=$SVF; KIND=plain; PROBE_DAYS=1; SAVES_OUT="$S/jb_load_$LABEL"; rm -rf "$SAVES_OUT"
+    while [ $# -gt 0 ]; do case "$1" in --no-mod) NO_MOD=1; shift;; --no-fw) NO_FW=1; shift;; --days) PROBE_DAYS=${2:?days}; shift 2;;
+      --suites) SUITES=${2:?suites}; KIND=tests; PROBE_DAYS=""; shift 2;; --save) PROBE_SAVE=${2:?name}; shift 2;; *) EXTRA+=("$1"); shift;; esac; done
+    echo "== load $(basename "$SVF") with ${NO_MOD:+(not) }$MODNAME${SUITES:+, suites $SUITES}${PROBE_DAYS:+, probe plays $PROBE_DAYS day(s)}"
+    run_slot; echo "saves out: $SAVES_OUT"; [ "$OURS" -gt 0 ] && [ $RUN_RC = 0 ] && RUN_RC=1; exit $RUN_RC ;;
+  _loadwith)   # the integration run's name for `load` (kept for its scripts): _loadwith <label> <save> [options…]
+    L=${1:?label}; SVF=${2:?save}; shift 2; exec "$0" "$MODARG" load "$SVF" "$L" "$@" ;;
+  noframework)
+    # noframework [label] [extra…]: the mod (and local extras with a guard) WITHOUT the framework; see the usage at the top
+    defaults; LABEL="${MODNAME}_nofw"; [ $# -gt 0 ] && is_label "$1" && { LABEL=$1; shift; }
+    EXTRA=("$@"); NO_FW=1; KIND=plain; GUARD_RUN=1; GUARD_ARGS="-p:JBGuardBuild=true -p:JBGuardTests=true"
+    [ "$IS_FW" = 1 ] && { echo "noframework needs a dependent mod (with <JBGuard>true</JBGuard>)"; exit 2; }
+    TIMEOUT_S=${TIMEOUT:-300}
+    run_slot
+    echo "did-not-load-any-content lines: $(grep -c 'did not load any content' "$LOG" 2>/dev/null)"
+    [ "$(grep -c 'did not load any content' "$LOG" 2>/dev/null)" -gt 0 ] 2>/dev/null && RUN_RC=1
+    # the mod list the faked install saved: the framework directly above the first guarded mod
+    MC="$S/jb_logs_$LABEL/ModsConfig_after.xml"
+    XP=(); for e in ${EXTRA[@]+"${EXTRA[@]}"}; do d=$(resolve_dir "$e"); [ -n "$d" ] && XP+=("$(pid_of "$d" | tr '[:upper:]' '[:lower:]')"); done
+    python3 -I - "$MC" "$FWPID" "$PIDL" ${XP[@]+"${XP[@]}"} <<'PY2' || RUN_RC=1
+import re, sys
+p, fw, mod = sys.argv[1:4]
+try: ids = re.findall(r"<li>([^<]+)</li>", open(p, encoding="utf-8").read().split("</activeMods>")[0])
+except OSError: print("ModsConfig after the run: missing"); sys.exit(1)
+plain = [re.sub(r"\.slot\d+$", "", i.lower()) for i in ids]
+at = plain.index(fw) if fw in plain else -1
+first = next((n for n, i in enumerate(plain) if i == mod or i in sys.argv[4:]), -1)
+print(f"ModsConfig after the faked install: {' '.join(ids)}")
+ok = at >= 0 and first == at + 1
+print(("PASS" if ok else "FAIL") + f": framework at {at}, first guarded mod at {first} (guarded: {', '.join(sys.argv[3:])})")
+sys.exit(0 if ok else 1)
+PY2
+    exit $RUN_RC ;;
   migrate-test)
     from=""; cls=""; L="${MODNAME}_migrate"
     while [ $# -gt 0 ]; do case "$1" in --from) from=$2; shift 2;; --class) cls=$2; shift 2;; *) L=$1; shift;; esac; done

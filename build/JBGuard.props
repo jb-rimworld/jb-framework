@@ -1,0 +1,93 @@
+<Project>
+  <!--
+    The missing-framework guard of a dependent mod. Imported by build/JBMod.props; does something only when the mod's csproj sets
+    <JBGuard>true</JBGuard> BEFORE importing JBMod.props. SPDX-License-Identifier: MIT
+
+      <PropertyGroup>
+        <AssemblyName>HospitalBedsGen2</AssemblyName>
+        <RootNamespace>HospitalBedsGen2</RootNamespace>
+        <JBGuard>true</JBGuard>
+        <JBGuardLoss>its hospital beds</JBGuardLoss>             ("a colony saved now would lose ...", plain text)
+        <JBGuardLossDe>ihre Krankenhausbetten</JBGuardLossDe>    (German; other languages fall back to English)
+      </PropertyGroup>
+
+    After the mod's build it writes, for the RimVersion being built:
+      <Mod>/Guard/<RimVersion>/Assemblies/<AssemblyName>.Guard.dll   the guard (guard/JBGuard.cs with this mod's namespace and key prefix)
+      <Mod>/Guard/Languages/English/Keyed/<AssemblyName>_Guard.xml, .../German (Deutsch)/Keyed/...   its texts (prefix <AssemblyName>.Guard)
+    LoadFolders.xml must load Guard and Guard/<RimVersion> ONLY with IfModNotActive="<framework packageId>" and every other folder only with
+    IfModActive (or IfModActiveAll) naming the framework: README "Ship the guard with your mod"; tools/release.py and kit.smoke check it.
+
+    Namespace <RootNamespace>.JBGuard and key prefix <AssemblyName>.Guard are per mod, so guards of several mods never collide; they
+    share ONE window through AppDomain data. The framework's Workshop id is read from <framework>/About/PublishedFileId.txt (written at
+    the first upload); until then it is the placeholder JBFRAMEWORK_WORKSHOP_ID and "install" opens the GitHub page instead.
+
+    -p:JBGuardBuild=false   skip the guard (tools/jbmod passes it for ordinary test and plain runs; release builds build it)
+    -p:JBGuardTests=true    test seam (JB_TESTS) for `jbmod <Mod> noframework`; output then goes to obj/<v>.../guard/out/, never into the mod
+    -p:JBGuardOutputPath=D  put the guard DLL into D instead (tools/jbmod: <build folder>/guard/)
+  -->
+  <PropertyGroup>
+    <JBGuardBuild Condition="'$(JBGuardBuild)' == ''">true</JBGuardBuild>
+    <JBGuardTests Condition="'$(JBGuardTests)' == ''">false</JBGuardTests>
+    <JBFrameworkInstallUrl Condition="'$(JBFrameworkInstallUrl)' == ''">https://github.com/jb-rimworld/jb-framework#install</JBFrameworkInstallUrl>
+  </PropertyGroup>
+
+  <!-- token replacement in a template file (inline task: works with every dotnet SDK, no shell tools) -->
+  <UsingTask TaskName="JBGuardTemplate" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source ParameterType="System.String" Required="true" />
+      <Dest ParameterType="System.String" Required="true" />
+      <Tokens ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        // Tokens: "NAME=value" pairs separated by a line feed (values never contain one)
+        string text = System.IO.File.ReadAllText(Source);
+        foreach (var pair in Tokens.Split('\n'))
+        {
+            int eq = pair.IndexOf('=');
+            if (eq <= 0) continue;
+            text = text.Replace(pair.Substring(0, eq), pair.Substring(eq + 1));
+        }
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Dest));
+        if (!System.IO.File.Exists(Dest) || System.IO.File.ReadAllText(Dest) != text)
+            System.IO.File.WriteAllText(Dest, text, new System.Text.UTF8Encoding(false));
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="JBGuardBuild" AfterTargets="Build" Condition="'$(JBGuard)' == 'true' and '$(JBGuardBuild)' == 'true'">
+    <PropertyGroup>
+      <_JBGuardAsm>$([System.Text.RegularExpressions.Regex]::Replace('$(AssemblyName)', '[^A-Za-z0-9_.]', '_'))</_JBGuardAsm>
+      <_JBGuardNsBase>$(RootNamespace)</_JBGuardNsBase>
+      <_JBGuardNsBase Condition="'$(_JBGuardNsBase)' == ''">$(_JBGuardAsm)</_JBGuardNsBase>
+      <_JBGuardNs>$([System.Text.RegularExpressions.Regex]::Replace('$(_JBGuardNsBase)', '[^A-Za-z0-9_.]', '_')).JBGuard</_JBGuardNs>
+      <_JBGuardKey>$(_JBGuardAsm).Guard</_JBGuardKey>
+      <_JBGuardWsFile>$(JBFrameworkRoot)About/PublishedFileId.txt</_JBGuardWsFile>
+      <_JBGuardWs>JBFRAMEWORK_WORKSHOP_ID</_JBGuardWs>
+      <_JBGuardWs Condition="Exists('$(_JBGuardWsFile)')">$([System.IO.File]::ReadAllText('$(_JBGuardWsFile)').Trim())</_JBGuardWs>
+      <_JBGuardDir>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)guard/</_JBGuardDir>
+      <_JBGuardSrc>$(_JBGuardDir)JBGuard.g.cs</_JBGuardSrc>
+      <_JBGuardOut>$(JBModRoot)Guard/$(RimVersion)/Assemblies/</_JBGuardOut>
+      <_JBGuardOut Condition="'$(JBGuardTests)' == 'true'">$(_JBGuardDir)out/</_JBGuardOut>
+      <_JBGuardOut Condition="'$(JBGuardOutputPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(JBGuardOutputPath)'))</_JBGuardOut>
+      <_JBGuardLossEn>$(JBGuardLoss.Replace('&amp;', '&amp;amp;').Replace('&lt;', '&amp;lt;'))</_JBGuardLossEn>
+      <_JBGuardLossDe>$(JBGuardLossDe.Replace('&amp;', '&amp;amp;').Replace('&lt;', '&amp;lt;'))</_JBGuardLossDe>
+      <_JBGuardLineEn></_JBGuardLineEn>
+      <_JBGuardLineEn Condition="'$(JBGuardLoss)' != ''">  &lt;$(_JBGuardKey).Loss&gt;$(_JBGuardLossEn)&lt;/$(_JBGuardKey).Loss&gt;</_JBGuardLineEn>
+      <_JBGuardLineDe></_JBGuardLineDe>
+      <_JBGuardLineDe Condition="'$(JBGuardLossDe)' != ''">  &lt;$(_JBGuardKey).Loss&gt;$(_JBGuardLossDe)&lt;/$(_JBGuardKey).Loss&gt;</_JBGuardLineDe>
+      <_JBGuardDotnet>$(DOTNET_HOST_PATH)</_JBGuardDotnet>
+      <_JBGuardDotnet Condition="'$(_JBGuardDotnet)' == ''">dotnet</_JBGuardDotnet>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(JBFrameworkRoot)guard/JBGuard.cs')" Text="guard/JBGuard.cs missing in $(JBFrameworkRoot)" />
+    <MakeDir Directories="$(_JBGuardDir);$(_JBGuardOut)" />
+    <JBGuardTemplate Source="$(JBFrameworkRoot)guard/JBGuard.cs" Dest="$(_JBGuardSrc)"
+                     Tokens="JBGUARD_NAMESPACE=$(_JBGuardNs)&#10;JBGUARD_KEY=$(_JBGuardKey)&#10;JBGUARD_FRAMEWORK_ID=$(JBFrameworkPackageId)&#10;JBGUARD_FRAMEWORK_NAME=$(JBFrameworkName)&#10;JBGUARD_WORKSHOP_ID=$(_JBGuardWs)&#10;JBGUARD_INSTALL_URL=$(JBFrameworkInstallUrl)" />
+    <JBGuardTemplate Source="$(JBFrameworkRoot)guard/Languages/English/JBGuard.xml" Dest="$(JBModRoot)Guard/Languages/English/Keyed/$(_JBGuardAsm)_Guard.xml"
+                     Tokens="JBGUARD_LOSS_LINE=$(_JBGuardLineEn)&#10;JBGUARD_KEY=$(_JBGuardKey)" />
+    <JBGuardTemplate Source="$(JBFrameworkRoot)guard/Languages/German/JBGuard.xml" Dest="$(JBModRoot)Guard/Languages/German (Deutsch)/Keyed/$(_JBGuardAsm)_Guard.xml"
+                     Tokens="JBGUARD_LOSS_LINE=$(_JBGuardLineDe)&#10;JBGUARD_KEY=$(_JBGuardKey)" />
+    <Exec Command="&quot;$(_JBGuardDotnet)&quot; build &quot;$(JBFrameworkRoot)guard/JBGuard.csproj&quot; -c Release -nologo -v q &quot;-p:RimVersion=$(RimVersion)&quot; &quot;-p:JBGuardSource=$(_JBGuardSrc)&quot; &quot;-p:AssemblyName=$(_JBGuardAsm).Guard&quot; &quot;-p:OutputPath=$(_JBGuardOut)&quot; &quot;-p:BaseIntermediateOutputPath=$(_JBGuardDir)base/&quot; &quot;-p:IntermediateOutputPath=$(_JBGuardDir)int/&quot; &quot;-p:JBGuardTests=$(JBGuardTests)&quot; &quot;-p:JBGameDir=$(JBGameDir)&quot;" />
+    <Message Importance="high" Text="$(AssemblyName) guard ($(RimVersion)): $(_JBGuardOut)$(_JBGuardAsm).Guard.dll" />
+  </Target>
+</Project>

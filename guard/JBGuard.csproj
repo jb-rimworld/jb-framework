@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The guard assembly of ONE dependent mod (<Mod>.Guard.dll). Never built by hand: build/JBGuard.props (imported by build/JBMod.props
+    when the mod sets <JBGuard>true</JBGuard>) runs `dotnet build` on this file with the mod's generated source and its paths.
+    References the game only (no framework, no Harmony, no Steamworks). Warnings are errors. SPDX-License-Identifier: MIT
+
+    Properties (all passed by JBGuard.props): JBGuardSource (generated .cs), AssemblyName, OutputPath, IntermediateOutputPath,
+    BaseIntermediateOutputPath, RimVersion (1.7 = net10.0 against the installed game, 1.6 = net472 against Krafs.Rimworld.Ref 1.6.4871),
+    JBGuardTests=true (defines JB_TESTS: the test seam for `jbmod <Mod> noframework`; never in a release).
+  -->
+  <PropertyGroup>
+    <RimVersion Condition="'$(RimVersion)' == ''">1.7</RimVersion>
+    <JBGameDir Condition="'$(JBGameDir)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorld.app/Contents/MacOS</JBGameDir>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RimVersion)' == '1.7'"><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <PropertyGroup Condition="'$(RimVersion)' == '1.6'"><TargetFramework>net472</TargetFramework></PropertyGroup>
+  <PropertyGroup Condition="'$(JBGuardTests)' == 'true'"><DefineConstants>$(DefineConstants);JB_TESTS</DefineConstants></PropertyGroup>
+  <ItemGroup><Compile Include="$(JBGuardSource)" /></ItemGroup>
+  <ItemGroup Condition="'$(RimVersion)' == '1.7'">
+    <Reference Include="Assembly-CSharp"><HintPath>$(JBGameDir)/Assembly-CSharp.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityStubs"><HintPath>$(JBGameDir)/UnityStubs.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Waylith.UnityCompat"><HintPath>$(JBGameDir)/Waylith.UnityCompat.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(RimVersion)' == '1.6'">
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4871" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <Target Name="JBGuardChecks" BeforeTargets="CoreCompile;BeforeBuild">
+    <Error Condition="'$(JBGuardSource)' == '' or !Exists('$(JBGuardSource)')" Text="JBGuard.csproj is built by build/JBGuard.props (JBGuardSource missing: '$(JBGuardSource)')." />
+    <Error Condition="'$(RimVersion)' != '1.7' and '$(RimVersion)' != '1.6'" Text="RimVersion must be 1.7 or 1.6 (was '$(RimVersion)')." />
+  </Target>
+</Project>

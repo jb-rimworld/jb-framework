@@ -3,6 +3,10 @@
   <PropertyGroup>
     <AssemblyName>KitSampleA</AssemblyName>
     <RootNamespace>KitSampleA</RootNamespace>
+    <!-- the missing-framework guard (build/JBGuard.props; LoadFolders.xml loads it only without the framework) -->
+    <JBGuard>true</JBGuard>
+    <JBGuardLoss>its sample settings</JBGuardLoss>
+    <JBGuardLossDe>ihre Beispiel-Einstellungen</JBGuardLossDe>
   </PropertyGroup>
   <Import Project="$(MSBuildProjectDirectory)/../../../build/JBMod.props" />
 </Project>

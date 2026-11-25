@@ -23,6 +23,9 @@
       JB_FRAMEWORK_DIR=DIR     (environment) or -p:JBFrameworkRoot=DIR/: build against that framework checkout (DLL and test harness)
                                instead of the one this file belongs to. tools/jbmod sets both to its own repo, so a git worktree of
                                the framework builds every mod against the worktree's framework.
+      <JBGuard>true</JBGuard>  (set in the csproj BEFORE this import) builds the mod's missing-framework guard after each build:
+                               build/JBGuard.props (Guard/<RimVersion>/Assemblies/<Mod>.Guard.dll + its Keyed texts). README
+                               "Ship the guard with your mod" has the LoadFolders.xml pattern that goes with it.
       -p:JBMinApiLevel=N       API level stamped into the mod (default 1). Raise it (or set <JBMinApiLevel> in the csproj) when the mod
                                uses a member added in a later level; `tools/public_api.py uses <mod.dll>` and tools/release.py tell you.
                                Never default to the newest level: every rebuilt mod would then demand the newest framework.
@@ -83,4 +86,6 @@
       <FileWrites Include="$(_JBModInfoFile)" />
     </ItemGroup>
   </Target>
+
+  <Import Project="$(MSBuildThisFileDirectory)JBGuard.props" />
 </Project>

@@ -4,6 +4,7 @@
 //   - always (JB_PROBE_ERR set): every red error the game logs is appended to $JB_PROBE_ERR, one line each:
 //       phase<TAB>type<TAB>first line of the message<TAB>where (up to 6 stack frames, "a < b < c")
 //     phase = load|play. tools/jbmod splits these lines into "ours" and "others".
+//   - JB_PROBE_WARN set: every warning the same way into $JB_PROBE_WARN (jbmod noframework counts the warnings of the mod).
 //   - JB_PROBE_DAYS=<n>: once the game runs (new game or loaded save), play n days at top speed (dialogs closed, storyteller silenced),
 //     write a census to $JB_PROBE_OUT, optionally save as $JB_PROBE_SAVE, and quit. 0 = save/quit at the first tick.
 //     Without JB_PROBE_DAYS the probe only records errors (the mod's own test runner drives the game).
@@ -23,12 +24,14 @@ namespace JBProbe
     public sealed class ProbeMod : Mod
     {
         static readonly object fileLock = new object();
-        static string errPath;
+        static string errPath, warnPath;
         public static int Errors;
 
         public ProbeMod(ModContentPack content) : base(content)
         {
             errPath = Env("JB_PROBE_ERR");
+            warnPath = Env("JB_PROBE_WARN");
+            if (!string.IsNullOrEmpty(warnPath)) try { File.WriteAllText(warnPath, ""); } catch { }
             if (string.IsNullOrEmpty(errPath)) return;
             try { File.WriteAllText(errPath, ""); } catch { }
             Application.logMessageReceivedThreaded += OnLog;
@@ -37,6 +40,14 @@ namespace JBProbe
 
         static void OnLog(string msg, string stack, LogType type)
         {
+            if (type == LogType.Warning && !string.IsNullOrEmpty(warnPath))
+            {
+                string w = Clean((msg ?? "").Split('\n')[0]);
+                if (w.Length > 400) w = w.Substring(0, 400) + "…";
+                string ph; try { ph = Current.ProgramState == ProgramState.Playing ? "play" : "load"; } catch { ph = "?"; }
+                try { lock (fileLock) File.AppendAllText(warnPath, ph + "\t" + type + "\t" + w + "\t" + Where(msg, stack) + "\n"); } catch { }
+                return;
+            }
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
             Errors++;
             string first = Clean((msg ?? "").Split('\n')[0]);

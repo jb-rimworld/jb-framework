@@ -15,7 +15,12 @@
 
     Framework checkout: -p:JBFrameworkRoot=DIR/ (tools/jbmod passes its own repo), else the environment JB_FRAMEWORK_DIR, else the repo
     of this file. -p:JBRelease=true together with JBTests=true fails the build (test code must never ship).
+
+    Test builds also get the API-level stamp [assembly: JBFramework.KitRequires(1, "<version>")] (obj/<v>/JBTestsInfo.g.cs), so a mod
+    that still carries a stand-in KitModBase context passes kit.smoke's "API level stamp" check. Better: delete the stand-in (the
+    harness finds the suites by content pack; the stand-in also makes the framework apply the mod's [HarmonyPatch] classes a second time).
   -->
+  <Import Project="$(MSBuildThisFileDirectory)Identity.props" Condition="'$(JBTests)' == 'true'" />
   <PropertyGroup Condition="'$(JBTests)' == 'true'">
     <DefineConstants>$(DefineConstants);JB_TESTS</DefineConstants>
     <JBFrameworkRoot Condition="'$(JBFrameworkRoot)' == '' and '$(JB_FRAMEWORK_DIR)' != ''">$([MSBuild]::NormalizeDirectory('$(JB_FRAMEWORK_DIR)'))</JBFrameworkRoot>
@@ -28,6 +33,20 @@
     <Reference Include="JBFramework"><HintPath>$(JBFrameworkRoot)$(_JBTestsRimVersion)/Assemblies/JBFramework.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="JBFramework.Testing"><HintPath>$(JBFrameworkRoot)TestMod/$(_JBTestsRimVersion)/Assemblies/JBFramework.Testing.dll</HintPath><Private>False</Private></Reference>
   </ItemGroup>
+  <Target Name="JBTestsStamp" BeforeTargets="CoreCompile;BeforeBuild" Condition="'$(JBTests)' == 'true'">
+    <PropertyGroup><_JBTestsInfoFile>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)JBTestsInfo.g.cs</_JBTestsInfoFile></PropertyGroup>
+    <ItemGroup>
+      <_JBTestsInfoLine Include="// &lt;auto-generated&gt; by $(JBFrameworkName) build/JBTests.props (test builds only). Do not edit. SPDX-License-Identifier: MIT" />
+      <_JBTestsInfoLine Include="[assembly: $(JBFrameworkNamespace).KitRequires(1, &quot;$(JBFrameworkVersion)&quot;)]" />
+    </ItemGroup>
+    <MakeDir Directories="$(MSBuildProjectDirectory)/$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(_JBTestsInfoFile)" Lines="@(_JBTestsInfoLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Remove="$(_JBTestsInfoFile)" />
+      <Compile Include="$(_JBTestsInfoFile)" />
+      <FileWrites Include="$(_JBTestsInfoFile)" />
+    </ItemGroup>
+  </Target>
   <Target Name="JBTestsGuard" BeforeTargets="CoreCompile;BeforeBuild" Condition="'$(JBTests)' == 'true'">
     <Error Condition="'$(JBRelease)' == 'true'" Text="Release build with JBTests=true: test code must never ship." />
     <Error Condition="!Exists('$(JBFrameworkRoot)TestMod/$(_JBTestsRimVersion)/Assemblies/JBFramework.Testing.dll')"
