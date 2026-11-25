@@ -6,7 +6,7 @@
   <JBGUARD_KEY.Many>These mods were updated and now need the free mod {0}. Without it they are switched off:</JBGUARD_KEY.Many>
   <JBGUARD_KEY.ManyLine>{0}: a colony saved now would lose {1}.</JBGUARD_KEY.ManyLine>
   <JBGUARD_KEY.LossDefault>everything this mod added</JBGUARD_KEY.LossDefault>
-  <JBGUARD_KEY.Free>{0} is free and adds nothing of its own. Installing it takes a moment; the game then restarts once and everything is back.</JBGUARD_KEY.Free>
+  <JBGUARD_KEY.Free>{0} is free and adds nothing of its own. This takes a moment; the game then restarts once and everything is back.</JBGUARD_KEY.Free>
   <JBGUARD_KEY.InstalledOff>{0} is already installed, but switched off.</JBGUARD_KEY.InstalledOff>
   <JBGUARD_KEY.Install>Install {0} and restart</JBGUARD_KEY.Install>
   <JBGUARD_KEY.Enable>Switch on {0} and restart</JBGUARD_KEY.Enable>

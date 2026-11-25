@@ -6,7 +6,7 @@
   <KitSampleB.Guard.Many>Diese Mods wurden aktualisiert und brauchen jetzt die kostenlose Mod {0}. Ohne sie sind sie abgeschaltet:</KitSampleB.Guard.Many>
   <KitSampleB.Guard.ManyLine>{0}: Eine jetzt gespeicherte Kolonie verliert {1}.</KitSampleB.Guard.ManyLine>
   <KitSampleB.Guard.LossDefault>alles, was diese Mod hinzugefügt hat</KitSampleB.Guard.LossDefault>
-  <KitSampleB.Guard.Free>{0} ist kostenlos und bringt selbst nichts ins Spiel. Die Installation dauert einen Moment; danach startet das Spiel einmal neu und alles ist wieder da.</KitSampleB.Guard.Free>
+  <KitSampleB.Guard.Free>{0} ist kostenlos und bringt selbst nichts ins Spiel. Das dauert einen Moment; danach startet das Spiel einmal neu und alles ist wieder da.</KitSampleB.Guard.Free>
   <KitSampleB.Guard.InstalledOff>{0} ist schon installiert, aber abgeschaltet.</KitSampleB.Guard.InstalledOff>
   <KitSampleB.Guard.Install>{0} installieren und neu starten</KitSampleB.Guard.Install>
   <KitSampleB.Guard.Enable>{0} einschalten und neu starten</KitSampleB.Guard.Enable>

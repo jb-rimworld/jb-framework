@@ -6,7 +6,7 @@
   <JBGUARD_KEY.Many>Diese Mods wurden aktualisiert und brauchen jetzt die kostenlose Mod {0}. Ohne sie sind sie abgeschaltet:</JBGUARD_KEY.Many>
   <JBGUARD_KEY.ManyLine>{0}: Eine jetzt gespeicherte Kolonie verliert {1}.</JBGUARD_KEY.ManyLine>
   <JBGUARD_KEY.LossDefault>alles, was diese Mod hinzugefügt hat</JBGUARD_KEY.LossDefault>
-  <JBGUARD_KEY.Free>{0} ist kostenlos und bringt selbst nichts ins Spiel. Die Installation dauert einen Moment; danach startet das Spiel einmal neu und alles ist wieder da.</JBGUARD_KEY.Free>
+  <JBGUARD_KEY.Free>{0} ist kostenlos und bringt selbst nichts ins Spiel. Das dauert einen Moment; danach startet das Spiel einmal neu und alles ist wieder da.</JBGUARD_KEY.Free>
   <JBGUARD_KEY.InstalledOff>{0} ist schon installiert, aber abgeschaltet.</JBGUARD_KEY.InstalledOff>
   <JBGUARD_KEY.Install>{0} installieren und neu starten</JBGUARD_KEY.Install>
   <JBGUARD_KEY.Enable>{0} einschalten und neu starten</JBGUARD_KEY.Enable>

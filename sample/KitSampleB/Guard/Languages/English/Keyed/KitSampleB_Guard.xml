@@ -6,7 +6,7 @@
   <KitSampleB.Guard.Many>These mods were updated and now need the free mod {0}. Without it they are switched off:</KitSampleB.Guard.Many>
   <KitSampleB.Guard.ManyLine>{0}: a colony saved now would lose {1}.</KitSampleB.Guard.ManyLine>
   <KitSampleB.Guard.LossDefault>everything this mod added</KitSampleB.Guard.LossDefault>
-  <KitSampleB.Guard.Free>{0} is free and adds nothing of its own. Installing it takes a moment; the game then restarts once and everything is back.</KitSampleB.Guard.Free>
+  <KitSampleB.Guard.Free>{0} is free and adds nothing of its own. This takes a moment; the game then restarts once and everything is back.</KitSampleB.Guard.Free>
   <KitSampleB.Guard.InstalledOff>{0} is already installed, but switched off.</KitSampleB.Guard.InstalledOff>
   <KitSampleB.Guard.Install>Install {0} and restart</KitSampleB.Guard.Install>
   <KitSampleB.Guard.Enable>Switch on {0} and restart</KitSampleB.Guard.Enable>

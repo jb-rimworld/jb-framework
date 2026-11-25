@@ -196,6 +196,7 @@ namespace JBGUARD_NAMESPACE
             {
 #if JB_TESTS
                 if (JBGuardTest.FakeSteam) return true;
+                if (JBGuardTest.Active) return false;   // a test run never reaches the real Steam (the "without Steam" step relies on it)
 #endif
                 try { return Verse.Steam.SteamManager.Initialized && Types(); } catch { return false; }
             }
@@ -324,7 +325,7 @@ namespace JBGUARD_NAMESPACE
 
         static string Loss(string[] m) => JBGuard.TOf(m[3], "Loss", JBGuard.T("LossDefault", "everything this mod added"));
 
-        string Free() => JBGuard.T("Free", "{0} is free and adds nothing of its own. Installing it takes a moment; the game then restarts once and everything is back.", JBGuard.FrameworkName);
+        string Free() => JBGuard.T("Free", "{0} is free and adds nothing of its own. This takes a moment; the game then restarts once and everything is back.", JBGuard.FrameworkName);
 
         string StatusText()
         {
