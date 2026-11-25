@@ -25,13 +25,20 @@
   </PropertyGroup>
 
   <Target Name="JBFrameworkIdentity" BeforeTargets="CoreCompile;BeforeBuild">
-    <Exec Command="git -C &quot;$(JBFrameworkRoot)&quot; describe --always --dirty --abbrev=7" ConsoleToMSBuild="true" StandardOutputImportance="low"
+    <!-- the commit, "-dirty" only for changed SOURCE: the build's own outputs (DLLs, doc XML, generated About.xml) are tracked files too,
+         and counting them made the second build of a pair (1.7 then 1.6) say dirty (1.6 hazard review, finding 6) -->
+    <Exec Command="git -C &quot;$(JBFrameworkRoot)&quot; describe --always --abbrev=7" ConsoleToMSBuild="true" StandardOutputImportance="low"
           ContinueOnError="true" IgnoreExitCode="true" EchoOff="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="_JBCommitRaw" />
       <Output TaskParameter="ExitCode" PropertyName="_JBGitExit" />
     </Exec>
+    <Exec Command="git -C &quot;$(JBFrameworkRoot)&quot; status --porcelain --untracked-files=no -- . &quot;:(exclude)1.6/Assemblies&quot; &quot;:(exclude)1.7/Assemblies&quot; &quot;:(exclude)api/JBFramework.xml&quot; &quot;:(exclude)About/About.xml&quot; &quot;:(exclude)sample/*/1.6&quot; &quot;:(exclude)sample/*/1.7&quot; &quot;:(exclude)sample/*/Guard&quot;"
+          ConsoleToMSBuild="true" StandardOutputImportance="low" ContinueOnError="true" IgnoreExitCode="true" EchoOff="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_JBDirtyRaw" />
+    </Exec>
     <PropertyGroup>
       <_JBCommit>$(_JBCommitRaw.Trim())</_JBCommit>
+      <_JBCommit Condition="'$(_JBDirtyRaw.Trim())' != '' and '$(_JBGitExit)' == '0'">$(_JBCommit)-dirty</_JBCommit>
       <_JBCommit Condition="'$(_JBGitExit)' != '0' or '$(_JBCommit)' == '' or $(_JBCommit.Contains(' '))">unknown</_JBCommit>
       <_JBGenDir>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)</_JBGenDir>
       <_JBIdFile>$(_JBGenDir)FrameworkIdentity.g.cs</_JBIdFile>

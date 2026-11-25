@@ -21,7 +21,7 @@
   <loadAfter>
     <li>brrainz.harmony</li>
   </loadAfter>
-  <description>The shared foundation of the RimWorld mods by Julius Berger. It adds nothing to your game by itself: no items, no buildings, no events. Mods that need it list it as a dependency, and Steam installs it for you.
+  <description>The shared foundation of the RimWorld mods by Julius Berger. It adds nothing to your game by itself: no items, no buildings, no events. Steam installs it when you subscribe to a mod that needs it. If a mod you already had was updated to need it, that mod stays switched off (your colony loses nothing) and shows one message at the main menu with a button that installs this framework and restarts the game. Without Steam: https://github.com/jb-rimworld/jb-framework#install
 
 What it gives those mods:
 - the settings window from Hearth and Harbor: sidebar, search, presets, areas you can switch off as a whole, values per save
@@ -29,9 +29,9 @@ What it gives those mods:
 - a diagnosis report you can copy into a bug report (no personal paths)
 - a Compatibility page that says which DLCs and mods were detected
 
-Mod settings, JB Framework: every mod that uses it, their versions, which areas are on, patches that failed, one combined report, and the window size, detailed log and welcome cards for all of them.
+Mod settings, JB Framework: every mod that uses it, which areas are on, failed patches, one combined report.
 
-Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested.
+Built and tested on RimWorld 1.7. The 1.6 build is best effort: compiled against the 1.6 reference assemblies and checked statically (every game method it patches or reads exists in 1.6), but never run in a 1.6 game.
 
-For modders: MIT licence, source and documentation at https://github.com/jb-rimworld/jb-framework. A stable public API (additive only), XML docs, three sample mods and an in-game test harness.</description>
+For modders: MIT licence, source and documentation at https://github.com/jb-rimworld/jb-framework. A stable public API (additive only), XML docs, three sample mods, an in-game test harness, and a missing-framework guard your mod compiles in.</description>
 </ModMetaData>
