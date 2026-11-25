@@ -8,4 +8,5 @@
 - Save-stable random streams, reversible def edits, material menu, one architect entry per building family, tier swap gizmo.
 - Settings are never changed by looking at them: a value a slider cannot show exactly (0.67 %, a value from an old settings file) is shown rounded and stays as stored until you move the control.
 - A plain message when a mod needs a newer framework; that mod's features stay off and nothing else breaks.
-- Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested.
+- A missing-framework guard for the mods that need it: when such a mod is updated but the framework is missing or switched off, the mod loads nothing but a tiny guard (no red errors, a colony saved now loses nothing of it), and one window at the main menu says so in plain words and installs the framework through Steam, switches it on directly above that mod and restarts the game. Without Steam it shows where to download it and which folder to put it in.
+- Built and tested on RimWorld 1.7. The 1.6 build is best effort: compiled against the 1.6 reference assemblies and checked statically, never run in a 1.6 game.

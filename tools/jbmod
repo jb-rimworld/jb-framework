@@ -601,7 +601,7 @@ PY
     LOAD=$SVF; KIND=plain; PROBE_DAYS=1; SAVES_OUT="$S/jb_load_$LABEL"; rm -rf "$SAVES_OUT"
     while [ $# -gt 0 ]; do case "$1" in --no-mod) NO_MOD=1; shift;; --no-fw) NO_FW=1; shift;; --days) PROBE_DAYS=${2:?days}; shift 2;;
       --suites) SUITES=${2:?suites}; KIND=tests; PROBE_DAYS=""; shift 2;; --save) PROBE_SAVE=${2:?name}; shift 2;; *) EXTRA+=("$1"); shift;; esac; done
-    echo "== load $(basename "$SVF") with ${NO_MOD:+(not) }$MODNAME${SUITES:+, suites $SUITES}${PROBE_DAYS:+, probe plays $PROBE_DAYS day(s)}"
+    echo "== load $(basename "$SVF") $([ "$NO_MOD" = 1 ] && echo without || echo with) $MODNAME${SUITES:+, suites $SUITES}${PROBE_DAYS:+, probe plays $PROBE_DAYS day(s)}"
     run_slot; echo "saves out: $SAVES_OUT"; [ "$OURS" -gt 0 ] && [ $RUN_RC = 0 ] && RUN_RC=1; exit $RUN_RC ;;
   _loadwith)   # the integration run's name for `load` (kept for its scripts): _loadwith <label> <save> [options…]
     L=${1:?label}; SVF=${2:?save}; shift 2; exec "$0" "$MODARG" load "$SVF" "$L" "$@" ;;

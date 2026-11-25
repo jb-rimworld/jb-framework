@@ -18,7 +18,7 @@ Steps (all checks run, then the first failing group stops before anything is cop
                Guard/<v>/Assemblies/*.Guard.dll exists, binds to neither the framework nor Harmony, has no test code, and carries the
                framework's Workshop id once About/PublishedFileId.txt of the framework exists (placeholder before: warning).
                The framework itself (a folder with build/Identity.props): built for 1.7 AND 1.6, `tools/public_api.py check` must pass (the
-               public API is additive only), and the copy leaves out sample/, build/, api/, TestMod/ and API.md.
+               public API is additive only), and the copy leaves out sample/, build/, api/, TestMod/, guard/ and API.md.
   3 freeze     freeze16.py --check (1.6 byte-identical to Source/Frozen16.sha256); About lists 1.6 but no manifest = error.
   4 layout     LoadFolders.xml (v1.6 if About lists 1.6, v1.7; every listed folder exists), no content dirs in the mod root, About fields
                (packageId, name, author, supportedVersions, modVersion == version), PublishedFileId numeric, Preview.png < 1,000,000 bytes.
@@ -49,8 +49,8 @@ FORBIDDEN_STRINGS = ["JBFramework.Testing", "KitTestRunner", "KitTestSuite", "Ki
                      "HearthTestRunner"]
 # the framework DLL names its test assembly in [InternalsVisibleTo("JBFramework.Testing")]: that one string is allowed there
 FRAMEWORK_ALLOWED_STRINGS = {"JBFramework.Testing"}
-FRAMEWORK_EXCLUDES = ["/sample/", "/build/", "/api/", "/TestMod/", "/src/", "/docs/", "/API.md"]
-FRAMEWORK_ROOT_ALLOWED = {"sample", "build", "api", "TestMod", "docs", "API.md"}
+FRAMEWORK_EXCLUDES = ["/sample/", "/build/", "/api/", "/TestMod/", "/src/", "/docs/", "/guard/", "/API.md"]
+FRAMEWORK_ROOT_ALLOWED = {"sample", "build", "api", "TestMod", "docs", "guard", "API.md"}
 RSYNC_EXCLUDES = ["/Source/", "/Workshop/", "/tools/", "obj/", "bin/", ".git/", "*.csproj", "_frozen16/", "*.pre-kit", "*.pdb", ".DS_Store",
                   ".gitignore", ".gitattributes"]
 TEX_TAGS = {"texPath", "uiIconPath", "iconPath"}
