@@ -80,7 +80,7 @@ namespace JBFramework
                 string raw = null;
                 try { Scribe_Values.Look(ref raw, sec.LegacyEnabledField); } catch { continue; }
                 if (raw == null) continue;
-                if (bool.TryParse(raw.Trim(), out bool on)) { Template.sections[sec.Id] = on; Migrated.Add("section:" + sec.Id + "=" + on + " (from " + sec.LegacyEnabledField + ")"); }
+                if (bool.TryParse(raw.Trim(), out bool on)) { on ^= sec.LegacyEnabledInverted; Template.sections[sec.Id] = on; Migrated.Add("section:" + sec.Id + "=" + on + " (from " + (sec.LegacyEnabledInverted ? "not " : "") + sec.LegacyEnabledField + ")"); }
             }
             if (Migrated.Count == 0) return;
             BackupOnce(k);

@@ -121,7 +121,7 @@ namespace JBFramework
             float y = 0f;
             var info = k.Cfg;
             string rw; try { rw = VersionControl.CurrentVersionStringWithRev; } catch { rw = "?"; }
-            KitStyle.LabelColored(new Rect(0, y, w, 24f), $"{info?.Name} {info?.Version}  ·  {Framework.Name} {Framework.Version} (API {Framework.ApiLevel})  ·  RimWorld {rw}", KitStyle.Grey);
+            KitStyle.LabelColored(new Rect(0, y, w, 24f), (k.IsFramework ? $"{Framework.Name} {Framework.Version} (API level {Framework.ApiLevel})" : $"{info?.Name} {info?.Version}  ·  {Framework.Name} {Framework.Version} (API level {Framework.ApiLevel})") + $"  ·  RimWorld {rw}", KitStyle.Grey);
             y += 26f;
             KitStyle.LabelColored(new Rect(0, y, w, 22f), KitText.K("Diag.Summary", "{0} settings registered · {1} warnings · {2} errors in the log · log file {3}", k.SettingsReg.All.Count, k.Log.WarnCount, k.Log.ErrorCount, k.Log.FileName), KitStyle.Grey, TextAnchor.UpperLeft, GameFont.Tiny);
             y += 24f;
@@ -211,7 +211,11 @@ namespace JBFramework
                 string line = lg[i];
                 bool err = line.Contains("| ERROR |"), warn = line.Contains("| WARN  |");
                 GUI.color = err ? KitStyle.Bad : warn ? KitStyle.Accent : KitStyle.Grey;
-                Widgets.Label(new Rect(4f, 3f + i * lineH, lview.width, lineH), line);
+                // one line each: a long line is cut with "..." and shown whole as a tooltip (it used to wrap out of sight)
+                var lr = new Rect(4f, 3f + i * lineH, lview.width - 8f, lineH);
+                string shown = line.Truncate(lr.width);
+                Widgets.Label(lr, shown);
+                if (shown != line) TooltipHandler.TipRegion(lr, line);
             }
             GUI.color = Color.white; Text.Font = GameFont.Small;
             Widgets.EndScrollView();

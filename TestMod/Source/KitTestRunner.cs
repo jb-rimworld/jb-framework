@@ -129,6 +129,10 @@ namespace JBFramework.Testing
             var ws = Find.WindowStack;
             if (ws == null) return;
             foreach (var w in ws.Windows.ToList())
+            {
+                if (KeptWindows.Contains(w)) continue;
+                // the debug log window an expected (provoked) red error opened would show in later screenshots
+                if (w is LudeonTK.EditWindow_Log && KitTestLog.NewestIsExpected()) { ws.TryRemove(w, false); continue; }
                 if (w is Dialog_MessageBox || w is Dialog_NodeTree || (w.forcePause && !(w is Page)))
                 {
                     string text = "";
@@ -137,7 +141,11 @@ namespace JBFramework.Testing
                     Log.Message("[JBTEST] closing window " + w.GetType().Name);
                     ws.TryRemove(w, false);
                 }
+            }
         }
+
+        /// <summary>Windows a suite keeps open (TestContext.KeepOpen): the runner does not close them.</summary>
+        internal static readonly HashSet<Window> KeptWindows = new HashSet<Window>();
 
         /// <summary>Drives the selected suites.</summary>
         public override void GameComponentTick()
@@ -177,6 +185,7 @@ namespace JBFramework.Testing
             {
                 try { r.It?.Dispose(); } catch (Exception e) { r.Ctx.Log("dispose threw: " + e.Message); }
                 if (r.Error != null) { r.Ctx.Failures++; r.Ctx.Log("EXCEPTION/TIMEOUT: " + r.Error); }
+                KeptWindows.Clear();
                 r.Ctx.Log($"end: {r.Ctx.Checks} checks, {r.Ctx.Failures} failures, {now - r.Started} ticks");
                 current++;
             }
@@ -263,7 +272,8 @@ namespace JBFramework.Testing
         {
             var sb = new StringBuilder();
             int fails = runs.Sum(r => r.Ctx.Failures) + unknownSuites.Count, checks = runs.Sum(r => r.Ctx.Checks);
-            int newLogErrors = LogErrors() - logErrorsAtStart;
+            // errors a suite announced with ExpectRedError went through the mod's log too: they do not count
+            int newLogErrors = Math.Max(0, LogErrors() - logErrorsAtStart - KitTestLog.ExpectedSince(redMarkAtStart));
             var oursRed = KitTestLog.Since(redMarkAtStart, true);
             bool pass = fails == 0 && runs.Count > 0 && newLogErrors == 0 && oursRed.Count == 0;
             sb.AppendLine($"RESULT {(pass ? "PASS" : "FAIL")} mod={target?.PackageId ?? KitTestEnv.TargetContent?.PackageId} suites={runs.Count} checks={checks} failures={fails} logErrors={newLogErrors} ourRedErrors={oursRed.Count} unknownSuites={unknownSuites.Count}");

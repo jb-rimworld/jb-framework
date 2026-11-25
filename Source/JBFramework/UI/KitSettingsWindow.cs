@@ -31,7 +31,7 @@ namespace JBFramework
         static bool AnyNerd(KitMod k) => k.SettingsReg.All.Any(s => s.Nerd);
 
         // Pages ---------------------------------------------------------------------------------------------------------
-        static bool SectionHasRows(KitMod k, string id) => k.SettingsReg.All.Any(s => s.SectionId == id);
+        static bool SectionHasRows(KitMod k, string id) => k.SettingsReg.All.Any(s => s.SectionId == id && s.Shown) || k.Pages.All.Any(p => p.Embedded && p.Section == id);
 
         public static List<PageEntry> BuildPages(KitMod k, KitProfile target)
         {
@@ -57,6 +57,7 @@ namespace JBFramework
 
         static void AddPage(KitMod k, KitProfile target, List<PageEntry> list, KitPage p)
         {
+            if (p.Embedded && !string.IsNullOrEmpty(p.Section)) return;   // drawn inside its section's page
             bool dim = false;
             if (!string.IsNullOrEmpty(p.Section))
             {
@@ -118,12 +119,16 @@ namespace JBFramework
 
             if (InGame(k))
             {
+                string l1 = KitText.K("Side.ThisSave", "This save"), l2 = KitText.K("Side.Template", "Template");
                 float hw = (r.width - 6f) / 2f;
-                if (KitStyle.Chip(new Rect(r.x, y, hw, 32f), KitText.K("Side.ThisSave", "This save"), !k.Window.EditTemplate,
-                    KitText.K("Side.ThisSaveTip", "Edit the settings of the running game. They are saved with it."))) k.Window.EditTemplate = false;
-                if (KitStyle.Chip(new Rect(r.x + hw + 6f, y, hw, 32f), KitText.K("Side.Template", "Template"), k.Window.EditTemplate,
-                    KitText.K("Side.TemplateTip", "Edit the template that new games start from. The running game is not changed."))) k.Window.EditTemplate = true;
-                y += 40f;
+                // side by side when both labels fit at the normal font ("Dieser Spielstand" does not in a narrow sidebar): else stacked
+                bool stack = Mathf.Max(KitUI.TextW(l1), KitUI.TextW(l2)) + 24f > hw;
+                var c1 = stack ? new Rect(r.x, y, r.width, 30f) : new Rect(r.x, y, hw, 32f);
+                var c2 = stack ? new Rect(r.x, y + 34f, r.width, 30f) : new Rect(r.x + hw + 6f, y, hw, 32f);
+                if (KitStyle.Chip(c1, l1, !k.Window.EditTemplate, KitText.K("Side.ThisSaveTip", "Edit the settings of the running game. They are saved with it."))) k.Window.EditTemplate = false;
+                if (KitStyle.Chip(c2, l2, k.Window.EditTemplate, KitText.K("Side.TemplateTip", "Edit the template that new games start from. The running game is not changed."))) k.Window.EditTemplate = true;
+                k.Window.Last.Chips = new Rect(r.x, y, r.width, c2.yMax - y);
+                y += stack ? 72f : 40f;
             }
             else
             {
@@ -231,7 +236,13 @@ namespace JBFramework
                 }
             }
             float top = r.y + 44f;
-            if (InGame(k) && k.Window.EditTemplate)
+            var shownPage = k.Window.PageId.StartsWith("page:") && string.IsNullOrEmpty(k.Window.Search) ? k.Pages.Find(k.Window.PageId.Substring(5)) : null;
+            if (shownPage != null && shownPage.IsGlobal && InGame(k))
+            {
+                KitStyle.LabelColored(new Rect(r.x, top, r.width, 22f), KitText.K("Header.GlobalPage", "Applies to every game: this page is not saved per save."), KitStyle.Grey, TextAnchor.UpperLeft, GameFont.Tiny);
+                top += 26f;
+            }
+            else if (InGame(k) && k.Window.EditTemplate)
             {
                 KitStyle.LabelColored(new Rect(r.x, top, r.width, 22f), KitText.K("Header.EditingTemplate", "Editing the template for new games. The running game is not changed."), KitStyle.Accent, TextAnchor.UpperLeft, GameFont.Tiny);
                 top += 26f;
@@ -280,7 +291,7 @@ namespace JBFramework
             Widgets.EndScrollView();
         }
 
-        static bool Visible(KitSetting s) => (ShowNerd || !s.Nerd) && s.Owner.Sections.Available(s.SectionId);
+        static bool Visible(KitSetting s) => (ShowNerd || !s.Nerd) && s.Shown && s.Owner.Sections.Available(s.SectionId);
 
         /// <summary>Writes one of the framework's global preferences (they live in the framework's own settings file).</summary>
         static void SetGlobalPref(string key, bool on)
@@ -458,8 +469,19 @@ namespace JBFramework
 
             float before = y;
             y = DrawRows(k, k.SettingsReg.OfSection(id), w, target, visible, y);
-            if (y == before)
+            var embedded = k.Pages.All.Where(p => p.Embedded && p.Section == id).ToList();
+            if (y == before && embedded.Count == 0)
                 y += KitStyle.Paragraph(0f, y, w, KitText.K("Section.OnlyNerd", "Every setting of this section is a nerd setting. Switch on \"Nerd settings\" at the top to see them."), KitStyle.DimGrey) + 6f;
+            // pages that belong into this section (KitPage.EmbedInSection): below the settings, under their own heading
+            foreach (var p in embedded)
+            {
+                y += 8f;
+                y += KitStyle.Section(0f, y, w, p.Label);
+                if (p.IsGlobal && InGame(k))
+                    y += KitStyle.Paragraph(0f, y, w, KitText.K("Header.GlobalPage", "Applies to every game: this page is not saved per save."), KitStyle.Grey, GameFont.Tiny) + 4f;
+                KitUiFence.DrawPage(k, p, new Rect(0f, y, w, p.EmbedHeight));
+                y += p.EmbedHeight + 6f;
+            }
             return y;
         }
 
@@ -467,9 +489,14 @@ namespace JBFramework
         static float DrawRows(KitMod k, IEnumerable<KitSetting> settings, float w, KitProfile target, Rect visible, float y)
         {
             string last = null;
-            foreach (var s in settings)
+            // one header per group: rows of a group registered later join the group's first place (stable otherwise)
+            var list = settings.ToList();
+            var firstOf = new Dictionary<string, int>();
+            for (int i = 0; i < list.Count; i++) { string c = list[i].Category ?? ""; if (!firstOf.ContainsKey(c)) firstOf[c] = i; }
+            var ordered = list.Select((x, i) => (x, i)).OrderBy(p => firstOf[p.x.Category ?? ""]).ThenBy(p => p.i).Select(p => p.x);
+            foreach (var s in ordered)
             {
-                if (!ShowNerd && s.Nerd) continue;
+                if ((!ShowNerd && s.Nerd) || !s.Shown) continue;
                 if (s.Category != last)
                 {
                     y += 6f;
@@ -580,7 +607,7 @@ namespace JBFramework
             {
                 case KitCompatState.Active: case KitCompatState.IncompatibleAbsent: return KitStyle.Good;
                 case KitCompatState.Failed: case KitCompatState.IncompatiblePresent: return KitStyle.Bad;
-                case KitCompatState.Unhealthy: case KitCompatState.SwitchedOff: return KitStyle.Accent;
+                case KitCompatState.Unhealthy: case KitCompatState.SwitchedOff: case KitCompatState.Inactive: return KitStyle.Accent;
                 default: return KitStyle.DimGrey;
             }
         }

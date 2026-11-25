@@ -31,8 +31,9 @@ namespace JBFramework
         }
 
         /// <summary>
-        /// Removes every thing of the matching defs from all maps: spawned things, minified ones, blueprints and frames of them, and
-        /// items in pawn inventories and equipment. Buildings drop their cost like a deconstruction (the overload with refund = false does not).
+        /// Removes every thing of the matching defs from all maps: spawned things, minified ones, blueprints and frames of them, things
+        /// held in containers (graves, vats, transporters, carried things, caravan cargo), and items in pawn inventories, equipment and
+        /// apparel. Pawns are never removed here. Buildings drop their cost like a deconstruction (the overload with refund = false does not).
         /// </summary>
         public static void RemoveThings(Func<ThingDef, bool> which, List<string> report) => RemoveThings(which, report, true);
 
@@ -57,10 +58,23 @@ namespace JBFramework
                         n++;
                     }
                 }
+                // things held inside containers anywhere (shelves' contents are spawned; graves, vats, transporters, carried things,
+                // caravans' cargo are not): every holder of every map and every caravan, recursively
+                var held = new List<Thing>();
+                foreach (var map in Find.Maps.ToList()) { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(map, l, true); held.AddRange(l); }
+                foreach (var c in Find.WorldObjects.Caravans.ToList()) { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(c, l, true); held.AddRange(l); }
+                foreach (var t in held.Distinct().ToList())
+                {
+                    if (t == null || t.Destroyed || t.Spawned || t is Pawn) continue;
+                    if (!Matches(t.def, which)) continue;
+                    try { t.holdingOwner?.Remove(t); } catch { }
+                    if (!t.Destroyed) t.Destroy(DestroyMode.Vanish);
+                    n++;
+                }
                 foreach (var p in AllPawns())
                 {
                     foreach (var t in p.inventory?.innerContainer?.ToList() ?? new List<Thing>())
-                        if (Matches(t.def, which)) { t.Destroy(DestroyMode.Vanish); n++; }
+                        if (!t.Destroyed && Matches(t.def, which)) { t.Destroy(DestroyMode.Vanish); n++; }
                     foreach (var t in p.equipment?.AllEquipmentListForReading?.ToList() ?? new List<ThingWithComps>())
                         if (Matches(t.def, which)) { p.equipment.Remove(t); t.Destroy(DestroyMode.Vanish); n++; }
                     foreach (var t in p.apparel?.WornApparel?.ToList() ?? new List<Apparel>())
@@ -84,6 +98,40 @@ namespace JBFramework
                     foreach (var h in hs.Where(h => h?.def != null && which(h.def)).ToList()) { p.health.RemoveHediff(h); n++; }
                 }
                 return KitText.K("Removal.Hediffs", "{0} health conditions removed", n);
+            });
+        }
+
+        /// <summary>Removes the matching genes (xenogenes and endogenes) from every pawn (Biotech; nothing without it).</summary>
+        public static void RemoveGenes(Func<GeneDef, bool> which, List<string> report)
+        {
+            if (which == null) return;
+            Step(report, "genes", () =>
+            {
+                int n = 0;
+                foreach (var p in AllPawns())
+                {
+                    var g = p.genes;
+                    if (g == null) continue;
+                    foreach (var gene in g.GenesListForReading.Where(x => x?.def != null && which(x.def)).ToList()) { g.RemoveGene(gene); n++; }
+                }
+                return KitText.K("Removal.Genes", "{0} genes removed", n);
+            });
+        }
+
+        /// <summary>Removes the matching memories (mood thoughts) from every pawn; situational thoughts of a missing def simply stop.</summary>
+        public static void RemoveThoughts(Func<ThoughtDef, bool> which, List<string> report)
+        {
+            if (which == null) return;
+            Step(report, "thoughts", () =>
+            {
+                int n = 0;
+                foreach (var p in AllPawns())
+                {
+                    var mem = p.needs?.mood?.thoughts?.memories;
+                    if (mem == null) continue;
+                    foreach (var th in mem.Memories.Where(x => x?.def != null && which(x.def)).ToList()) { mem.RemoveMemory(th); n++; }
+                }
+                return KitText.K("Removal.Thoughts", "{0} memories removed", n);
             });
         }
 

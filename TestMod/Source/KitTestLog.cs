@@ -94,10 +94,26 @@ namespace JBFramework.Testing
 
         static readonly List<string> expected = new List<string>();
         /// <summary>A red error a suite provokes on purpose (text fragment): it never counts as ours.</summary>
-        public static void Expect(string fragment) { lock (Lock) if (!expected.Contains(fragment)) expected.Add(fragment); }
+        public static void Expect(string fragment)
+        {
+            if (string.IsNullOrEmpty(fragment)) return;
+            lock (Lock) { if (expected.Contains(fragment)) return; expected.Add(fragment); }
+            // tools/jbmod's probe report treats every probe line that contains an announced fragment as expected, not as ours
+            try
+            {
+                string probe = Environment.GetEnvironmentVariable("JB_PROBE_ERR");
+                if (!string.IsNullOrEmpty(probe)) System.IO.File.AppendAllText(probe + ".expected", fragment.Replace('\n', ' ').Replace('\t', ' ') + "\n");
+            }
+            catch { }
+        }
+
+        /// <summary>True when the newest recorded red error was announced as expected (the runner then closes the log window it opened).</summary>
+        public static bool NewestIsExpected() { lock (Lock) return entries.Count > 0 && IsExpected(entries[entries.Count - 1]); }
         static bool IsExpected(Entry e) => expected.Any(x => e.All.IndexOf(x, StringComparison.Ordinal) >= 0);
         /// <summary>Recorded red errors that a suite provoked on purpose.</summary>
         public static int ExpectedCount() { lock (Lock) return entries.Count(IsExpected); }
+        /// <summary>Recorded red errors from index <paramref name="from"/> on that a suite provoked on purpose.</summary>
+        public static int ExpectedSince(int from) { lock (Lock) return entries.Skip(Math.Max(0, from)).Count(IsExpected); }
 
         static bool Matches(Entry e, string[] markers) => !IsExpected(e) && markers.Any(k => e.All.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0);
 

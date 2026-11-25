@@ -26,6 +26,17 @@ namespace JBFramework
         {
             this.game = game;
             instance = this;
+            ResetOnce(game);
+        }
+
+        /// <summary>
+        /// Every mod's SaveData reset, once per Game object. A loaded game creates this component twice (in the Game constructor, then
+        /// again from the save or by FillComponents AFTER the saved components were read): a second reset would wipe what a mod's
+        /// legacy component merged into its SaveData state while loading (Set my Defaults FW request 11).
+        /// </summary>
+        internal static void ResetOnce(Game game)
+        {
+            if (game != null && !KitResetLedger.First(game)) return;
             Framework.ForEach(k =>
             {
                 k.AttachSave(null, null);
@@ -153,6 +164,22 @@ namespace JBFramework
             {
                 if (mods == null) mods = new List<KitSaveEntry>();
                 mods.RemoveAll(m => m == null || string.IsNullOrEmpty(m.id));
+            }
+        }
+    }
+
+    /// <summary>Remembers which Game and Map objects already had their resets (weakly: a finished game is collected as usual).</summary>
+    internal static class KitResetLedger
+    {
+        static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, object> done = new System.Runtime.CompilerServices.ConditionalWeakTable<object, object>();
+        /// <summary>True the first time it is asked for <paramref name="o"/>.</summary>
+        internal static bool First(object o)
+        {
+            lock (done)
+            {
+                if (done.TryGetValue(o, out _)) return false;
+                done.Add(o, o == null ? null : new object());
+                return true;
             }
         }
     }

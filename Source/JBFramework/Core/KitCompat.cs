@@ -8,7 +8,9 @@ namespace JBFramework
 {
     /// <summary>
     /// Marks a [HarmonyPatch] class as part of a soft integration. When the named mod or DLC is not active the class is not applied
-    /// (no error); when it is active and the class fails, the mod's matching compatibility entry shows "failed: reason".
+    /// (no error); when it is active and the class fails, the mod's matching compatibility entry shows "failed: reason"; when it is
+    /// active but the class patches nothing (its Prepare() returned false because a target is missing in the installed version), the
+    /// entry shows "installed, integration inactive: patch target not found" unless the entry has its own HealthyWhen check.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     public sealed class KitCompatAttribute : Attribute
@@ -19,7 +21,7 @@ namespace JBFramework
         public string PackageId { get; }
     }
 
-    internal enum KitCompatState { NotInstalled, Active, Failed, Unhealthy, IncompatiblePresent, IncompatibleAbsent, SwitchedOff }
+    internal enum KitCompatState { NotInstalled, Active, Failed, Unhealthy, IncompatiblePresent, IncompatibleAbsent, SwitchedOff, Inactive }
 
     /// <summary>One line of a mod's Compatibility page: an integration or a known incompatibility.</summary>
     public sealed class KitCompatEntry
@@ -38,8 +40,32 @@ namespace JBFramework
         /// <summary>The other mod's packageId (or a DLC's).</summary>
         public string PackageId { get; internal set; }
 
-        /// <summary>A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced.</summary>
-        public KitCompatEntry HealthyWhen(Func<bool> healthy) { Healthy = healthy; return this; }
+        /// <summary>[KitCompat] patch classes of this entry that applied nothing (their Prepare() returned false or found no target).</summary>
+        internal readonly List<string> Inactive = new List<string>();
+
+        /// <summary>
+        /// A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced. Several checks
+        /// (also <see cref="HealthyWhenType"/>, <see cref="HealthyWhenDef{T}"/>) must all pass. With a check, the check alone decides:
+        /// [KitCompat] classes that applied nothing no longer mark the entry inactive (the mod knows better).
+        /// </summary>
+        public KitCompatEntry HealthyWhen(Func<bool> healthy)
+        {
+            if (healthy == null) return this;
+            var before = Healthy;
+            Healthy = before == null ? healthy : () => before() && healthy();
+            return this;
+        }
+
+        /// <summary>
+        /// Healthy only while the OTHER mod still has the type <paramref name="fullTypeName"/> ("CombatExtended.Verb_ShootCE"): proves
+        /// that the piece your integration relies on exists in the installed version, instead of testing your own code.
+        /// </summary>
+        public KitCompatEntry HealthyWhenType(string fullTypeName)
+            => HealthyWhen(() => !string.IsNullOrEmpty(fullTypeName) && GenTypes.GetTypeInAnyAssembly(fullTypeName) != null);
+
+        /// <summary>Healthy only while a def of the other mod is loaded (<c>.HealthyWhenDef&lt;StatDef&gt;("QualityFactor")</c>).</summary>
+        public KitCompatEntry HealthyWhenDef<T>(string defName) where T : Def
+            => HealthyWhen(() => !string.IsNullOrEmpty(defName) && DefDatabase<T>.GetNamedSilentFail(defName) != null);
 
         /// <summary>
         /// The player can switch this integration off on the Compatibility page (PLAN G13c; on by default). The switch is a preference
@@ -69,7 +95,9 @@ namespace JBFramework
                 {
                     try { if (!Healthy()) return KitCompatState.Unhealthy; }
                     catch (Exception e) { Owner.Log.Once("compatHealthy:" + PackageId, KitLogLevel.Warn, "Compat", Name + " health check threw: " + e.Message); return KitCompatState.Unhealthy; }
+                    return KitCompatState.Active;
                 }
+                if (Inactive.Count > 0) return KitCompatState.Inactive;
                 return KitCompatState.Active;
             }
         }
@@ -86,6 +114,10 @@ namespace JBFramework
                     case KitCompatState.Unhealthy: return KitText.K("Compat.Unhealthy", "installed, but the integration reports a problem");
                     case KitCompatState.IncompatiblePresent: return KitText.K("Compat.IncompatiblePresent", "installed: known conflict");
                     case KitCompatState.SwitchedOff: return KitText.K("Compat.SwitchedOff", "installed, integration switched off");
+                    case KitCompatState.Inactive:
+                        return PatchesApplied > 0
+                            ? KitText.K("Compat.PartlyInactive", "installed, partly inactive: patch target not found ({0})", string.Join(", ", Inactive))
+                            : KitText.K("Compat.Inactive", "installed, integration inactive: patch target not found ({0})", string.Join(", ", Inactive));
                     default: return KitText.K("Compat.IncompatibleAbsent", "not installed (good)");
                 }
             }
@@ -116,6 +148,13 @@ namespace JBFramework
         {
             var e = Find(packageId) ?? Add(new KitCompatEntry { Name = packageId, PackageId = packageId, WhatEn = "" });
             e?.Failures.Add(reason);
+        }
+
+        /// <summary>Called by the patch applier for a [KitCompat] class that patched nothing (Prepare() false, no target).</summary>
+        internal void ReportInactive(string packageId, string className)
+        {
+            var e = Find(packageId);
+            if (e != null && !e.Inactive.Contains(className)) e.Inactive.Add(className);
         }
 
         internal void ReportApplied(string packageId)

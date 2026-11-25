@@ -532,6 +532,7 @@ namespace JBFramework.Testing
             foreach (var sec in k.Sections.All.Where(x => x.LegacyEnabledField != null))
             {
                 if (!old.TryGetValue(sec.LegacyEnabledField, out string raw) || !bool.TryParse(raw.Trim(), out bool want)) continue;
+                want ^= sec.LegacyEnabledInverted;
                 expected++;
                 bool ok = k.Template.sections.TryGetValue(sec.Id, out bool got) && got == want;
                 t.Check(ok, "section " + sec.Id + " = " + want + " (from " + sec.LegacyEnabledField + ")");

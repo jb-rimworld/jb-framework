@@ -447,6 +447,9 @@
         <member name="P:JBFramework.Framework.ShowNerd">
             <summary>Show nerd settings in every JB settings window.</summary>
         </member>
+        <member name="F:JBFramework.Framework.ShowNerdOverride">
+            <summary>Tests: show (or hide) nerd settings without touching the stored preference.</summary>
+        </member>
         <member name="P:JBFramework.Framework.WelcomeCards">
             <summary>
             The player's global "Show welcome cards" preference (Mod settings, JB Framework): false = no mod shows its welcome card, new
@@ -455,6 +458,9 @@
         </member>
         <member name="F:JBFramework.Framework.TooOldMessages">
             <summary>Mods whose installed framework is too old (filled by the contexts and by the startup scan).</summary>
+        </member>
+        <member name="M:JBFramework.Framework.TooOldTexts">
+            <summary>The too-old messages in the game's language (rendered when asked: languages load after the mod constructors).</summary>
         </member>
         <member name="M:JBFramework.Framework.RequiredLevel(System.Reflection.Assembly,System.String@)">
             <summary>
@@ -489,6 +495,13 @@
         <member name="M:JBFramework.FrameworkGame.#ctor(Verse.Game)">
             <summary>Created by RimWorld for every game (new or loaded).</summary>
         </member>
+        <member name="M:JBFramework.FrameworkGame.ResetOnce(Verse.Game)">
+            <summary>
+            Every mod's SaveData reset, once per Game object. A loaded game creates this component twice (in the Game constructor, then
+            again from the save or by FillComponents AFTER the saved components were read): a second reset would wipe what a mod's
+            legacy component merged into its SaveData state while loading (Set my Defaults FW request 11).
+            </summary>
+        </member>
         <member name="P:JBFramework.FrameworkGame.Instance">
             <summary>The component of the running game, or null (main menu, other game).</summary>
         </member>
@@ -519,6 +532,12 @@
         <member name="M:JBFramework.FrameworkGame.ExposeData">
             <summary>Saves and loads every mod's entry (plain values; each mod's SaveData in its own node).</summary>
         </member>
+        <member name="T:JBFramework.KitResetLedger">
+            <summary>Remembers which Game and Map objects already had their resets (weakly: a finished game is collected as usual).</summary>
+        </member>
+        <member name="M:JBFramework.KitResetLedger.First(System.Object)">
+            <summary>True the first time it is asked for <paramref name="o"/>.</summary>
+        </member>
         <member name="T:JBFramework.KitSaveEntry">
             <summary>
             One mod's part of a save: its profile and, inside &lt;data&gt;, what its SaveData callback writes. When the mod is absent or
@@ -539,6 +558,12 @@
         </member>
         <member name="M:JBFramework.FrameworkMap.#ctor(Verse.Map)">
             <summary>Created by RimWorld for a new map or before a map is loaded: every mod's reset runs for this map.</summary>
+        </member>
+        <member name="M:JBFramework.FrameworkMap.ResetOnce(Verse.Map)">
+            <summary>
+            Every mod's per-map reset, once per Map object: on a load it runs before the map's saved components are read (prefix on
+            Map.ExposeComponents), so a legacy MapComponent that merges into the mod's MapData state while loading keeps its merge.
+            </summary>
         </member>
         <member name="M:JBFramework.FrameworkMap.FinalizeInit">
             <summary>Drops the instances of legacy and removed components from this map (after the load finished).</summary>
@@ -616,7 +641,9 @@
         <member name="T:JBFramework.KitCompatAttribute">
             <summary>
             Marks a [HarmonyPatch] class as part of a soft integration. When the named mod or DLC is not active the class is not applied
-            (no error); when it is active and the class fails, the mod's matching compatibility entry shows "failed: reason".
+            (no error); when it is active and the class fails, the mod's matching compatibility entry shows "failed: reason"; when it is
+            active but the class patches nothing (its Prepare() returned false because a target is missing in the installed version), the
+            entry shows "installed, integration inactive: patch target not found" unless the entry has its own HealthyWhen check.
             </summary>
         </member>
         <member name="M:JBFramework.KitCompatAttribute.#ctor(System.String)">
@@ -637,8 +664,24 @@
         <member name="P:JBFramework.KitCompatEntry.PackageId">
             <summary>The other mod's packageId (or a DLC's).</summary>
         </member>
+        <member name="F:JBFramework.KitCompatEntry.Inactive">
+            <summary>[KitCompat] patch classes of this entry that applied nothing (their Prepare() returned false or found no target).</summary>
+        </member>
         <member name="M:JBFramework.KitCompatEntry.HealthyWhen(System.Func{System.Boolean})">
-            <summary>A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced.</summary>
+            <summary>
+            A self-check of the integration: false shows "installed, but the integration reports a problem". Fenced. Several checks
+            (also <see cref="M:JBFramework.KitCompatEntry.HealthyWhenType(System.String)"/>, <see cref="M:JBFramework.KitCompatEntry.HealthyWhenDef``1(System.String)"/>) must all pass. With a check, the check alone decides:
+            [KitCompat] classes that applied nothing no longer mark the entry inactive (the mod knows better).
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitCompatEntry.HealthyWhenType(System.String)">
+            <summary>
+            Healthy only while the OTHER mod still has the type <paramref name="fullTypeName"/> ("CombatExtended.Verb_ShootCE"): proves
+            that the piece your integration relies on exists in the installed version, instead of testing your own code.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitCompatEntry.HealthyWhenDef``1(System.String)">
+            <summary>Healthy only while a def of the other mod is loaded (<c>.HealthyWhenDef&lt;StatDef&gt;("QualityFactor")</c>).</summary>
         </member>
         <member name="M:JBFramework.KitCompatEntry.Switchable">
             <summary>
@@ -658,6 +701,9 @@
         </member>
         <member name="M:JBFramework.KitCompatRegistry.ReportFailure(System.String,System.String)">
             <summary>Called by the patch applier for a failed [KitCompat] patch class.</summary>
+        </member>
+        <member name="M:JBFramework.KitCompatRegistry.ReportInactive(System.String,System.String)">
+            <summary>Called by the patch applier for a [KitCompat] class that patched nothing (Prepare() false, no target).</summary>
         </member>
         <member name="T:JBFramework.KitCompat">
             <summary>DLC list and the mod-active helper used everywhere in the framework (shared, stateless).</summary>
@@ -910,7 +956,8 @@
             <summary>True when the installed framework is too old for this mod: its framework features stay off (see <see cref="P:JBFramework.KitMod.BlockedReason"/>).</summary>
         </member>
         <member name="P:JBFramework.KitMod.BlockedReason">
-            <summary>Plain-words reason when <see cref="P:JBFramework.KitMod.Blocked"/>, else null.</summary>
+            <summary>Plain-words reason when <see cref="P:JBFramework.KitMod.Blocked"/>, else null (in the game's language: worked out when asked, because a mod
+            is blocked in its constructor, before the languages are loaded).</summary>
         </member>
         <member name="P:JBFramework.KitMod.RequiredApiLevel">
             <summary>API level the mod needs (from <see cref="T:JBFramework.KitRequiresAttribute"/> or <see cref="P:JBFramework.KitInfo.MinApiLevel"/>; 0 = not stated).</summary>
@@ -1065,6 +1112,9 @@
         </member>
         <member name="M:JBFramework.KitMod.MarkChanged(System.String)">
             <summary>Remembers that a key ("lo.regrowDays", "section:&lt;id&gt;", "profile:loaded") changed. Delivered by <see cref="M:JBFramework.KitMod.FlushChanges"/>.</summary>
+        </member>
+        <member name="F:JBFramework.KitMod.ChangeCount">
+            <summary>Number of changes marked since start (tests: drawing the window must never change it).</summary>
         </member>
         <member name="M:JBFramework.KitMod.FlushChanges">
             <summary>
@@ -1329,6 +1379,18 @@
         <member name="M:JBFramework.KitPage.InSection(System.String)">
             <summary>The page belongs to a section: it is hidden while the section is not available and dimmed (with a switch-on banner) while it is off.</summary>
         </member>
+        <member name="M:JBFramework.KitPage.EmbedInSection(System.Single)">
+            <summary>
+            Draws the page INSIDE its section's page, below the section's settings, <paramref name="height"/> px high (scroll inside it
+            yourself if it needs more), instead of as a second sidebar entry for the same topic. Needs <see cref="M:JBFramework.KitPage.InSection(System.String)"/>.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitPage.AsGlobal">
+            <summary>
+            The page edits something that is the same in every save (a list in the settings file): while it is shown, the window says so
+            ("Applies to every game.") instead of the "This save"/"Template" hint.
+            </summary>
+        </member>
         <member name="T:JBFramework.KitRegistry">
             <summary>
             What a mod writes in <see cref="M:JBFramework.KitModBase.Register(JBFramework.KitRegistry)"/>: sections, settings, presets, compatibility entries, pages, caretaker
@@ -1558,6 +1620,11 @@
         <member name="M:JBFramework.KitSection.LegacyEnabled(System.String)">
             <summary>The mod's OLD settings field (a bool Scribe_Values name) that held this switch: migrated once.</summary>
         </member>
+        <member name="M:JBFramework.KitSection.LegacyDisabled(System.String)">
+            <summary>
+            Like <see cref="M:JBFramework.KitSection.LegacyEnabled(System.String)"/> for an old bool with the opposite meaning ("disableRegrowth" = True → the section starts off).
+            </summary>
+        </member>
         <member name="T:JBFramework.KitSectionRegistry">
             <summary>All sections of one mod and the one question every patch asks (<see cref="M:JBFramework.KitMod.On(System.String)"/>).</summary>
         </member>
@@ -1638,6 +1705,9 @@
         <member name="M:JBFramework.KitSetting.RequiresReasonIn(JBFramework.KitProfile)">
             <summary>Why the row is greyed in <paramref name="target"/>, translated (null when every requirement is met).</summary>
         </member>
+        <member name="M:JBFramework.KitSetting.DlcName(System.String)">
+            <summary>The DLC's name for a DLC packageId ("Ideology"), else null.</summary>
+        </member>
         <member name="M:JBFramework.KitSetting.PreviewIn(JBFramework.KitProfile)">
             <summary>The preview line in <paramref name="target"/>, or null (none, or it threw: logged once).</summary>
         </member>
@@ -1653,11 +1723,20 @@
         <member name="M:JBFramework.KitSetting.AsNerd">
             <summary>Only shown with "Show nerd settings".</summary>
         </member>
+        <member name="M:JBFramework.KitSetting.OnlyWith(System.String)">
+            <summary>
+            The row exists only with a mod or DLC (<c>.OnlyWith("ludeon.rimworld.ideology")</c>): without it the row is hidden, not greyed
+            (for settings that make no sense without it). The value is kept and still readable.
+            </summary>
+        </member>
+        <member name="P:JBFramework.KitSetting.Shown">
+            <summary>False while the mod/DLC of <see cref="M:JBFramework.KitSetting.OnlyWith(System.String)"/> is not active: the row is not drawn and not found by the search.</summary>
+        </member>
         <member name="M:JBFramework.KitSetting.NeedsRestart">
             <summary>The change takes effect only after a restart (the row shows a small tag).</summary>
         </member>
         <member name="M:JBFramework.KitSetting.WithStep(System.Single)">
-            <summary>Slider rounding step (0 = automatic).</summary>
+            <summary>Step a dragged slider rounds to (0 = automatic). Only a drag rounds: a stored value is never changed by drawing it.</summary>
         </member>
         <member name="M:JBFramework.KitSetting.WithLimit(System.String)">
             <summary>Why the hard limit exists (shown when the player hits it).</summary>
@@ -1679,6 +1758,12 @@
         </member>
         <member name="M:JBFramework.KitSetting.Legacy(System.String,System.Func{System.Single,System.Single})">
             <summary>Like <see cref="M:JBFramework.KitSetting.Legacy(System.String)"/>, with a conversion of the old number (old percent 25 → fraction: <c>v =&gt; v / 100f</c>).</summary>
+        </member>
+        <member name="M:JBFramework.KitSetting.LegacyInverted(System.String)">
+            <summary>
+            The mod's old Bool field with the OPPOSITE meaning ("bedsOwnableByDefault" → the new "bedsNeedOwner"): read once like
+            <see cref="M:JBFramework.KitSetting.Legacy(System.String)"/>, True becomes off and False on. Same as <c>Legacy(old, v =&gt; v &gt;= 0.5f ? 0f : 1f)</c>, but says so.
+            </summary>
         </member>
         <member name="M:JBFramework.KitSetting.LegacyStoreKey(System.String,System.Func{System.Single,System.Single})">
             <summary>An older store key this setting replaces, with a conversion of its value.</summary>
@@ -2151,8 +2236,9 @@
         </member>
         <member name="M:JBFramework.KitRemoval.RemoveThings(System.Func{Verse.ThingDef,System.Boolean},System.Collections.Generic.List{System.String})">
             <summary>
-            Removes every thing of the matching defs from all maps: spawned things, minified ones, blueprints and frames of them, and
-            items in pawn inventories and equipment. Buildings drop their cost like a deconstruction (the overload with refund = false does not).
+            Removes every thing of the matching defs from all maps: spawned things, minified ones, blueprints and frames of them, things
+            held in containers (graves, vats, transporters, carried things, caravan cargo), and items in pawn inventories, equipment and
+            apparel. Pawns are never removed here. Buildings drop their cost like a deconstruction (the overload with refund = false does not).
             </summary>
         </member>
         <member name="M:JBFramework.KitRemoval.RemoveThings(System.Func{Verse.ThingDef,System.Boolean},System.Collections.Generic.List{System.String},System.Boolean)">
@@ -2160,6 +2246,12 @@
         </member>
         <member name="M:JBFramework.KitRemoval.RemoveHediffs(System.Func{Verse.HediffDef,System.Boolean},System.Collections.Generic.List{System.String})">
             <summary>Removes the matching hediffs from every pawn (maps, caravans, world pawns).</summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveGenes(System.Func{Verse.GeneDef,System.Boolean},System.Collections.Generic.List{System.String})">
+            <summary>Removes the matching genes (xenogenes and endogenes) from every pawn (Biotech; nothing without it).</summary>
+        </member>
+        <member name="M:JBFramework.KitRemoval.RemoveThoughts(System.Func{RimWorld.ThoughtDef,System.Boolean},System.Collections.Generic.List{System.String})">
+            <summary>Removes the matching memories (mood thoughts) from every pawn; situational thoughts of a missing def simply stop.</summary>
         </member>
         <member name="M:JBFramework.KitRemoval.RemoveBills(System.Func{Verse.RecipeDef,System.Boolean},System.Collections.Generic.List{System.String})">
             <summary>Deletes the bills of the matching recipes from every workbench on every map.</summary>
@@ -2329,7 +2421,7 @@
         <member name="T:JBFramework.KitRow">
             <summary>
             Row drawer for one <see cref="T:JBFramework.KitSetting"/> against an explicit profile (so the window can edit the save or the template).
-            Left: label and grey description. Right: checkbox, dropdown or slider with value, "free" entry switch, reset. A changed row has an
+            Left: label and grey description. Right: checkbox, dropdown or slider with value, a pencil for typed entry (on hover), reset. A changed row has an
             accent edge. Heights are cached; rows outside the visible part of a scroll view are not drawn at all.
             </summary>
         </member>
@@ -2350,6 +2442,20 @@
         </member>
         <member name="M:JBFramework.KitRow.ClearBuffers">
             <summary>Forget typed text (after a preset, template copy or section reset changed values from outside).</summary>
+        </member>
+        <member name="M:JBFramework.KitRow.DrawNumber(JBFramework.KitSetting,JBFramework.KitProfile,System.Single,UnityEngine.Rect,System.Single,System.Single,System.Single)">
+            <summary>
+            A number row. Drawing never writes: the stored value changes only when the player drags the slider or edits the typed text,
+            so a value the slider cannot show exactly (0.67 %, 1/3, a value beyond the range from an old settings file) is shown rounded
+            but stored untouched. A small pencil (shown while the row is hovered, or while typing is on) switches the row between the
+            slider and typed entry up to the technical limit; the choice is kept per row.
+            </summary>
+        </member>
+        <member name="M:JBFramework.KitRow.TryParseTyped(System.String,System.Boolean,System.Single@)">
+            <summary>A typed number (comma or point, optional %, percent rows typed as percent); false for empty or not a finite number.</summary>
+        </member>
+        <member name="M:JBFramework.KitRow.RoundToStep(JBFramework.KitSetting,System.Single)">
+            <summary>A dragged slider value rounded to the row's step (<see cref="M:JBFramework.KitSetting.WithStep(System.Single)"/>, else whole numbers for Int/Silver and three significant digits of the slider span; none for log sliders).</summary>
         </member>
         <member name="M:JBFramework.KitRow.MatchesSearch(JBFramework.KitSetting,System.String)">
             <summary>True when the setting matches a search text (label, description, key, category, section name).</summary>

@@ -81,7 +81,7 @@ namespace JBFramework
             y += KitStyle.Paragraph(14f, y, w - 14f, patches, fails > 0 ? KitStyle.Bad : KitStyle.Grey, GameFont.Tiny) + 2f;
             foreach (var f in k.Patches.Failures) y += KitStyle.Paragraph(28f, y, w - 28f, f, KitStyle.Bad, GameFont.Tiny) + 1f;
             var paused = k.Guard.Paused.ToList();
-            string errs = KitText.K("Mods.Errors", "Errors caught: {0} · in the log: {1} errors, {2} warnings", k.Guard.TotalFailures, k.Log.ErrorCount, k.Log.WarnCount);
+            string errs = KitText.K("Mods.Errors", "Errors caught: {0} · log: errors {1}, warnings {2}", k.Guard.TotalFailures, k.Log.ErrorCount, k.Log.WarnCount);
             y += KitStyle.Paragraph(14f, y, w - 14f, errs, k.Log.ErrorCount > 0 ? KitStyle.Accent : KitStyle.Grey, GameFont.Tiny) + 2f;
             foreach (var p in paused) y += KitStyle.Paragraph(28f, y, w - 28f, k.Guard.ReasonFor(p) ?? p, KitStyle.Bad, GameFont.Tiny) + 1f;
             GUI.color = KitStyle.Line; Widgets.DrawLineHorizontal(0f, y + 2f, w); GUI.color = Color.white;

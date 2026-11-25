@@ -76,7 +76,9 @@ and never shipped: `tools/jbmod` puts it into test runs only, `tools/release.py`
 - **Mod suites**: a dependent mod writes `sealed class X : JBFramework.Testing.KitTestSuite` under `#if JB_TESTS`; `-p:JBTests=true`
   (build/JBMod.props) defines `JB_TESTS` and references the harness DLL (Private=false). `TestContext t` gives `t.Mod` (the `KitMod`
   under test), `t.Content` (its content pack), `t.Check/Note`, `t.Map`, `t.Center`, `t.FreeCellNearCenter()`, `TestCells.*`; red errors
-  `t.Mark()`, `t.RedErrorsSince(mark)`, `t.CheckNoRedErrors(mark, what)`, `t.ExpectRedError(fragment)`; UI `t.Frames(n)`, `t.Shot(name)`
+  `t.Mark()`, `t.RedErrorsSince(mark)`, `t.CheckNoRedErrors(mark, what)`, `t.ExpectRedError(fragment)` (announce before provoking: never
+  ours in RESULT nor in jbmod's probe report, which reads `<probe file>.expected`; the log window it opens is closed); UI `t.Frames(n)`,
+  `t.Shot(name)`, `t.KeepOpen(window)` (the runner leaves it open until the suite ends), `t.OpenWelcomeCard()`
   (JB_UI_SHOTS), `t.ScreenHeight(h)` (a real virtual screen through Prefs.UIScale; dispose restores); saves `t.Phase` (1 new game, 2
   loaded), `t.LoadedSave`, `t.SaveGame(name)` (with fingerprint, harness left out), `t.CheckSaveFingerprint()`,
   `t.DeclareTransient(pattern, why)` (and `[KitTransient("why")]` on fields in release code). Selection `JB_TEST=all | a,b | prefix.* |
@@ -181,3 +183,14 @@ and never shipped: `tools/jbmod` puts it into test runs only, `tools/release.py`
    a test slot (the game's rule, documented).
 25. **Testing API on `TestContext`**, not by making `KitUiTest`/`KitTestLog`/`SaveLoadKit` public: one discoverable object, internals free
    to change.
+26. **Drawing never writes a setting** (pass 2, Luciferium Overhaul #10): vanilla `HorizontalSlider` rounds its return value to
+   `roundTo` even when nobody drags, so the rows call it without `roundTo`, store only when the handle moved and round to the step then;
+   the typed field stores only text the player changed. `kit.stable` (in every `test all`) writes awkward values straight into the stores
+   and proves that drawing every page, searching, switching profiles, resizing, closing and reopening change no bit and mark no change.
+27. **Resets once per Game/Map object** (pass 2, Set my Defaults #11): a loaded game creates `FrameworkGame` twice (Game constructor, then
+   after the saved components were read); a map's resets run before its saved components are read. A legacy component's merge survives.
+28. **Typed entry behind a pencil** (pass 2, Hospital Beds Gen 2 #7): the "Free" checkbox on every number row was clutter a new player could
+   not read; the pencil appears while a row is hovered (or while typing is on) and has a tooltip. Per-row state is unchanged (`freeText`).
+29. **A shared cross-save file helper** (Set my Defaults #15) was declined for 1.0: `LibraryDisk` is bound to Set my Defaults' library types;
+   a generic `KitFile` would need its own design and tests. Additive later.
+

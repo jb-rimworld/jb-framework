@@ -22,16 +22,20 @@
 #   jbmod <Mod> removal [label] [--build S] [extra…]
 #                                               load the saveload save WITHOUT the mod (the framework and the extras stay), probe plays 1 day:
 #                                               "safe to remove?". Without a save of that label, phase 1 makes one (S, then kit.saveload).
+#                                               Keeps the end save ($S/jb_saveload_<label>/removal_out/, name JB_PROBE_SAVE, default
+#                                               jb_removal_end) and lists every colonist who died or left, with tick and health list.
 #   jbmod <Mod> addition [label] [--suites S] [extra…]
 #                                               vanilla save (no mod, no framework; the extras stay) → load WITH the mod: kit.smoke + kit.addition (+ S)
-#   jbmod <Mod> compat <set> [label]            kit.smoke with a named set of other mods (tools/compat_sets.json)
+#   jbmod <Mod> compat <set> [label] [--suites S]
+#                                               kit.smoke (+ S) with a named set of other mods (tools/compat_sets.json: packageIds or folders)
 #   jbmod <Mod> migrate-test [--from FILE] [--class ModClass] [label]
 #                                               start with an OLD settings file (default: a copy of the player's Config/Mod_<folder>_<Class>.xml,
 #                                               read only) and run kit.migration
 #   jbmod <any> fw <tenants|removal|apilevel|alone|all>
 #                                               framework scenarios with sample/KitSampleA and sample/KitSampleB (suites fw.*)
-#   jbmod <Mod> freeze16 [args] | lang [--refresh] [args] | release [args] | desc-lint [args]
-#                                               tools/freeze16.py, kit_lang.py (--refresh: run kit.settingsdump first), release.py, desc_lint.py
+#   jbmod <Mod> freeze16 [args] | lang [--write|--refresh] [args] | release [args] | desc-lint [args]
+#                                               tools/freeze16.py, kit_lang.py (lang alone only checks; --write writes <XX>_Settings.xml
+#                                               from Source/settings_dump.json; --refresh runs kit.settingsdump first), release.py, desc_lint.py
 #
 # <Mod>: a folder (absolute, relative to the current folder, to 22_RimWorld/ or to the framework, e.g. sample/KitSampleB; "JBFramework" or "."
 #        of the framework = the framework itself). [extra…]: other mods for the run: a packageId (must be installed, e.g. a Workshop mod) or a
@@ -248,10 +252,13 @@ report_errors() {
   local markers="" a
   for a in $ASMS $NSS; do markers="$markers|$a."; done
   markers="$markers|[$DISPLAY_NAME]|$PIDL|$FWNS.|[$FWNAME]|$FWPID|$FWASM.dll"
-  awk -F'\t' -v M="${markers#|}" -v O="$f.ours" -v X="$f.others" -v N="$f.noise" '
-    BEGIN { n = split(M, m, "|"); printf "" > O; printf "" > X; printf "" > N }
+  # fragments the suites announced with TestContext.ExpectRedError (the harness writes them to <probe file>.expected)
+  awk -F'\t' -v M="${markers#|}" -v O="$f.ours" -v X="$f.others" -v N="$f.noise" -v E="$f.expected" '
+    BEGIN { n = split(M, m, "|"); printf "" > O; printf "" > X; printf "" > N
+            ne = 0; while ((getline x < E) > 0) if (x != "") ex[++ne] = x }
     { line = tolower($0); ours = 0
       if ($0 ~ /\[JBTEST-EXPECTED\]|jbtest_expected/) { print > N; next }
+      for (i = 1; i <= ne; i++) if (index($0, ex[i]) > 0) { print > N; next }
       for (i = 1; i <= n; i++) if (m[i] != "" && index(line, tolower(m[i])) > 0) { ours = 1; break }
       if (ours) print > O
       else if ($0 ~ /Root level exception in OnGUI|get_UIScale/) print > N
@@ -264,7 +271,7 @@ report_errors() {
 }
 
 # ---------------------------------------------------------------------------------------------------------------- one game run
-# Inputs (globals): LABEL SUITES LOAD NO_MOD NO_FW PROBE_DAYS PROBE_SAVE SAVES_OUT KIND(tests|plain) MIGRATION_FROM COMPAT_DIRS EXTRA[@] TIMEOUT_S
+# Inputs (globals): LABEL SUITES LOAD NO_MOD NO_FW PROBE_DAYS PROBE_SAVE SAVES_OUT KIND(tests|plain) MIGRATION_FROM COMPAT_LINKS[@] EXTRA[@] TIMEOUT_S
 # Output: RUN_RC (0 pass), files $S/jb_*_$LABEL.*
 run_slot() {
   # build output per mod, kind and run label (BUILDKEY: the label shared by the phases of one save round trip), so two runs of the
@@ -275,11 +282,21 @@ run_slot() {
   [ "$NO_FW" = 1 ] && NO_TM=1
   [ -n "$SUITES" ] || NO_TM=1
   # local extra mods: folders → built (release) and copied like the mod under test; the rest are packageIds
-  local XDIRS=() XIDS=()
+  # (a folder without Source/ is a prebuilt mod, e.g. one specific Workshop or cache item: linked as is, packageId kept); packageIds
+  # are resolved like `compat` does (game Mods, Workshop, then the Rimling cache, linked) and written lower-case into ModsConfig.xml
+  local XDIRS=() XIDS=() LINKS=() kind xp xd line
   for e in ${EXTRA[@]+"${EXTRA[@]}"}; do
     local d; d=$(resolve_dir "$e")
-    if [ -n "$d" ]; then XDIRS+=("$d"); else XIDS+=("$e"); fi
+    if [ -n "$d" ] && [ -n "$(find_csprojs "$d")" ]; then XDIRS+=("$d"); continue; fi
+    line=$(python3 -I "$KIT/tools/resolve_mods.py" "${d:-$e}")
+    kind=${line%% *}; xp=$(echo "$line" | awk '{print $2}'); xd=$(echo "$line" | cut -d' ' -f3-)
+    case "$kind" in
+      GAME) XIDS+=("$xp") ;;
+      CACHE|DIR) XIDS+=("$xp"); LINKS+=("$xd"); echo "extra $xp: $(echo "$kind" | tr '[:upper:]' '[:lower:]') folder $xd (linked for this run)" ;;
+      *) XIDS+=("$(echo "$e" | tr '[:upper:]' '[:lower:]')"); echo "jbmod: extra '$e' is not installed and not in the cache; the game will skip it" ;;
+    esac
   done
+  for e in ${COMPAT_LINKS[@]+"${COMPAT_LINKS[@]}"}; do LINKS+=("$e"); done
   if [ "${BUILD:-1}" = 1 ]; then
     build_lock || { RUN_RC=3; return; }
     if [ "$NO_FW" != 1 ]; then build_framework 1.7 || { build_unlock; RUN_RC=2; return; }; fi
@@ -334,7 +351,7 @@ run_slot() {
   printf '<?xml version="1.0" encoding="utf-8"?>\n<ModMetaData><name>JB probe (tests)</name><author>juliusberger00</author><packageId>%s</packageId><supportedVersions><li>1.7</li></supportedVersions><description>Test-only.</description></ModMetaData>\n' "$probeid" > "$SD/probe/About/About.xml"
   ln -sfn "$SD/probe" "$G/Mods/_jb_probe$slot"
   i=0
-  for d in ${COMPAT_DIRS:-}; do i=$((i+1)); ln -sfn "$d" "$G/Mods/_jb_c${slot}_$i"; done
+  for d in ${LINKS[@]+"${LINKS[@]}"}; do i=$((i+1)); ln -sfn "$d" "$G/Mods/_jb_c${slot}_$i"; done
 
   local FH="$SD/home"; local C="$FH/Library/Application Support/RimWorld/Config"; rm -rf "$FH"; mkdir -p "$C"
   cp "$REALCFG/Prefs.xml" "$C/" 2>/dev/null
@@ -396,7 +413,7 @@ run_slot() {
   fi
 }
 
-defaults() { SUITES=""; LOAD=""; NO_MOD=0; NO_FW=0; NO_TM=0; PROBE_DAYS=""; PROBE_SAVE=""; SAVES_OUT=""; KIND=tests; MIGRATION_FROM=""; COMPAT_DIRS=""; EXTRA=(); TIMEOUT_S=""; }
+defaults() { SUITES=""; LOAD=""; NO_MOD=0; NO_FW=0; NO_TM=0; PROBE_DAYS=""; PROBE_SAVE=""; SAVES_OUT=""; KIND=tests; MIGRATION_FROM=""; COMPAT_LINKS=(); EXTRA=(); TIMEOUT_S=""; }
 py() { python3 -I "$KIT/tools/$1" "${@:2}"; }
 newest_save() { ls -t "$1"/*.rws 2>/dev/null | grep -v '/autostart.rws$' | head -1; }
 
@@ -493,8 +510,11 @@ case "$CMD" in
       [ $rc_build != 0 ] && { echo "phase build failed ($rc_build)"; exit $rc_build; }
     fi
     defaults; LABEL="${L}_removal"; LOAD=$(newest_save "$D/build"); NO_MOD=1; PROBE_DAYS=1; KIND=plain; EXTRA=(${EX[@]+"${EX[@]}"})
+    PROBE_SAVE=${JB_PROBE_SAVE:-jb_removal_end}; SAVES_OUT="$D/removal_out"; rm -rf "$D/removal_out"
     echo "== phase removal: load $(basename "$LOAD") WITHOUT the mod (the framework stays${EX[*]+, and ${EX[*]}}), play 1 day"; run_slot
     echo "removal answer: $OURS red error(s) naming the mod or the framework ($OURS_PLAY while playing); see the list above"
+    grep '^colonist ' "$POUT" 2>/dev/null | sed 's/^/  left the colony: /'
+    [ -f "$D/removal_out/$PROBE_SAVE.rws" ] && echo "end save (1 day without the mod): $D/removal_out/$PROBE_SAVE.rws"
     [ "$OURS" -gt 0 ] && [ $RUN_RC = 0 ] && RUN_RC=1
     exit $RUN_RC ;;
   addition)
@@ -508,33 +528,24 @@ case "$CMD" in
     defaults; LABEL="${L}_addition"; LOAD="$D/vanilla/jb_vanilla.rws"; SUITES=$(join kit.smoke kit.addition "$SA"); EXTRA=(${EX[@]+"${EX[@]}"})
     echo "== phase addition: load the vanilla save WITH the framework and the mod ($SUITES)"; run_slot; exit $RUN_RC ;;
   compat)
-    set_name=${1:?set}; L=${2:-${MODNAME}_compat_$set_name}
-    resolved=$(python3 -I - "$KIT/tools/compat_sets.json" "$set_name" <<'PY'
-import json, os, sys, glob, re
+    # compat <set> [label] [--suites a,b]: kit.smoke (+ the suites) with a named set of other mods (tools/compat_sets.json; an entry may
+    # be a packageId or a folder, e.g. one specific cached Workshop item)
+    set_name=${1:?set}; shift; L=${MODNAME}_compat_$set_name; CS=""
+    while [ $# -gt 0 ]; do case "$1" in --suites) CS=$(join "$CS" "$2"); shift 2;; *) L=$1; shift;; esac; done
+    entries=$(python3 -I - "$KIT/tools/compat_sets.json" "$set_name" <<'PY'
+import json, os, sys
 sets = json.load(open(sys.argv[1])); name = sys.argv[2]
 if name not in sets: print("ERROR unknown set; known: " + ", ".join(k for k in sets if not k.startswith("_"))); sys.exit(0)
-home = os.path.expanduser("~")
-roots = [home + "/Library/Application Support/Steam/steamapps/common/RimWorld/Mods", home + "/Library/Application Support/Steam/steamapps/workshop/content/294100"]
-cache = home + "/Library/Caches/RimlingModCompat"
-def pid_of(about):
-    try: m = re.search(r"<packageId>\s*([^<\s]+)\s*</packageId>", open(about, encoding="utf-8", errors="ignore").read()); return m.group(1).lower() if m else None
-    except Exception: return None
-def find(root, pid, depth):
-    for about in glob.glob(root + "/*" * depth + "/About/About.xml"):
-        if pid_of(about) == pid: return os.path.dirname(os.path.dirname(about))
-for pid in sets[name]:
-    pid = pid.lower()
-    hit = next((h for h in (find(r, pid, 1) for r in roots) if h), None)
-    if hit: print("GAME", pid, hit); continue
-    hit = next((h for h in (find(cache, pid, d) for d in (1, 2, 3)) if h), None) if os.path.isdir(cache) else None
-    print(("CACHE " + pid + " " + hit) if hit else ("MISSING " + pid))
+for e in sets[name]: print(os.path.expanduser(e))
 PY
 )
-    echo "$resolved"; echo "$resolved" | grep -q '^ERROR' && exit 2
-    echo "$resolved" | grep -q '^MISSING' && { echo "a mod of the set is not available (not installed, not in the Rimling cache)"; exit 2; }
-    defaults; LABEL=$L; SUITES=kit.smoke
-    EXTRA=($(echo "$resolved" | awk '{print $2}'))
-    COMPAT_DIRS=$(echo "$resolved" | awk '$1=="CACHE"{ $1=""; $2=""; sub(/^  /, ""); print }' | tr '\n' ' ')
+    echo "$entries" | grep -q '^ERROR' && { echo "$entries"; exit 2; }
+    defaults; LABEL=$L; SUITES=$(join kit.smoke "$CS")
+    while IFS= read -r e; do [ -n "$e" ] && EXTRA+=("$e"); done <<< "$entries"
+    for e in "${EXTRA[@]}"; do
+      line=$(python3 -I "$KIT/tools/resolve_mods.py" "$e"); echo "$line"
+      case "$line" in MISSING*) echo "a mod of the set is not available (not installed, not in the Rimling cache)"; exit 2;; esac
+    done
     run_slot; exit $RUN_RC ;;
   migrate-test)
     from=""; cls=""; L="${MODNAME}_migrate"
@@ -572,11 +583,14 @@ PY
   desc-lint)
     if [ $# -gt 0 ] && [ -f "$1" ]; then py desc_lint.py "$@" --mod "$MOD"; else py desc_lint.py "$MOD/Workshop/description.bbcode" --mod "$MOD" "$@"; fi ;;
   lang)
+    # read only unless --write or --refresh: a reviewer can check the translations without touching the mod
     if [ "${1:-}" = "--refresh" ]; then
       shift; defaults; LABEL="${MODNAME}_dump"; SUITES=kit.settingsdump
       run_slot; [ $RUN_RC = 0 ] || { echo "kit.settingsdump failed"; exit $RUN_RC; }
       mkdir -p "$MOD/Source"; cp "$S/jb_settings_dump_$LABEL.json" "$MOD/Source/settings_dump.json" && echo "dump → Source/settings_dump.json"
+      py kit_lang.py "$MOD" --write "$@" && py kit_lang.py "$MOD" --check "$@"; exit $?
     fi
-    py kit_lang.py "$MOD" "$@" ;;
+    if [ "${1:-}" = "--write" ]; then shift; py kit_lang.py "$MOD" --write "$@" && py kit_lang.py "$MOD" --check "$@"; exit $?; fi
+    py kit_lang.py "$MOD" --check "$@" ;;
   *) usage ;;
 esac

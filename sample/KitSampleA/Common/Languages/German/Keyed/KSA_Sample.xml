@@ -51,4 +51,10 @@
   <KSA.Setting.ksa.flagBoost.Desc>Wirkt nur, solange „Ein Schalter“ an ist.</KSA.Setting.ksa.flagBoost.Desc>
   <KSA.Card.mark>Diese Kolonie markieren</KSA.Card.mark>
   <KSA.Card.mark.Tip>Fügt der Liste dieses Spielstands eine Zeile hinzu (auf der Seite Notizen zu sehen).</KSA.Card.mark.Tip>
+  <KSA.Setting.ksa.ideologyFlag>Ein Ideologie-Schalter</KSA.Setting.ksa.ideologyFlag>
+  <KSA.Setting.ksa.ideologyFlag.Desc>Nur mit Ideologie sichtbar (OnlyWith).</KSA.Setting.ksa.ideologyFlag.Desc>
+  <KSA.Setting.ksa.hiddenFlag>Ein versteckter Schalter</KSA.Setting.ksa.hiddenFlag>
+  <KSA.Setting.ksa.hiddenFlag.Desc>Nur mit einer Mod, die es nicht gibt: nie sichtbar.</KSA.Setting.ksa.hiddenFlag.Desc>
+  <KSA.Page.alphaList>Alpha-Liste</KSA.Page.alphaList>
+  <KSA.Compat.Royalty.What>Patch_RoyaltyMissingTarget sucht eine Methode, die es in dieser Version nicht gibt.</KSA.Compat.Royalty.What>
 </LanguageData>

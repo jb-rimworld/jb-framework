@@ -5,6 +5,7 @@
   <author>@AUTHOR@</author>
   <packageId>@PACKAGEID@</packageId>
   <modVersion>@VERSION@</modVersion>
+  <url>https://github.com/jb-rimworld/jb-framework</url>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -32,5 +33,5 @@ Mod settings, @NAME@: every mod that uses it, their versions, which areas are on
 
 Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested.
 
-For modders: MIT licence. A stable public API (additive only), XML docs and a sample mod.</description>
+For modders: MIT licence, source and documentation at https://github.com/jb-rimworld/jb-framework. A stable public API (additive only), XML docs, three sample mods and an in-game test harness.</description>
 </ModMetaData>

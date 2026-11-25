@@ -62,6 +62,8 @@ JBFramework.KitCompatAttribute: method public .ctor(System.String packageId)
 JBFramework.KitCompatAttribute: property System.String PackageId { public get; }
 JBFramework.KitCompatAttribute: type sealed class JBFramework.KitCompatAttribute : System.Attribute
 JBFramework.KitCompatEntry: method public JBFramework.KitCompatEntry HealthyWhen(System.Func<System.Boolean> healthy)
+JBFramework.KitCompatEntry: method public JBFramework.KitCompatEntry HealthyWhenDef<T : Verse.Def>(System.String defName)
+JBFramework.KitCompatEntry: method public JBFramework.KitCompatEntry HealthyWhenType(System.String fullTypeName)
 JBFramework.KitCompatEntry: method public JBFramework.KitCompatEntry Switchable()
 JBFramework.KitCompatEntry: property System.String Name { public get; }
 JBFramework.KitCompatEntry: property System.String PackageId { public get; }
@@ -230,6 +232,8 @@ JBFramework.KitNiceBillTab: method public static System.Void RequestRefresh()
 JBFramework.KitNiceBillTab: property static System.Boolean Active { public get; }
 JBFramework.KitNiceBillTab: property static System.Collections.Generic.IReadOnlyList<System.String> PackageIds { public get; }
 JBFramework.KitNiceBillTab: type static class JBFramework.KitNiceBillTab
+JBFramework.KitPage: method public JBFramework.KitPage AsGlobal()
+JBFramework.KitPage: method public JBFramework.KitPage EmbedInSection(System.Single height)
 JBFramework.KitPage: method public JBFramework.KitPage InSection(System.String sectionId)
 JBFramework.KitPage: method public JBFramework.KitPage WithIcon(System.String texPath)
 JBFramework.KitPage: method public JBFramework.KitPage WithOrder(System.Int32 order)
@@ -332,9 +336,11 @@ JBFramework.KitRemoval: method public static System.Boolean AddStep(JBFramework.
 JBFramework.KitRemoval: method public static System.Void RemoveBills(System.Func<Verse.RecipeDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveComponents(System.Func<System.Type, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveDesignations(System.Func<Verse.DesignationDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
+JBFramework.KitRemoval: method public static System.Void RemoveGenes(System.Func<Verse.GeneDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveHediffs(System.Func<Verse.HediffDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveThings(System.Func<Verse.ThingDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: method public static System.Void RemoveThings(System.Func<Verse.ThingDef, System.Boolean> which, System.Collections.Generic.List<System.String> report, System.Boolean refund)
+JBFramework.KitRemoval: method public static System.Void RemoveThoughts(System.Func<RimWorld.ThoughtDef, System.Boolean> which, System.Collections.Generic.List<System.String> report)
 JBFramework.KitRemoval: type static class JBFramework.KitRemoval
 JBFramework.KitRequiresAttribute: method public .ctor(System.Int32 apiLevel, System.String frameworkVersion)
 JBFramework.KitRequiresAttribute: property System.Int32 ApiLevel { public get; }
@@ -342,6 +348,7 @@ JBFramework.KitRequiresAttribute: property System.String FrameworkVersion { publ
 JBFramework.KitRequiresAttribute: type sealed class JBFramework.KitRequiresAttribute : System.Attribute
 JBFramework.KitSection: method public JBFramework.KitSection AvailableWhen(System.Func<System.Boolean> available, System.String whyNot)
 JBFramework.KitSection: method public JBFramework.KitSection Describe(System.String desc)
+JBFramework.KitSection: method public JBFramework.KitSection LegacyDisabled(System.String oldScribeName)
 JBFramework.KitSection: method public JBFramework.KitSection LegacyEnabled(System.String oldScribeName)
 JBFramework.KitSection: method public JBFramework.KitSection OffByDefault()
 JBFramework.KitSection: method public JBFramework.KitSection OnlyWith(System.String packageIdOrDlc)
@@ -362,9 +369,11 @@ JBFramework.KitSetting: method public JBFramework.KitSetting HardLimits(System.S
 JBFramework.KitSetting: method public JBFramework.KitSetting InGroup(System.String group)
 JBFramework.KitSetting: method public JBFramework.KitSetting Legacy(System.String oldScribeName)
 JBFramework.KitSetting: method public JBFramework.KitSetting Legacy(System.String oldScribeName, System.Func<System.Single, System.Single> convert)
+JBFramework.KitSetting: method public JBFramework.KitSetting LegacyInverted(System.String oldScribeName)
 JBFramework.KitSetting: method public JBFramework.KitSetting LegacyStoreKey(System.String oldKey, System.Func<System.Single, System.Single> convert)
 JBFramework.KitSetting: method public JBFramework.KitSetting NeedsRestart()
 JBFramework.KitSetting: method public JBFramework.KitSetting OnChange(System.Action<System.Single> onChanged)
+JBFramework.KitSetting: method public JBFramework.KitSetting OnlyWith(System.String packageIdOrDlc)
 JBFramework.KitSetting: method public JBFramework.KitSetting RequiresOn(System.String sectionOrPackageId)
 JBFramework.KitSetting: method public JBFramework.KitSetting RequiresOn(System.String sectionOrPackageId, System.String reasonEn)
 JBFramework.KitSetting: method public JBFramework.KitSetting RequiresSetting(System.String boolKey, System.Boolean on)

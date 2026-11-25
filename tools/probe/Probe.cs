@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using RimWorld;
+using RimWorld.Planet;
 using UnityEngine;
 using Verse;
 
@@ -40,6 +41,7 @@ namespace JBProbe
             Errors++;
             string first = Clean((msg ?? "").Split('\n')[0]);
             if (first.Length > 400) first = first.Substring(0, 400) + "…";
+            first += DefOwner(first);
             string phase;
             try { phase = Current.ProgramState == ProgramState.Playing ? "play" : "load"; } catch { phase = "?"; }
             try { lock (fileLock) File.AppendAllText(errPath, phase + "\t" + type + "\t" + first + "\t" + Where(msg, stack) + "\n"); } catch { }
@@ -63,6 +65,28 @@ namespace JBProbe
             return Clean(string.Join(" < ", frames));
         }
 
+        /// <summary>
+        /// "Config error in X: …" (and "Exception in ConfigErrors of X", "XML error … X") names only a defName: the probe appends
+        /// " [def of &lt;packageId&gt;]" so tools/jbmod counts it for the mod whose def it is.
+        /// </summary>
+        static string DefOwner(string first)
+        {
+            try
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(first, @"(?:Config error in|ConfigErrors of|XML error.*?defName[= ]?)\s*""?([A-Za-z0-9_\-]+)");
+                if (!m.Success) return "";
+                string name = m.Groups[1].Value;
+                foreach (var t in GenDefDatabase.AllDefTypesWithDatabases())
+                {
+                    var db = typeof(DefDatabase<>).MakeGenericType(t);
+                    var get = db.GetMethod("GetNamedSilentFail", new[] { typeof(string) });
+                    if (get?.Invoke(null, new object[] { name }) is Def d && d.modContentPack != null) return " [def of " + d.modContentPack.PackageId + "]";
+                }
+            }
+            catch { }
+            return "";
+        }
+
         static string Clean(string s) => (s ?? "").Replace('\t', ' ').Replace('\r', ' ').Trim();
 
         internal static string Env(string k) => Environment.GetEnvironmentVariable(k);
@@ -81,6 +105,32 @@ namespace JBProbe
         }
 
         bool Driving => days >= 0;
+        readonly Dictionary<Pawn, string> colonists = new Dictionary<Pawn, string>();
+        readonly HashSet<Pawn> reported = new HashSet<Pawn>();
+
+        /// <summary>Who left the colony while the probe played (died, captured, gone): name, tick, where, and the health list.</summary>
+        void WatchColonists(bool final)
+        {
+            try
+            {
+                foreach (var kv in colonists)
+                {
+                    var p = kv.Key;
+                    if (p == null || reported.Contains(p)) continue;
+                    bool gone = p.Dead || p.Destroyed || !p.IsColonist || (final && !p.Spawned && p.GetCaravan() == null);
+                    if (!gone) continue;
+                    reported.Add(p);
+                    string why = p.Dead ? "died" : p.IsPrisoner ? "captured" : !p.IsColonist ? "left the colony" : "not on a map";
+                    string cause = "";
+                    try { if (p.Dead && p.Corpse?.InnerPawn != null) cause = p.health?.hediffSet?.hediffs == null ? "" : string.Join(", ", p.health.hediffSet.hediffs.Select(h => h.LabelCap + (h.Part != null ? " (" + h.Part.Label + ")" : ""))); } catch { }
+                    if (cause.Length == 0) try { cause = string.Join(", ", p.health.hediffSet.hediffs.Select(h => h.LabelCap.ToString())); } catch { }
+                    string line = "colonist " + kv.Value + " " + why + " at tick " + Find.TickManager.TicksGame + (cause.Length > 0 ? ": " + cause : "");
+                    report.AppendLine(line);
+                    Log.Message("[JBPROBE] " + line);
+                }
+            }
+            catch (Exception e) { report.AppendLine("colonist watch failed: " + e.Message); }
+        }
 
         public override void GameComponentUpdate()
         {
@@ -103,11 +153,14 @@ namespace JBProbe
                 startTick = now; endTick = now + Math.Max(1, days * 60000);
                 try { Find.Storyteller?.storytellerComps?.Clear(); } catch { }
                 Census("at start");
+                try { foreach (var p in PawnsFinder.AllMaps_FreeColonists) colonists[p] = p.LabelShortCap; } catch { }
                 Log.Message($"[JBPROBE] running {days} day(s) from tick {now}");
                 if (days > 0) return;
             }
+            if (now % 250 == 0) WatchColonists(false);
             if (now < endTick && days > 0) return;
             done = true;
+            WatchColonists(true);
             Census("after " + days + " day(s)");
             string save = ProbeMod.Env("JB_PROBE_SAVE");
             if (!string.IsNullOrEmpty(save))

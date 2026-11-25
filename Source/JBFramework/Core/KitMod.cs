@@ -96,8 +96,9 @@ namespace JBFramework
         public KitSettingsBase Settings { get; internal set; }
         /// <summary>True when the installed framework is too old for this mod: its framework features stay off (see <see cref="BlockedReason"/>).</summary>
         public bool Blocked { get; private set; }
-        /// <summary>Plain-words reason when <see cref="Blocked"/>, else null.</summary>
-        public string BlockedReason { get; private set; }
+        /// <summary>Plain-words reason when <see cref="Blocked"/>, else null (in the game's language: worked out when asked, because a mod
+        /// is blocked in its constructor, before the languages are loaded).</summary>
+        public string BlockedReason => Blocked ? Framework.TooOldText(Name, RequiredApiLevel, BuiltWithFramework) : null;
         /// <summary>API level the mod needs (from <see cref="KitRequiresAttribute"/> or <see cref="KitInfo.MinApiLevel"/>; 0 = not stated).</summary>
         public int RequiredApiLevel { get; private set; }
         /// <summary>Framework version the mod was built with (from <see cref="KitRequiresAttribute"/>), or null.</summary>
@@ -302,10 +303,13 @@ namespace JBFramework
         internal void MarkChanged(string key)
         {
             if (suppress > 0 || key == null) return;
+            ChangeCount++;
             lock (pending) if (!pending.Contains(key)) pending.Add(key);
         }
 
         internal bool HasPendingChanges => pending.Count > 0;
+        /// <summary>Number of changes marked since start (tests: drawing the window must never change it).</summary>
+        internal int ChangeCount;
 
         /// <summary>
         /// Delivers pending changes: the setting's OnChanged, then the mod's OnSettingsChanged(key), each fenced. Called once per frame
@@ -356,8 +360,7 @@ namespace JBFramework
             if (RequiredApiLevel > Framework.ApiLevel)
             {
                 Blocked = true;
-                BlockedReason = Framework.TooOldText(Name, RequiredApiLevel, BuiltWithFramework);
-                lock (Framework.TooOldMessages) Framework.TooOldMessages.Add(BlockedReason);
+                lock (Framework.TooOldMessages) Framework.TooOldMessages.Add((Name, RequiredApiLevel, BuiltWithFramework));
                 Log.Warn("Core", BlockedReason);
                 return;
             }

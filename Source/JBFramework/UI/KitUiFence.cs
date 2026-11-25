@@ -35,6 +35,7 @@ namespace JBFramework
             int clips = ClipDepth();
             int scrolls = Widgets.mouseOverScrollViewStack?.Count ?? 0;
             var font = Text.Font; var anchor = Text.Anchor; var wrap = Text.WordWrap; var color = GUI.color;
+            KitUiProbe.Hit("custompage:" + page.Id);
             try { page.Draw(area); }
             catch (Exception e)
             {

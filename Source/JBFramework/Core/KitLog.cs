@@ -102,7 +102,8 @@ namespace JBFramework
                 recent.AddLast(line); while (recent.Count > 300) recent.RemoveFirst();
                 AppendFile(line);
             }
-            string game = Prefix + "[" + (channel ?? "Core") + "] " + msg + (e != null ? "\n" + e : "");
+            // the exception's type and first line stay on the first line of the game log (tools read only that line)
+            string game = Prefix + "[" + (channel ?? "Core") + "] " + msg + (e != null ? " | " + e.GetType().Name + ": " + ((e.Message ?? "").Split('\n')[0]) + "\n" + e : "");
             try
             {
                 if (level == KitLogLevel.Error) Log.Error(game);

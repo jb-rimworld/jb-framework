@@ -60,11 +60,19 @@ namespace KitSampleA
             r.Preset("calm", "Calm", "Low numbers, gentle mode, Beta off.", p => { p.Set("ksa.count", 2f); p.Set("ksa.speed", 0.5f); p.Set("ksa.mode", (float)(int)SampleMode.Gentle); p.SetSection("beta", false); });
             r.Preset("loud", "Loud", "High numbers, wild mode, Beta on.", p => { p.Set("ksa.count", 15f); p.Set("ksa.speed", 3f); p.Set("ksa.mode", (float)(int)SampleMode.Wild); p.SetSection("beta", true); });
 
-            r.Compat("Biotech", "ludeon.rimworld.biotech", "Unlocks the Beta section. Can be switched off here.").Switchable();
+            r.Compat("Biotech", "ludeon.rimworld.biotech", "Unlocks the Beta section. Can be switched off here.").Switchable().HealthyWhenType("Verse.Gene");
+            // an integration whose patch class finds nothing to patch in the installed version: shown as "inactive: patch target not found"
+            r.Compat("Royalty", "ludeon.rimworld.royalty", "Patch_RoyaltyMissingTarget looks for a method this version does not have.");
+            // settings that exist only with a DLC or mod: hidden (not greyed) without it
+            r.Bool("alpha", "ksa.ideologyFlag", false, "An Ideology flag", "Only shown with Ideology (OnlyWith).").InGroup("Switches").OnlyWith("ludeon.rimworld.ideology");
+            r.Bool("alpha", "ksa.hiddenFlag", false, "A hidden flag", "Only with a mod that does not exist: never shown.").InGroup("Switches").OnlyWith("juliusberger00.jbkit.missing");
             r.Compat("Missing Sample Mod", "juliusberger00.jbkit.missing", "Patch class Patch_MissingMod is applied only when this mod is active.").HealthyWhen(() => true);
             r.Incompatible("Imaginary Conflict", "juliusberger00.jbkit.conflict", "Would fight over the same setting. Use only one of the two.");
 
             r.Page("notes", "Notes", NotesPage.Draw).WithOrder(50).InSection("alpha");
+            // a page drawn INSIDE the Alpha section's page (no second sidebar entry), with a list that is the same in every game
+            r.Page("alphaList", "Alpha list", rect => { EmbeddedDraws++; KitStyle.Paragraph(rect.x, rect.y, rect.width, "An embedded page (KitPage.EmbedInSection), the same in every game (KitPage.AsGlobal).", KitStyle.Grey); })
+                .InSection("alpha").EmbedInSection(60f).AsGlobal();
 
             // the welcome card: a drawn part above the presets and a one-click action (save state, not a setting)
             r.WelcomeCard()
@@ -74,6 +82,8 @@ namespace KitSampleA
                 .WhenClosed(joined => Kit.Log.Info("Sample", "welcome card closed (joined " + joined + ")"));
         }
 
+        /// <summary>How often the embedded page was drawn (fw.steward2).</summary>
+        internal static int EmbeddedDraws;
         /// <summary>Counts how often the settings window closed (fw.steward checks the hook).</summary>
         internal static int WindowClosedCount;
         protected override void OnSettingsWindowClosed() => WindowClosedCount++;
@@ -115,6 +125,17 @@ namespace KitSampleA
     static class Patch_MissingMod
     {
         static System.Reflection.MethodBase TargetMethod() => HarmonyLib.AccessTools.Method("MissingMod.Type:Method");
+        static void Postfix() { }
+    }
+
+    /// <summary>A [KitCompat] class whose target is missing in this version: Prepare() says so, the entry shows "inactive".</summary>
+    [HarmonyLib.HarmonyPatch]
+    [KitCompat("ludeon.rimworld.royalty")]
+    static class Patch_RoyaltyMissingTarget
+    {
+        static System.Reflection.MethodBase target;
+        static bool Prepare() { target = HarmonyLib.AccessTools.Method("RimWorld.Pawn_RoyaltyTracker:MethodThatDoesNotExist"); return target != null; }
+        static System.Reflection.MethodBase TargetMethod() => target;
         static void Postfix() { }
     }
 }

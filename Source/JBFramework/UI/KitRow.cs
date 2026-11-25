@@ -12,7 +12,7 @@ namespace JBFramework
 {
     /// <summary>
     /// Row drawer for one <see cref="KitSetting"/> against an explicit profile (so the window can edit the save or the template).
-    /// Left: label and grey description. Right: checkbox, dropdown or slider with value, "free" entry switch, reset. A changed row has an
+    /// Left: label and grey description. Right: checkbox, dropdown or slider with value, a pencil for typed entry (on hover), reset. A changed row has an
     /// accent edge. Heights are cached; rows outside the visible part of a scroll view are not drawn at all.
     /// </summary>
     internal static class KitRow
@@ -152,56 +152,102 @@ namespace JBFramework
                     Find.WindowStack.Add(new FloatMenu(opts));
                 }
             }
-            else DrawNumber(s, target, val, x0, x1, cy);
+            else DrawNumber(s, target, val, row, x0, x1, cy);
 
             if (over && Widgets.ButtonText(new Rect(row.xMax - resetW - 2f, cy - 11f, resetW, 22f), resetLabel))
                 Reset(s, target);
         }
 
-        static void DrawNumber(KitSetting s, KitProfile target, float val, float x0, float x1, float cy)
+        /// <summary>
+        /// A number row. Drawing never writes: the stored value changes only when the player drags the slider or edits the typed text,
+        /// so a value the slider cannot show exactly (0.67 %, 1/3, a value beyond the range from an old settings file) is shown rounded
+        /// but stored untouched. A small pencil (shown while the row is hovered, or while typing is on) switches the row between the
+        /// slider and typed entry up to the technical limit; the choice is kept per row.
+        /// </summary>
+        static void DrawNumber(KitSetting s, KitProfile target, float val, Rect row, float x0, float x1, float cy)
         {
             var reg = s.Owner.SettingsReg;
             var store = reg.StoreFor(s, target);
             string bk = BufKey(s);
             bool free = store.freeText.TryGetValue(s.Key, out bool f) && f;
             bool pct = s.Kind == KitSettingKind.Percent;
-            float freeW = 64f, valW = 104f;
-            float sliderW = Mathf.Max(70f, x1 - x0 - valW - freeW - 8f);
+            const float penW = 24f;
+            float valW = 104f;
+            float sliderW = Mathf.Max(70f, x1 - x0 - valW - penW - 10f);
             bool beyond = val < s.SliderMin - 1e-6f || val > s.SliderMax + 1e-6f;
             if (!free)
             {
                 float pos = s.ToSlider(val);
-                float step = s.IsLog ? -1f : s.Step > 0 ? s.Step : (s.Kind == KitSettingKind.Int || s.Kind == KitSettingKind.Silver ? 1f : pct ? 0.01f : -1f);
-                float np = Widgets.HorizontalSlider(new Rect(x0, cy - 8f, sliderW, 16f), pos, s.SliderLo, s.SliderHi, false, null, null, null, step);
-                if (Mathf.Abs(np - pos) > 1e-6f) reg.Set(s, target, s.FromSlider(np));
+                // no roundTo: vanilla rounds the returned value even when nobody drags, which rewrote values like 0.67 % to 1 %
+                float np = Widgets.HorizontalSlider(new Rect(x0, cy - 8f, sliderW, 16f), pos, s.SliderLo, s.SliderHi, false, null, null, null, -1f);
+                if (np != pos)
+                {
+                    // only a drag moves the handle: round to the step now, and store only a real change
+                    float nv = RoundToStep(s, s.FromSlider(np));
+                    if (Math.Abs(s.Clamp(nv) - val) > 1e-7f) reg.Set(s, target, nv);
+                }
                 var vr = new Rect(x0 + sliderW + 8f, cy - 11f, valW, 22f);
                 KitStyle.LabelColored(vr, s.Format(reg.Value(s, target)), beyond ? KitStyle.Accent : Color.white, TextAnchor.MiddleLeft);
-                if (beyond) TooltipHandler.TipRegion(vr, KitText.K("Row.Beyond", "Beyond the slider range. Free entry allows this."));
+                if (beyond) TooltipHandler.TipRegion(vr, KitText.K("Row.Beyond", "Beyond the slider range. Typed entry (pencil) allows this."));
             }
             else
             {
                 if (!buffers.TryGetValue(bk, out string buf)) buf = (pct ? val * 100f : val).ToString("0.#####", CultureInfo.InvariantCulture);
-                string nb = Widgets.TextField(new Rect(x0, cy - 12f, sliderW, 24f), buf);
+                string nb = Widgets.TextField(new Rect(x0, cy - 12f, sliderW, 24f), buf) ?? "";
                 buffers[bk] = nb;
-                if (float.TryParse(nb.Replace(',', '.').Replace("%", "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed) && !float.IsNaN(parsed) && !float.IsInfinity(parsed))
+                var vr = new Rect(x0 + sliderW + 8f, cy - 11f, valW, 22f);
+                if (TryParseTyped(nb, pct, out float parsed))
                 {
-                    if (pct) parsed /= 100f;
                     float c = s.Clamp(parsed);
-                    if (Mathf.Abs(c - val) > 1e-7f) reg.Set(s, target, c);
-                    var vr = new Rect(x0 + sliderW + 8f, cy - 11f, valW + 40f, 22f);
-                    if (Mathf.Abs(c - parsed) > 1e-6f)
+                    // only a text the player changed is stored (the first buffer is the stored value, maybe rounded for display)
+                    if (nb != buf && Math.Abs(c - val) > 1e-7f) reg.Set(s, target, c);
+                    if (Math.Abs(c - parsed) > 1e-6f)
                     {
                         KitStyle.LabelColored(vr, KitText.K("Row.Limited", "limit {0}", s.Format(c)), KitStyle.Accent, TextAnchor.MiddleLeft);
                         TooltipHandler.TipRegion(vr, s.HardLimitReason ?? KitText.K("Row.LimitGeneric", "The game cannot use this value, so the nearest possible one is used."));
                     }
-                    else KitStyle.LabelColored(vr, s.Format(c), KitStyle.Grey, TextAnchor.MiddleLeft);
+                    else KitStyle.LabelColored(vr, s.Format(reg.Value(s, target)), KitStyle.Grey, TextAnchor.MiddleLeft);
                 }
+                else KitStyle.LabelColored(vr, s.Format(val), KitStyle.DimGrey, TextAnchor.MiddleLeft);
             }
-            bool nf = free;
-            var fr = new Rect(x1 - freeW + 4f, cy - 12f, freeW, 24f);
-            Widgets.CheckboxLabeled(fr, KitText.K("Row.Free", "Free"), ref nf, false, null, null, true);
-            TooltipHandler.TipRegion(fr, KitText.K("Row.FreeTip", "Free entry: type any number up to the technical limit of the game."));
-            if (nf != free) { store.freeText[s.Key] = nf; buffers.Remove(bk); }
+            // the switch between slider and typing: a pencil, shown while the row is hovered (or while typing is on)
+            var pr = new Rect(x1 - penW + 2f, cy - 10f, 20f, 20f);
+            if (free || Mouse.IsOver(row))
+            {
+                if (Widgets.ButtonImage(pr, TexButton.Rename, free ? KitStyle.Accent : Color.white, KitStyle.Accent))
+                {
+                    store.freeText[s.Key] = !free;
+                    if (free) store.freeText.Remove(s.Key);
+                    buffers.Remove(bk);
+                }
+                TooltipHandler.TipRegion(pr, free ? KitText.K("Row.FreeOffTip", "Back to the slider.")
+                                                  : KitText.K("Row.FreeTip", "Type a value instead (any number up to the technical limit of the game)."));
+            }
+        }
+
+        /// <summary>A typed number (comma or point, optional %, percent rows typed as percent); false for empty or not a finite number.</summary>
+        internal static bool TryParseTyped(string text, bool pct, out float value)
+        {
+            value = 0f;
+            if (text == null) return false;
+            if (!float.TryParse(text.Replace(',', '.').Replace("%", "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float p) || float.IsNaN(p) || float.IsInfinity(p)) return false;
+            value = pct ? p / 100f : p;
+            return true;
+        }
+
+        /// <summary>A dragged slider value rounded to the row's step (<see cref="KitSetting.WithStep"/>, else whole numbers for Int/Silver and three significant digits of the slider span; none for log sliders).</summary>
+        internal static float RoundToStep(KitSetting s, float v)
+        {
+            if (s.IsLog) return v;   // FromSlider already rounds to 3 significant digits
+            double step = s.Step > 0 ? (double)(decimal)s.Step : (s.Kind == KitSettingKind.Int || s.Kind == KitSettingKind.Silver ? 1.0 : 0.0);
+            if (step <= 0.0)
+            {
+                // three significant digits of the slider span; percent at most whole percents (a 0..100 % slider moves in 1 % steps)
+                double span = Math.Abs((double)s.SliderMax - s.SliderMin);
+                step = span <= 0.0 ? 0.001 : Math.Pow(10, Math.Floor(Math.Log10(span)) - 2);
+                if (s.Kind == KitSettingKind.Percent) step = Math.Min(step, 0.01);
+            }
+            return (float)(Math.Round(v / step) * step);
         }
 
         /// <summary>True when the setting matches a search text (label, description, key, category, section name).</summary>

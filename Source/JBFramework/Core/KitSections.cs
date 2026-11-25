@@ -22,6 +22,7 @@ namespace JBFramework
         internal Func<IEnumerable<string>> DiagnosisFunc;
         internal Action<List<string>> PrepareRemoval;
         internal string LegacyEnabledField;
+        internal bool LegacyEnabledInverted;
         internal string RequiresPackageId, RequiresModName;
 
         /// <summary>The section id ("walls"). Settings, pages and caretaker checks refer to it.</summary>
@@ -81,6 +82,10 @@ namespace JBFramework
         }
         /// <summary>The mod's OLD settings field (a bool Scribe_Values name) that held this switch: migrated once.</summary>
         public KitSection LegacyEnabled(string oldScribeName) { LegacyEnabledField = oldScribeName; return this; }
+        /// <summary>
+        /// Like <see cref="LegacyEnabled"/> for an old bool with the opposite meaning ("disableRegrowth" = True → the section starts off).
+        /// </summary>
+        public KitSection LegacyDisabled(string oldScribeName) { LegacyEnabledField = oldScribeName; LegacyEnabledInverted = true; return this; }
     }
 
     /// <summary>All sections of one mod and the one question every patch asks (<see cref="KitMod.On"/>).</summary>

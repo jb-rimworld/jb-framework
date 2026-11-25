@@ -13,6 +13,8 @@
   <KSA.SettingCat.Switches>Switches</KSA.SettingCat.Switches>
   <KSA.Setting.ksa.flag>A flag</KSA.Setting.ksa.flag>
   <KSA.Setting.ksa.flag.Desc>A plain on/off value.</KSA.Setting.ksa.flag.Desc>
+  <KSA.Setting.ksa.flagBoost>Flag boost</KSA.Setting.ksa.flagBoost>
+  <KSA.Setting.ksa.flagBoost.Desc>Only used while "A flag" is on.</KSA.Setting.ksa.flagBoost.Desc>
   <KSA.SettingCat.Numbers>Numbers</KSA.SettingCat.Numbers>
   <KSA.Setting.ksa.count>A count</KSA.Setting.ksa.count>
   <KSA.Setting.ksa.count.Desc>Whole numbers from 0 to 20 on the slider, up to 1000 typed.</KSA.Setting.ksa.count.Desc>
@@ -37,14 +39,18 @@
   <KSA.SettingCat.Interface>Interface</KSA.SettingCat.Interface>
   <KSA.Setting.ksa.uiPref>A global preference</KSA.Setting.ksa.uiPref>
   <KSA.Setting.ksa.uiPref.Desc>Global: the same in every save, shows the "all games" tag.</KSA.Setting.ksa.uiPref.Desc>
-  <KSA.Setting.ksa.flagBoost>Flag boost</KSA.Setting.ksa.flagBoost>
-  <KSA.Setting.ksa.flagBoost.Desc>Only used while "A flag" is on.</KSA.Setting.ksa.flagBoost.Desc>
+  <KSA.Setting.ksa.ideologyFlag>An Ideology flag</KSA.Setting.ksa.ideologyFlag>
+  <KSA.Setting.ksa.ideologyFlag.Desc>Only shown with Ideology (OnlyWith).</KSA.Setting.ksa.ideologyFlag.Desc>
+  <KSA.Setting.ksa.hiddenFlag>A hidden flag</KSA.Setting.ksa.hiddenFlag>
+  <KSA.Setting.ksa.hiddenFlag.Desc>Only with a mod that does not exist: never shown.</KSA.Setting.ksa.hiddenFlag.Desc>
   <KSA.Preset.calm>Calm</KSA.Preset.calm>
   <KSA.Preset.calm.Desc>Low numbers, gentle mode, Beta off.</KSA.Preset.calm.Desc>
   <KSA.Preset.loud>Loud</KSA.Preset.loud>
   <KSA.Preset.loud.Desc>High numbers, wild mode, Beta on.</KSA.Preset.loud.Desc>
+  <KSA.Page.alphaList>Alpha list</KSA.Page.alphaList>
   <KSA.Page.notes>Notes</KSA.Page.notes>
   <KSA.Compat.Biotech.What>Unlocks the Beta section. Can be switched off here.</KSA.Compat.Biotech.What>
+  <KSA.Compat.Royalty.What>Patch_RoyaltyMissingTarget looks for a method this version does not have.</KSA.Compat.Royalty.What>
   <KSA.Compat.MissingSampleMod.What>Patch class Patch_MissingMod is applied only when this mod is active.</KSA.Compat.MissingSampleMod.What>
   <KSA.Compat.ImaginaryConflict.Why>Would fight over the same setting. Use only one of the two.</KSA.Compat.ImaginaryConflict.Why>
   <KSA.Card.mark>Mark this colony</KSA.Card.mark>

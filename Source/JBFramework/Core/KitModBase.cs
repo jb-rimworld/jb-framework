@@ -217,7 +217,7 @@ namespace JBFramework
                         if (a == null || known.Contains(a) || a == typeof(Framework).Assembly) continue;
                         int need = Framework.RequiredLevel(a, out string built);
                         if (need > Framework.ApiLevel)
-                            lock (Framework.TooOldMessages) Framework.TooOldMessages.Add(Framework.TooOldText(mcp.Name, need, built));
+                            lock (Framework.TooOldMessages) Framework.TooOldMessages.Add((mcp.Name, need, built));
                     }
                 }
             }
@@ -227,7 +227,7 @@ namespace JBFramework
         static void ShowTooOld()
         {
             List<string> msgs;
-            lock (Framework.TooOldMessages) msgs = Framework.TooOldMessages.Distinct().ToList();
+            msgs = Framework.TooOldTexts();
             if (msgs.Count == 0) return;
             foreach (var m in msgs) Framework.Self?.Log.Warn("Core", m);
             try

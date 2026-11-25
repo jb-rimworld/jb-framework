@@ -92,7 +92,12 @@ namespace JBFramework.Testing
         public IReadOnlyList<string> RedErrorsSince(int mark) => KitTestLog.Since(mark, true).Select(KitTestLog.Format).ToList();
         /// <summary>One check "no red error of ours since <paramref name="mark"/>"; up to ten of them are noted.</summary>
         public void CheckNoRedErrors(int mark, string what) => KitSuiteUtil.NoRedErrors(this, mark, what);
-        /// <summary>A red error the suite provokes on purpose (a fragment of its text): it never counts as ours, in this run.</summary>
+        /// <summary>
+        /// A red error the suite provokes on purpose (a fragment of its text; announce it BEFORE provoking it): it never counts as ours in
+        /// this run, neither in the harness (RESULT, <see cref="RedErrorsSince"/>) nor in tools/jbmod's probe report (counted as "expected").
+        /// The debug log window it opens is closed by the runner. Fenced framework errors carry the exception message on their first line,
+        /// so a fragment of the exception text works too.
+        /// </summary>
         public void ExpectRedError(string fragment) => KitTestLog.Expect(fragment);
 
         // UI ----------------------------------------------------------------------------------------------------------------
@@ -103,6 +108,22 @@ namespace JBFramework.Testing
         /// no-op without it). Captured at the end of the frame: wait a frame or two before closing what it shows.
         /// </summary>
         public void Shot(string name) => KitUiTest.Shot(name);
+        /// <summary>
+        /// Keeps <paramref name="window"/> open until the suite ends: the runner normally closes every message box and pausing dialog at
+        /// once (a confirmation can then be shot: <c>var d = …; Find.WindowStack.Add(d); t.KeepOpen(d); foreach (var y in t.Frames(2)) yield return y; t.Shot("x"); d.Close();</c>).
+        /// A kept window never pauses the game (suites wait on ticks): its forcePause is switched off.
+        /// </summary>
+        public void KeepOpen(Window window) { if (window == null) return; window.forcePause = false; KitTestRunner.KeptWindows.Add(window); }
+        /// <summary>
+        /// Opens the welcome card of the mod under test for the running game now (no delay; also when its "done" flag is set) and returns
+        /// it, or null (no per-save profile, or the mod has no card). Close it with <c>Close()</c>; closing marks the card done in this save.
+        /// </summary>
+        public Window OpenWelcomeCard()
+        {
+            var w = Mod == null ? null : KitFirstStartCard.OpenNow(Mod);
+            if (w != null) KeepOpen(w);
+            return w;
+        }
         /// <summary>
         /// Lays the game out for a virtual screen <paramref name="height"/> pixels high (1280x720: 720; 2560x1440: 1440) by setting
         /// Prefs.UIScale on the test screen; the width follows the real screen's aspect. Real layout and real screenshots, not a pretended

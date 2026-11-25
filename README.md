@@ -40,7 +40,8 @@ public sealed class MyMod : KitModBase
         r.Section("haul", "Fast hauling", "Pawns haul faster.");                      // a feature area, switchable (per save)
         r.Float("haul", "mm.speed", 1.5f, 1f, 5f, "Hauling speed", "Multiplier on hauling speed.")
             .InGroup("Speed");                                                         // section, key, default, slider min/max, label, desc
-        r.Enum("haul", "mm.mode", HaulMode.Normal, "Mode").InGroup("Speed");           // a dropdown; labels MM.Enum.HaulMode.<Name>
+        r.Enum("haul", "mm.mode", HaulMode.Normal, "Mode", "How careful the haulers are.")
+            .InGroup("Speed");                                                         // a dropdown; labels MM.Enum.HaulMode.<Name>
         r.Preset("calm", "Calm", "Slow and gentle.", p => { p.Set("mm.speed", 1f); p.Set("mm.mode", (float)(int)HaulMode.Gentle); });
         r.Compat("Combat Extended", "ceteam.combatextended", "Ammo is ignored by fast hauling.");
     }
@@ -60,9 +61,11 @@ public sealed class MyModSettings : KitSettingsBase { }
 
 Everything optional is a chained modifier on what a registration returns, so the API can grow without breaking a call:
 `.Describe()`, `.InGroup()`, `.AsNerd()`, `.AsGlobal()`, `.HardLimits()`, `.Legacy("oldField")`, `.Legacy("oldPct", v => v / 100f)`,
-`.RequiresOn()`, `.RequiresSetting("mm.useX", true)`, `.WithPreview(p => …)`, `.NeedsRestart()`, `.OnChange()` on settings;
-`.OffByDefault()`, `.OnlyWith("ludeon.rimworld.biotech")`, `.WhenSwitched()`, `.WithRemoval()`, `.WithDiagnosis()`, `.LegacyEnabled()` on
-sections; `.WithOrder()`, `.InSection()` on pages; `.HighlightWhen()` on presets; `.HealthyWhen()`, `.Switchable()` on compat entries;
+`.LegacyInverted("oldDisableX")`, `.RequiresOn()`, `.RequiresSetting("mm.useX", true)`, `.OnlyWith("ludeon.rimworld.ideology")` (hidden
+without it), `.WithPreview(p => …)`, `.WithStep()`, `.NeedsRestart()`, `.OnChange()` on settings;
+`.OffByDefault()`, `.OnlyWith("ludeon.rimworld.biotech")`, `.WhenSwitched()`, `.WithRemoval()`, `.WithDiagnosis()`, `.LegacyEnabled()`,
+`.LegacyDisabled()` on sections; `.WithOrder()`, `.InSection()`, `.EmbedInSection(height)`, `.AsGlobal()` on pages; `.HighlightWhen()` on
+presets; `.HealthyWhen()`, `.HealthyWhenType("Their.Type")`, `.HealthyWhenDef<StatDef>("TheirStat")`, `.Switchable()` on compat entries;
 `.WithDraw()`, `.WithAction()`, `.WhenClosed()` on the welcome card (`r.WelcomeCard()`). Full reference: **[API.md](API.md)**; every public member has an XML
 doc comment (`JBFramework.xml` next to the DLL, so your IDE shows it).
 
@@ -88,6 +91,21 @@ components, under your packageId: a save made with your mod then names none of y
 and your data comes back when it returns. Old saves that still hold your former GameComponent/MapComponent: keep that class, let it read
 its old fields into the new data, and register it with `r.LegacyComponent(typeof(OldComponent))`: it is read, never written again.
 "Prepare for removal" steps can take your remaining components out of the running game with `KitRemoval.RemoveComponents(...)`.
+
+### Removable without a single red error
+A save names your mod through (1) its classes (Thing/Building/Projectile subclasses from `thingClass`, Hediff and Gene classes, Bill
+subclasses, Game/World/Map components and the IExposable classes inside them) and (2) its defs (things, hediffs, genes, thoughts,
+recipes, designations, …). ThingComp and HediffComp data needs nothing: comps are rebuilt from the defs and their fields are skipped
+when your defs are gone. What to do for "Prepare for removal" = zero red errors after removal:
+1. Keep every piece of your own state in `r.SaveData` / `r.MapData` (never a component of your own). Old components: `r.LegacyComponent(typeof(Old))`.
+2. Give one section `.WithRemoval(report => { … })` that calls, with `d => d.modContentPack == Content` (or your own test):
+   `KitRemoval.RemoveThings` (spawned, minified, blueprints and frames, in containers, inventories, equipment, apparel, caravan cargo),
+   `RemoveHediffs`, `RemoveGenes`, `RemoveThoughts`, `RemoveBills`, `RemoveDesignations`, and
+   `KitRemoval.RemoveComponents(t => t.Assembly == typeof(MyMod).Assembly, report)` for anything left.
+3. Not covered by the framework (do it yourself if your mod has them): pawns of your own races or kinds, things of vanilla defs made of
+   YOUR material (stuff), research projects, abilities, precepts, factions, world objects, quests.
+4. Prove it: `jbmod MyMod saveload` (a save with your content; own suites with `--build`), then `jbmod MyMod removal`: the answer
+   must be "0 red error(s) naming the mod or the framework"; the end save and every colonist who died or left are listed.
 
 ### Soft integrations
 Register the entry with `r.Compat(name, packageId, what)` and put `[KitCompat("their.packageid")]` on the Harmony patch classes of that
@@ -136,6 +154,19 @@ the framework for every mod; the framework reports such a copy in the log.
   ```
   The framework DLL must be built first (`dotnet build Source/JBFramework -c Release [-p:RimVersion=1.6]`), or pass
   `-p:JBFrameworkDll=<path>`.
+
+### Test it
+
+From the folder that holds both your mod and the framework repository (RimWorld 1.7 installed; the game runs without a window and muted,
+in its own throw-away profile; your own saves and settings are never touched):
+```
+JBFramework/tools/jbmod MyMod build              # 1.7 build into MyMod/1.7/Assemblies (and 1.6 when About lists it)
+JBFramework/tools/jbmod MyMod lang --refresh     # once, and after new settings: writes Common/Languages/English/Keyed/MM_Settings.xml
+JBFramework/tools/jbmod MyMod test all           # every built-in check (settings, window at three screen sizes, saves, …): RESULT PASS
+JBFramework/tools/jbmod MyMod saveload           # save with the mod, load it again: values and your data survive
+JBFramework/tools/jbmod MyMod removal            # load that save WITHOUT the mod: no red error
+```
+`jbmod` without arguments lists every command (own suites, other mods next to yours, no DLCs, German, screenshots).
 
 Working examples: **[sample/KitSampleA](sample/KitSampleA/Source/SampleMod.cs)** (every feature),
 **[sample/KitSampleB](sample/KitSampleB/Source/SampleB.cs)** (per-save and per-map data, legacy components, migration, an own test

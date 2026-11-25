@@ -322,7 +322,7 @@ namespace JBFramework.Testing
             t.Check(a.SaveProfile == null && (FrameworkGame.Instance == null || !FrameworkGame.Instance.AbsentMods.Contains(FrameworkGame.SaveKey(a))), "no per-save profile for A");
             string file = KitSettingsBase.SettingsFilePath(a);
             t.Check(a.Settings == null && (file == null || !File.Exists(file)), "A wrote no settings file");
-            List<string> msgs; lock (Framework.TooOldMessages) msgs = Framework.TooOldMessages.ToList();
+            var msgs = Framework.TooOldTexts();
             t.Check(msgs.Any(m => m == a.BlockedReason), "the message is in the framework's list for the player (" + msgs.Count + ")");
             List<string> closed; lock (KitTestRunner.ClosedWindows) closed = KitTestRunner.ClosedWindows.ToList();
             bool dialog = closed.Any(c => c.StartsWith(nameof(Dialog_MessageBox)) && c.Contains(a.Name));
@@ -335,8 +335,21 @@ namespace JBFramework.Testing
             }
             else t.Note("sample B is not loaded in this run");
 
+            // what the player saw at startup: the same message box, kept open for a screenshot
+            var box = new Dialog_MessageBox(string.Join("\n\n", msgs.Distinct()), title: KitText.K("Framework.TooOldTitle", "{0} needs an update", Framework.Name));
+            Find.WindowStack.Add(box); t.KeepOpen(box);
+            foreach (var y in KitUiTest.Frames(4)) yield return y;
+            KitUiTest.Shot("fw_apilevel_message");
+            foreach (var y in KitUiTest.Frames(2)) yield return y;
+            box.Close(false);
             // the blocked window and the framework's Mods page draw without errors
             bool sup = KitFirstStartCard.Suppressed; KitFirstStartCard.Suppressed = true;
+            var only = FwUtil.Open(a);
+            foreach (var y in KitUiTest.Frames(4)) yield return y;
+            KitUiTest.Shot("fw_apilevel_blocked_window");
+            foreach (var y in KitUiTest.Frames(2)) yield return y;
+            only.Close(false);
+            foreach (var y in KitUiTest.Frames(2)) yield return y;
             int g0 = Framework.Self.Guard.TotalFailures, l0 = Framework.Self.Log.ErrorCount, hits = KitUiProbe.Count("framework:mods");
             var da = FwUtil.Open(a);
             Framework.Self.Window.SelectPage(Framework.Self, "page:mods");
@@ -376,7 +389,14 @@ namespace JBFramework.Testing
             t.Check(FrameworkGame.Instance != null, "the framework's game component runs");
             t.Check(self.Settings is FrameworkSettings, "the framework's settings object is loaded");
             t.Note("framework report:\n" + Framework.DiagnosisReport());
+            // invisible: only defs nobody sees in play (the known-mods notes), no letter, no window, nothing above Info in the log
+            var content = self.Content;
+            var defTypes = content?.AllDefs.Select(d => d.GetType().Name).Distinct().ToList() ?? new List<string>();
+            t.Check(defTypes.All(n => n == nameof(ModNoteDef)), "the framework's own defs are only mod notes (" + string.Join(", ", defTypes) + ")");
+            t.Check(Find.LetterStack.LettersListForReading.All(l => (l.Label.ToString() ?? "").IndexOf(Framework.Name, StringComparison.OrdinalIgnoreCase) < 0), "no letter from the framework");
+            t.Check(Find.WindowStack.Windows.All(w => w.GetType().Assembly != typeof(Framework).Assembly), "no window of the framework is open");
             yield return 300;
+            t.Check(self.Log.WarnCount == 0 && self.Log.ErrorCount == 0, "the framework logged nothing above Info (" + self.Log.WarnCount + " warnings, " + self.Log.ErrorCount + " errors)");
             KitSuiteUtil.NoRedErrors(t, 0, "no red error of the framework");
         }
     }

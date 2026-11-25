@@ -75,9 +75,14 @@ namespace JBFramework
                 if (compat != null && !KitCompat.IsModActive(compat.PackageId)) { SkippedInactive.Add(t.FullName); continue; }
                 try
                 {
-                    harmony.CreateClassProcessor(t).Patch();
+                    var patched = harmony.CreateClassProcessor(t).Patch();
                     Applied++;
-                    if (compat != null) k.Compat.ReportApplied(compat.PackageId);
+                    if (compat != null)
+                    {
+                        // Prepare() false (target missing in the installed version of the other mod): nothing patched, say so on the page
+                        if (patched == null || patched.Count == 0) { k.Compat.ReportInactive(compat.PackageId, t.Name); k.Log.Info("Core", "Patch class " + t.FullName + " patched nothing (Prepare() false or no target): " + compat.PackageId + " integration inactive"); }
+                        else k.Compat.ReportApplied(compat.PackageId);
+                    }
                 }
                 catch (Exception e)
                 {

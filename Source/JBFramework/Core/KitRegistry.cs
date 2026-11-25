@@ -30,6 +30,19 @@ namespace JBFramework
         public KitPage WithOrder(int order) { Order = order; Owner?.Pages.Resort(); return this; }
         /// <summary>The page belongs to a section: it is hidden while the section is not available and dimmed (with a switch-on banner) while it is off.</summary>
         public KitPage InSection(string sectionId) { Section = sectionId; return this; }
+        /// <summary>
+        /// Draws the page INSIDE its section's page, below the section's settings, <paramref name="height"/> px high (scroll inside it
+        /// yourself if it needs more), instead of as a second sidebar entry for the same topic. Needs <see cref="InSection"/>.
+        /// </summary>
+        public KitPage EmbedInSection(float height) { Embedded = true; EmbedHeight = Math.Max(40f, height); return this; }
+        /// <summary>
+        /// The page edits something that is the same in every save (a list in the settings file): while it is shown, the window says so
+        /// ("Applies to every game.") instead of the "This save"/"Template" hint.
+        /// </summary>
+        public KitPage AsGlobal() { IsGlobal = true; return this; }
+
+        internal bool Embedded, IsGlobal;
+        internal float EmbedHeight;
     }
 
     internal sealed class KitPageRegistry

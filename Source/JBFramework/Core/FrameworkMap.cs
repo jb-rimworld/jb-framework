@@ -21,8 +21,15 @@ namespace JBFramework
         List<KitMapEntry> mods = new List<KitMapEntry>();
 
         /// <summary>Created by RimWorld for a new map or before a map is loaded: every mod's reset runs for this map.</summary>
-        public FrameworkMap(Map map) : base(map)
+        public FrameworkMap(Map map) : base(map) { ResetOnce(map); }
+
+        /// <summary>
+        /// Every mod's per-map reset, once per Map object: on a load it runs before the map's saved components are read (prefix on
+        /// Map.ExposeComponents), so a legacy MapComponent that merges into the mod's MapData state while loading keeps its merge.
+        /// </summary>
+        internal static void ResetOnce(Map map)
         {
+            if (map == null || !KitResetLedger.First(map)) return;
             foreach (var k in Framework.Mods)
             {
                 if (k.Blocked || k.MapReset == null) continue;
@@ -217,7 +224,11 @@ namespace JBFramework
     [HarmonyPatch(typeof(Map), "ExposeComponents")]
     static class Patch_KitStrip_Map
     {
-        static void Prefix(Map __instance) => KitComponentStrip.Strip(__instance?.components);
+        static void Prefix(Map __instance)
+        {
+            if (Scribe.mode == LoadSaveMode.LoadingVars) FrameworkMap.ResetOnce(__instance);   // before legacy components are read
+            KitComponentStrip.Strip(__instance?.components);
+        }
         static void Finalizer(Map __instance) => KitComponentStrip.Strip(__instance?.components);
     }
 }

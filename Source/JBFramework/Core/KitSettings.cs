@@ -149,7 +149,7 @@ namespace JBFramework
                 if (!string.IsNullOrEmpty(RequiresText)) return Owner.Key("Setting." + Key + ".Requires").TranslateOr(RequiresText);
                 var sec = Owner.Sections.Find(Requires);
                 if (sec != null) return KitText.K("Row.RequiresSection", "Needs the section \"{0}\" to be on.", sec.Label);
-                return KitText.K("Row.RequiresMod", "Needs {0}.", KitDetect.ActiveName(Requires) ?? KitKnown.Note(Requires)?.label ?? Requires);
+                return KitText.K("Row.RequiresMod", "Needs {0}.", KitDetect.ActiveName(Requires) ?? DlcName(Requires) ?? KitKnown.Note(Requires)?.label ?? Requires);
             }
             if (!KeyRequiresMet(target))
             {
@@ -158,6 +158,13 @@ namespace JBFramework
                 return RequiresKeyOn ? KitText.K("Row.RequiresSettingOn", "Only while \"{0}\" is on.", label)
                                      : KitText.K("Row.RequiresSettingOff", "Only while \"{0}\" is off.", label);
             }
+            return null;
+        }
+
+        /// <summary>The DLC's name for a DLC packageId ("Ideology"), else null.</summary>
+        internal static string DlcName(string packageId)
+        {
+            foreach (var d in KitCompat.Dlcs) if (KitCompat.Same(d.Id, packageId)) return d.Name;
             return null;
         }
 
@@ -172,10 +179,15 @@ namespace JBFramework
         /// <summary>Player-facing value text (invariant culture numbers, translated On/Off and enum names).</summary>
         internal string Format(float v)
         {
+            if (v == 0f) v = 0f;   // never "-0"
             switch (Kind)
             {
                 case KitSettingKind.Bool: return v >= 0.5f ? KitText.K("On", "On") : KitText.K("Off", "Off");
-                case KitSettingKind.Percent: return (v * 100f).ToString("0.#", CultureInfo.InvariantCulture) + " %";
+                case KitSettingKind.Percent:
+                {
+                    float p = v * 100f;   // small percents keep two decimals (0.67 %), the rest one (12.5 %)
+                    return p.ToString(Math.Abs(p) < 10f ? "0.##" : "0.#", CultureInfo.InvariantCulture) + " %";
+                }
                 case KitSettingKind.Int: return ((long)Math.Round(v)).ToString("#,##0", CultureInfo.InvariantCulture);
                 case KitSettingKind.Silver: return KitText.K("Silver", "{0} silver", ((long)Math.Round(v)).ToString("#,##0", CultureInfo.InvariantCulture));
                 case KitSettingKind.Enum:
@@ -211,9 +223,17 @@ namespace JBFramework
         public KitSetting AsGlobal() { Global = true; return this; }
         /// <summary>Only shown with "Show nerd settings".</summary>
         public KitSetting AsNerd() { Nerd = true; return this; }
+        /// <summary>
+        /// The row exists only with a mod or DLC (<c>.OnlyWith("ludeon.rimworld.ideology")</c>): without it the row is hidden, not greyed
+        /// (for settings that make no sense without it). The value is kept and still readable.
+        /// </summary>
+        public KitSetting OnlyWith(string packageIdOrDlc) { OnlyWithId = packageIdOrDlc; return this; }
+        internal string OnlyWithId;
+        /// <summary>False while the mod/DLC of <see cref="OnlyWith"/> is not active: the row is not drawn and not found by the search.</summary>
+        internal bool Shown => string.IsNullOrEmpty(OnlyWithId) || KitCompat.IsModActive(OnlyWithId);
         /// <summary>The change takes effect only after a restart (the row shows a small tag).</summary>
         public KitSetting NeedsRestart() { Restart = true; return this; }
-        /// <summary>Slider rounding step (0 = automatic).</summary>
+        /// <summary>Step a dragged slider rounds to (0 = automatic). Only a drag rounds: a stored value is never changed by drawing it.</summary>
         public KitSetting WithStep(float step) { Step = step; return this; }
         /// <summary>Why the hard limit exists (shown when the player hits it).</summary>
         public KitSetting WithLimit(string reasonEn) { HardLimitReason = reasonEn; return this; }
@@ -229,6 +249,11 @@ namespace JBFramework
         public KitSetting Legacy(string oldScribeName) { LegacyScribe = oldScribeName; return this; }
         /// <summary>Like <see cref="Legacy(string)"/>, with a conversion of the old number (old percent 25 → fraction: <c>v =&gt; v / 100f</c>).</summary>
         public KitSetting Legacy(string oldScribeName, Func<float, float> convert) { LegacyScribe = oldScribeName; LegacyScribeConvert = convert; return this; }
+        /// <summary>
+        /// The mod's old Bool field with the OPPOSITE meaning ("bedsOwnableByDefault" → the new "bedsNeedOwner"): read once like
+        /// <see cref="Legacy(string)"/>, True becomes off and False on. Same as <c>Legacy(old, v =&gt; v &gt;= 0.5f ? 0f : 1f)</c>, but says so.
+        /// </summary>
+        public KitSetting LegacyInverted(string oldScribeName) => Legacy(oldScribeName, v => v >= 0.5f ? 0f : 1f);
         /// <summary>An older store key this setting replaces, with a conversion of its value.</summary>
         public KitSetting LegacyStoreKey(string oldKey, Func<float, float> convert) { LegacyKey = oldKey; LegacyToValue = convert; return this; }
         /// <summary>Called (deferred, once per frame) after the value changed; gets the new value. Fenced.</summary>

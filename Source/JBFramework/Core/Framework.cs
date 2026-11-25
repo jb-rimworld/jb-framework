@@ -130,7 +130,9 @@ namespace JBFramework
         /// <summary>Info and debug lines also in the game log (they always go to each mod's own log file).</summary>
         internal static bool VerboseLog;
         /// <summary>Show nerd settings in every JB settings window.</summary>
-        internal static bool ShowNerd => Pref(ShowNerdKey, 0f) >= 0.5f;
+        internal static bool ShowNerd => ShowNerdOverride ?? Pref(ShowNerdKey, 0f) >= 0.5f;
+        /// <summary>Tests: show (or hide) nerd settings without touching the stored preference.</summary>
+        internal static bool? ShowNerdOverride;
         /// <summary>
         /// The player's global "Show welcome cards" preference (Mod settings, JB Framework): false = no mod shows its welcome card, new
         /// colonies start from the templates silently. A mod that draws its own start screen respects it too.
@@ -143,12 +145,18 @@ namespace JBFramework
         }
 
         /// <summary>Mods whose installed framework is too old (filled by the contexts and by the startup scan).</summary>
-        internal static readonly List<string> TooOldMessages = new List<string>();
+        internal static readonly List<(string Mod, int Need, string Built)> TooOldMessages = new List<(string, int, string)>();
+
+        /// <summary>The too-old messages in the game's language (rendered when asked: languages load after the mod constructors).</summary>
+        internal static List<string> TooOldTexts()
+        {
+            lock (TooOldMessages) return TooOldMessages.Distinct().Select(m => TooOldText(m.Mod, m.Need, m.Built)).ToList();
+        }
 
         internal static string TooOldText(string modName, int needLevel, string builtWith)
         {
             return KitText.K("Framework.TooOld",
-                "{0} needs a newer {1} (API level {2}, it was built with {1} {3}). You have {1} {4} (API level {5}). Its {1} features stay off until you update {1}: on Steam, unsubscribe and resubscribe, or restart Steam.",
+                "{0} needs a newer {1} than the one you have ({4}). {0} stays switched off until {1} is updated; your game and your other mods keep working.\n\nTo update: restart Steam, or unsubscribe from {1} and subscribe again. (Technical: {0} needs API level {2} and was built with {1} {3}; this {1} has level {5}.)",
                 modName, Name, needLevel, string.IsNullOrEmpty(builtWith) ? "?" : builtWith, Version, ApiLevel);
         }
 

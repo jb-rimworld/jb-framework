@@ -64,30 +64,40 @@ Every call takes only the essentials and returns an object; everything optional 
 - **Sections**: `Section(id, label)`, `Section(id, label, desc)` → `KitSection`: `Describe(desc)`, `WithIcon(tex)`, `OffByDefault()`,
   `OnlyWith(packageIdOrDlc)` / `OnlyWith(packageIdOrDlc, modName)` (exists only with that mod/DLC, "Needs X." otherwise),
   `AvailableWhen(func, whyNot)`, `WithOrder(n)`, `WhenSwitched(Action<bool>)`, `WithDiagnosis(Func<IEnumerable<string>>)`,
-  `WithRemoval(Action<List<string>>)` (prepare-for-removal step; several calls chain), `LegacyEnabled(oldBoolField)`.
+  `WithRemoval(Action<List<string>>)` (prepare-for-removal step; several calls chain), `LegacyEnabled(oldBoolField)`,
+  `LegacyDisabled(oldBoolField)` (an old switch with the opposite meaning).
 - **Settings** (section id first, then key, default, slider range, label, optional desc): `Bool`, `Int`, `Float`, `Percent` (stored
   0..1), `LogFloat`, `Enum<T>` (dropdown; set it in presets as `(float)(int)value`), `Silver` (typed max 10 × silver stack limit).
   Typed values may go from min(0, slider min) to max(1,000,000, slider max) (Percent: max(1, slider max)). → `KitSetting`:
   `Describe(desc)`, `InGroup(header)`, `HardLimits(min, max)`, `AsGlobal()` (installation preference), `AsNerd()`, `NeedsRestart()`,
   `WithStep(s)`, `WithLimit(reason)` / `WithLimit(reason, dynamicMax)`, `Legacy(oldField)` / `Legacy(oldField, convert)` (old settings
-  field, migrated once; convert gets the unclamped old number), `LegacyStoreKey(oldKey, convert)`, `OnChange(Action<float>)`,
+  field, migrated once; convert gets the unclamped old number), `LegacyInverted(oldBoolField)` (True → off), `LegacyStoreKey(oldKey, convert)`,
+  `OnChange(Action<float>)`, `OnlyWith(packageIdOrDlc)` (the row is hidden, not greyed, without that mod/DLC),
   `RequiresOn(sectionOrPackageId)` / `RequiresOn(sectionOrPackageId, reason)` (reason key `<P>.Setting.<key>.Requires`),
   `RequiresSetting(boolKey, on)` (greyed "Only while "<label>" is on/off.", judged in the profile the window shows; combines with
   RequiresOn), `WithPreview(Func<KitProfile, string>)` (a computed grey line under the row, also searched; keep it cheap).
+  Drawing never writes: a stored value changes only when the player drags a slider, types, clicks or picks; a value a control cannot
+  show exactly (0.67 %, 1/3, beyond the slider from an old file) is shown rounded and stays untouched. `WithStep(s)` is the step a DRAG
+  rounds to (default: whole numbers for Int/Silver, else three significant digits of the slider span, percent at most whole percents).
+  Typed entry: the pencil at the right end of a number row (shown on hover) switches the row to a text field and back (kept per row).
 - **Presets**: `Preset(id, label, desc, Action<KitProfile> apply)` (changes only what it sets) → `KitPreset.HighlightWhen(matches)`.
-- **Compatibility**: `Compat(name, packageIdOrDlc, what)` → `KitCompatEntry.HealthyWhen(Func<bool>)`, `.Switchable()` (a switch on the
+- **Compatibility**: `Compat(name, packageIdOrDlc, what)` → `KitCompatEntry.HealthyWhen(Func<bool>)`, `.HealthyWhenType("Their.Type")`,
+  `.HealthyWhenDef<T>(defName)` (checks of the OTHER mod's piece; several checks must all pass), `.Switchable()` (a switch on the
   Compatibility page, a preference of the installation stored in the settings file; ask `KitMod.CompatOn(packageId)` in the integration;
-  change key `compat:<packageId>`); `Incompatible(name, packageId, why)`. Tag the integration's Harmony patch classes with `[KitCompat(packageId)]`.
+  change key `compat:<packageId>`); `Incompatible(name, packageId, why)`. Tag the integration's Harmony patch classes with `[KitCompat(packageId)]`:
+  a class that fails shows "failed: reason"; one that patches nothing (Prepare() false, target missing in the installed version) shows
+  "installed, integration inactive: patch target not found" unless the entry has a HealthyWhen check (then the check decides).
 - **Pages**: `Page(id, label, Action<Rect> draw)` → `KitPage`: `WithIcon(tex)`, `WithOrder(n)` (below 0: before General),
-  `InSection(sectionId)` (hidden while unavailable, dimmed with a switch-on banner while off). The draw runs inside a UI fence: an
+  `InSection(sectionId)` (hidden while unavailable, dimmed with a switch-on banner while off), `EmbedInSection(height)` (drawn inside its
+  section's page under the settings, no own sidebar entry), `AsGlobal()` (says "Applies to every game" instead of the save/template hint). The draw runs inside a UI fence: an
   exception shows an error box with Retry on that page only and never pauses a section.
 - `Caretaker(section, name, Func<int> check)`: once after every load, then round robin every 250 ticks while the section is on.
 - `SaveData(exposeData)`, `SaveData(exposeData, reset)`: the mod's own per-save data inside the framework's game component, node of the
-  mod's packageId; `reset` runs when a new Game object is created (new game, or before a load). While the mod is absent or blocked its
+  mod's packageId; `reset` runs once per Game object (new game, or before a load; never again after a legacy component merged into it). While the mod is absent or blocked its
   node is kept unchanged (raw XML) and comes back with the mod.
 - `MapData(Action<Map> exposeData)`, `MapData(exposeData, Action<Map> reset)`: the same per map, inside the framework's map component
   (`FrameworkMap`); references to things and pawns resolve; `reset(map)` runs when the map's component is created (new map or before a
-  load) and when the map is removed. A mod then needs no Game-/World-/MapComponent class of its own.
+  load: before the map's saved components are read) and when the map is removed; once per Map object. A mod then needs no Game-/World-/MapComponent class of its own.
 - `LegacyComponent(Type)`: an OLD component class of the mod that existing saves contain. Keep the class (same name) and let its ExposeData
   read the old fields into SaveData/MapData; the framework never writes it again (stripped while the game, the world and each map write
   their components) and drops its instances once a load or new game finished. Old saves keep loading; new saves name no class of the mod.
@@ -180,7 +190,8 @@ No Dubs Bad Hygiene adapter: no 1.7 build of it was available to check against (
   `IsEdited`, `Count`. One ledger per field for all mods: the first edit by any mod records the original (lists copied, stat presence
   remembered), the latest edit is live, a restore removes only this mod's edit and falls back to another mod's edit or the original.
 - **`KitRemoval`**: building blocks for a section's `WithRemoval` step: `RemoveThings(defs, report)` / `RemoveThings(defs, report, refund)` (maps, minified, blueprints,
-  frames, inventories, equipment, apparel), `RemoveHediffs`, `RemoveBills`, `RemoveDesignations`, `RemoveComponents(Func<Type, bool>, report)`
+  frames, containers, carried things, caravan cargo, inventories, equipment, apparel), `RemoveHediffs`, `RemoveGenes`, `RemoveThoughts` (memories),
+  `RemoveBills`, `RemoveDesignations`, `RemoveComponents(Func<Type, bool>, report)`
   (the mod's own Game-/World-/MapComponents out of the running game and out of every save for the rest of the session); `AddStep(k, sectionId, step)` adds a step
   to an existing section. Each step writes one report line and never throws.
 

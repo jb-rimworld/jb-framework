@@ -275,7 +275,8 @@ def step_layout(mod, about, version, R):
     elif version and a["modVersion"] != version: R.err(f"About modVersion {a['modVersion']} != release version {version}")
     if len(a["description"]) > 1500: R.warn(f"About description is {len(a['description'])} characters (keep ~1500)")
     pid = os.path.join(mod, "About", "PublishedFileId.txt")
-    if not os.path.isfile(pid) or not open(pid).read().strip().isdigit(): R.err("About/PublishedFileId.txt missing or not numeric")
+    if not os.path.isfile(pid): R.warn("About/PublishedFileId.txt missing: first upload, the job CREATES a Workshop item (write its id into the file afterwards)")
+    elif not open(pid).read().strip().isdigit(): R.err("About/PublishedFileId.txt is not numeric")
     pv = os.path.join(mod, "About", "Preview.png")
     if not os.path.isfile(pv): R.err("About/Preview.png missing")
     elif os.path.getsize(pv) >= 1_000_000: R.err(f"About/Preview.png is {os.path.getsize(pv)} bytes (< 1,000,000 needed)")
@@ -420,11 +421,15 @@ def step_copy(mod, dest, R, dry):
 
 
 def make_job(mod, about, dest, note, a):
-    pid = int(open(os.path.join(mod, "About", "PublishedFileId.txt")).read().strip())
+    pidf = os.path.join(mod, "About", "PublishedFileId.txt")
     ex = {}
     exp = os.path.join(mod, "Workshop", "job_extra.json")
     if os.path.isfile(exp): ex = json.load(open(exp, encoding="utf-8"))
-    item = {"id": pid, "name": os.path.basename(mod)}
+    # first upload (no PublishedFileId yet): a WPub "create" job with title and preview; later releases update by id
+    if os.path.isfile(pidf): item = {"id": int(open(pidf).read().strip()), "name": os.path.basename(mod)}
+    else:
+        item = {"create": True, "name": os.path.basename(mod), "title": ex.get("title") or about.get("name") or os.path.basename(mod),
+                "preview": os.path.join(mod, "About", "Preview.png")}
     if "--title" in a and ex.get("title"): item["title"] = ex["title"]
     if "--gallery" in a:
         absf = lambda p: p if os.path.isabs(p) else os.path.normpath(os.path.join(mod, "Workshop", p))

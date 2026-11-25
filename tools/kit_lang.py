@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Per-mod Keyed language files of a mod built on JB Framework: write <XX>_Settings.xml from the settings dump, check missing keys.
 
-    python3 -I kit_lang.py <ModDir> [--prefix XX] [--dump settings_dump.json] [--check]
+    python3 -I kit_lang.py <ModDir> [--prefix XX] [--dump settings_dump.json] [--write | --check]
+
+Without an option it CHECKS (read only, as --check): nothing in the mod is written unless --write is given (jbmod `lang --write`,
+or `lang --refresh` = make a fresh dump in the game, then write).
 
 Since the framework became its own mod (24.11.2026) its texts live ONCE in JBFramework/Common/Languages/<Lang>/Keyed/JBFramework.xml
 (keys JBF.*); nothing is stamped into the mods any more. A mod only translates its own registration labels (<XX>.Setting.*,
 <XX>.Section.*, <XX>.Preset.*, <XX>.Page.*, <XX>.Compat.*, <XX>.Enum.*, <XX>.SettingCat.*).
 
-Default (write):
+--write:
   * --dump (or <ModDir>/Source/settings_dump.json when it exists): the registry dump of the in-game settings-dump suite:
         {"prefix": "XX", "keyed": {"XX.Setting.lo.regrowDays": "Days to regrow a limb", ...}}
     -> <ModDir>/Common/Languages/English/Keyed/<XX>_Settings.xml (regenerated; English only, other languages go through i18n_delta.py).
@@ -110,21 +113,22 @@ def main(argv):
     mod = os.path.abspath(args[0])
     for v in (opt("--prefix"), opt("--dump")):
         if v in args: args.remove(v)
-    prefix = opt("--prefix") or detect_prefix(mod)
-    if not prefix:
-        print('ERROR no key prefix: pass --prefix XX or put KeyPrefix = "XX" into the KitInfo of the mod'); return 1
     dump_path = opt("--dump") or os.path.join(mod, "Source", "settings_dump.json")
     dump = None
     if os.path.isfile(dump_path):
         dump = json.load(open(dump_path, encoding="utf-8"))
-        if dump.get("prefix") not in (None, prefix):
-            print(f"ERROR dump prefix {dump.get('prefix')} != {prefix}"); return 1
     elif opt("--dump"):
         print("ERROR dump not found:", dump_path); return 1
+    # the prefix: --prefix, else KeyPrefix in the code, else the dump's (the game knows it even when it is the ShortId default)
+    prefix = opt("--prefix") or detect_prefix(mod) or (dump or {}).get("prefix")
+    if not prefix:
+        print('ERROR no key prefix: pass --prefix XX, put KeyPrefix = "XX" into the KitInfo of the mod, or run `jbmod <Mod> lang --refresh`'); return 1
+    if dump and dump.get("prefix") not in (None, prefix):
+        print(f"ERROR dump prefix {dump.get('prefix')} != {prefix}"); return 1
     obsolete = [os.path.join(lang_folder(mod, l), "Keyed", f"{prefix}_Kit.xml") for l in ("English", "German")]
     obsolete = [o for o in obsolete if os.path.isfile(o)]
 
-    if "--check" not in argv:
+    if "--write" in argv:
         for o in obsolete: print("note: obsolete stamped kit texts (now in JB Framework itself), delete:", os.path.relpath(o, mod))
         if dump:
             out = os.path.join(lang_folder(mod, "English"), "Keyed", f"{prefix}_Settings.xml")
