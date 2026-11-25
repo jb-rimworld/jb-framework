@@ -63,10 +63,23 @@ namespace JBFramework
                 var held = new List<Thing>();
                 foreach (var map in Find.Maps.ToList()) { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(map, l, true); held.AddRange(l); }
                 foreach (var c in Find.WorldObjects.Caravans.ToList()) { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(c, l, true); held.AddRange(l); }
+                // trader stock that lives in the save: other factions' settlements (generated once a caravan or a trade request looked at
+                // them) and orbital trade ships passing a map. A tradeable thing of the mod sits there unspawned and, without this, names
+                // the mod's def in the save (integration run 25.11.2026: 17 Hospital Beds Gen 2 beds in settlement stock)
+                foreach (var wo in Find.WorldObjects.AllWorldObjects.ToList())
+                {
+                    if (wo is Caravan || !(wo is IThingHolder h)) continue;
+                    try { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(h, l, true); held.AddRange(l); } catch { }
+                }
+                foreach (var map in Find.Maps.ToList())
+                    foreach (var ship in map.passingShipManager?.passingShips?.OfType<IThingHolder>().ToList() ?? new List<IThingHolder>())
+                    {
+                        try { var l = new List<Thing>(); ThingOwnerUtility.GetAllThingsRecursively(ship, l, true); held.AddRange(l); } catch { }
+                    }
                 foreach (var t in held.Distinct().ToList())
                 {
                     if (t == null || t.Destroyed || t.Spawned || t is Pawn) continue;
-                    if (!Matches(t.def, which)) continue;
+                    if (!Matches(t.def, which) && !(t is MinifiedThing hm && hm.InnerThing != null && Matches(hm.InnerThing.def, which))) continue;
                     try { t.holdingOwner?.Remove(t); } catch { }
                     if (!t.Destroyed) t.Destroy(DestroyMode.Vanish);
                     n++;
@@ -74,7 +87,8 @@ namespace JBFramework
                 foreach (var p in AllPawns())
                 {
                     foreach (var t in p.inventory?.innerContainer?.ToList() ?? new List<Thing>())
-                        if (!t.Destroyed && Matches(t.def, which)) { t.Destroy(DestroyMode.Vanish); n++; }
+                        if (!t.Destroyed && (Matches(t.def, which) || (t is MinifiedThing im && im.InnerThing != null && Matches(im.InnerThing.def, which))))
+                        { try { t.holdingOwner?.Remove(t); } catch { } if (!t.Destroyed) t.Destroy(DestroyMode.Vanish); n++; }
                     foreach (var t in p.equipment?.AllEquipmentListForReading?.ToList() ?? new List<ThingWithComps>())
                         if (Matches(t.def, which)) { p.equipment.Remove(t); t.Destroy(DestroyMode.Vanish); n++; }
                     foreach (var t in p.apparel?.WornApparel?.ToList() ?? new List<Apparel>())

@@ -197,7 +197,8 @@ lock_stale() {   # <n>
   local d="$S/lock$1" p
   [ -d "$d" ] || return 1
   if [ -f "$d/pid" ]; then p=$(cat "$d/pid" 2>/dev/null); [ -n "$p" ] && kill -0 "$p" 2>/dev/null && return 1; return 0; fi
-  [ $(( $(date +%s) - $(stat -f %m "$d") )) -gt 1500 ]
+  local mt; mt=$(stat -f %m "$d" 2>/dev/null) || return 1   # the lock can vanish between the two checks (another run released it)
+  [ $(( $(date +%s) - mt )) -gt 1500 ]
 }
 acquire_slot() {
   local i n
