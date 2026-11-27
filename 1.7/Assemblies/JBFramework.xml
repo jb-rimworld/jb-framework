@@ -2368,9 +2368,24 @@
             <summary>
             The welcome card of one mod: once per new colony, and once when the mod joins an existing save. Shows the mod mark, the pitch
             (KitInfo.FirstStartPitch), the presets and the section switches; choices apply live to the save's profile, so closing the card in
-            any way keeps them. Needs PerSave (the "done" flag lives in the save's profile). The framework's global "Show welcome cards"
-            preference switches all cards off ("Don't show welcome cards again").
+            any way (Start, Open settings, the X, Escape) keeps them. Needs PerSave (the "done" flag lives in the save's profile). The
+            framework's global "Show welcome cards" preference switches all cards off ("Don't show welcome cards again").
             </summary>
+        </member>
+        <member name="P:JBFramework.Dialog_KitFirstStartCard.Owner">
+            <summary>The mod whose card this is.</summary>
+        </member>
+        <member name="F:JBFramework.Dialog_KitFirstStartCard.StartScreen">
+            <summary>Screen rects (UI units) of the footer controls drawn last frame (the click tests aim at them).</summary>
+        </member>
+        <member name="F:JBFramework.Dialog_KitFirstStartCard.OpenScreen">
+            <summary>Screen rects (UI units) of the footer controls drawn last frame (the click tests aim at them).</summary>
+        </member>
+        <member name="F:JBFramework.Dialog_KitFirstStartCard.UseForAllScreen">
+            <summary>Screen rects (UI units) of the footer controls drawn last frame (the click tests aim at them).</summary>
+        </member>
+        <member name="F:JBFramework.Dialog_KitFirstStartCard.NeverScreen">
+            <summary>Screen rects (UI units) of the footer controls drawn last frame (the click tests aim at them).</summary>
         </member>
         <member name="M:JBFramework.Dialog_KitFirstStartCard.ApplyPreset(JBFramework.KitPreset)">
             <summary>Applies a preset to the save's profile (changes only what it names).</summary>
@@ -2379,7 +2394,12 @@
             <summary>Done flag, template copy, "never again", optional jump to the settings. Runs once, on close.</summary>
         </member>
         <member name="T:JBFramework.KitFirstStartCard">
-            <summary>Decides when a card opens: from the framework's game component, once the map is shown and nothing else is loading. One card at a time.</summary>
+            <summary>
+            Decides when a card opens: from the framework's game component, once the map is shown, nothing is loading and no other window has
+            the player's attention (<see cref="M:JBFramework.KitFirstStartCard.ScreenBusy"/>), then after <see cref="F:JBFramework.KitFirstStartCard.Delay"/> seconds. One card at a time, and never over
+            another pausing window: in 1.0.0 the next mod's card opened over the settings window that "Open settings" of the previous card had
+            just opened, and blocked every click in it (Steam report, 25.11.2026).
+            </summary>
         </member>
         <member name="F:JBFramework.KitFirstStartCard.Suppressed">
             <summary>Tests (or a mod) set this to keep every card from opening.</summary>
@@ -2389,6 +2409,13 @@
         </member>
         <member name="M:JBFramework.KitFirstStartCard.Due">
             <summary>The first mod whose card would open now if the delay had passed, or null.</summary>
+        </member>
+        <member name="M:JBFramework.KitFirstStartCard.ScreenBusy">
+            <summary>
+            True while a window has the player's attention: a welcome card, any mod settings window (the one "Open settings" opened), a page
+            of the new-game flow, or any window that pauses the game or blocks input around it (the scenario's intro, a message box). A card
+            added then would cover it and absorb its clicks, so the next card waits until it closed.
+            </summary>
         </member>
         <member name="M:JBFramework.KitFirstStartCard.Update">
             <summary>
@@ -2605,6 +2632,12 @@
         <member name="F:JBFramework.KitUI.SettingsMinH">
             <summary>Smallest settings window (also on small screens, as far as the screen allows).</summary>
         </member>
+        <member name="M:JBFramework.KitUI.ToScreen(UnityEngine.Rect)">
+            <summary>
+            A rect of the current GUI group (window, scroll view) in screen coordinates (UI units), for the click tests: the offset is the
+            mouse in screen units minus the mouse in group units, exact inside nested groups. Never throws.
+            </summary>
+        </member>
         <member name="F:JBFramework.KitUI.TestScreen">
             <summary>Tests only: pretend the screen has this size (Size and the clamps read it). Null = the real screen.</summary>
         </member>
@@ -2670,6 +2703,9 @@
         </member>
         <member name="T:JBFramework.KitWindowState.Layout">
             <summary>Where the last frame put the window's parts (read by the window test to check that they fit and do not overlap).</summary>
+        </member>
+        <member name="F:JBFramework.KitWindowState.PageRowsScreen">
+            <summary>Screen rects (UI units) of the page list rows drawn last frame, by page id (the click tests aim at them).</summary>
         </member>
     </members>
 </doc>
