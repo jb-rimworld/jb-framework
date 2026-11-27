@@ -106,14 +106,18 @@ and never shipped: `tools/jbmod` puts it into test runs only, `tools/release.py`
   kept raw and still there after a new save, the same for B's per-map node, and no class of B in any save; phase 3 loads that save with
   B again and finds B's SaveData, per-map data and its cross-reference), `fw.steward` (A with B: the members added in the steward pass),
   `fw.apilevel` (A built with `-p:JBMinApiLevel=99`: blocked with the plain-words message, registers nothing,
-  writes nothing, B unaffected), `fw.alone` (no tenant: one Mod settings entry, no red error). Agent 2's `fw.known/adapters/random/shared`
+  writes nothing, B unaffected), `fw.alone` (no tenant: one Mod settings entry, no red error), `fw.cards` (`jbmod . fw cards`: the
+  welcome cards of three real dependents in one colony, answered with clicks and keys injected through the engine's input injector
+  (`TestMod/Source/KitUiInput.cs`): never two cards, never a card over a pausing window, "Open settings" gives a settings window that
+  takes clicks, Escape and the X close a card and keep its switches, "Don't show again" works; the suite is driven by frames, see
+  `KitTestSuite.DrivenByFrames`). Agent 2's `fw.known/adapters/random/shared`
   live in `TestMod/Source/Suites/`.
 - **jbmod**: every run gets a slot copy of the framework (`<fw>.slotN`; dependents' About files are pointed at it, so the player's Mods
   folder never holds a framework), the harness when suites run, extra mods (packageIds, or local folders built and copied like the mod
   under test) and the mod under test; the probe loads first. Commands: `build` (1.7, then 1.6 compile-only), `test`, `plain`
   (`--days N`, `--no-day`), `play <days>`, `saveload` (`--suites/--build/--load`), `twophase <label> <suites>`, `removal` (the framework
   and the extras stay; `--build`), `addition` (vanilla save without mod and framework; extras in both phases; `--suites`), `compat`,
-  `migrate-test`, `lang`, `release`, `desc-lint`, `freeze16`, and `fw tenants|removal|apilevel|alone|all`. Env `JB_DLCS`, `GAME_LANG`
+  `migrate-test`, `lang`, `release`, `desc-lint`, `freeze16`, and `fw tenants|removal|apilevel|alone|cards|all`. Env `JB_DLCS`, `GAME_LANG`
   (folder or first word), `JB_FRAMEWORK_DIR` (default: the script's repo, so a git worktree tests its own framework; every mod build gets
   `-p:JBFrameworkRoot=<that repo>/`). Build output per mod, kind and run label (`BUILDKEY` shared by the phases of one round trip) and
   one machine-wide build lock (`hh_tests/jbbuildlock`) around builds and slot copies. `release.py` adds for the framework the 1.6 build,

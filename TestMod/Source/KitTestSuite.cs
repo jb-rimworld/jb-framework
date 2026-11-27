@@ -40,6 +40,14 @@ namespace JBFramework.Testing
         /// <summary>True for suites that need a special run (a loaded save, extra mods, an old settings file): they run only when named
         /// explicitly or by a prefix that is not "all" (e.g. "fw.*"), never with "all" or a section filter.</summary>
         public virtual bool ExplicitOnly => false;
+        /// <summary>
+        /// True for suites that drive the real UI (pausing windows, injected clicks): the runner advances them every frame from
+        /// GameComponentUpdate (so a forcePause window does not stall them; <c>yield return N</c> waits N frames), leaves every window
+        /// open while they run and times them out after <see cref="MaxFrames"/> frames instead of <see cref="MaxTicks"/>.
+        /// </summary>
+        public virtual bool DrivenByFrames => false;
+        /// <summary>Frame budget of a <see cref="DrivenByFrames"/> suite.</summary>
+        public virtual int MaxFrames => 20000;
         /// <summary>True for suites that check a loaded save: before them the harness only stops the storyteller and leaves pawns, jobs and
         /// weather alone (the general clean-up would change the very state the suite wants to compare).</summary>
         public virtual bool KeepsLoadedGame => false;

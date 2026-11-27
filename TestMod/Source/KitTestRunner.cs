@@ -118,6 +118,8 @@ namespace JBFramework.Testing
         public override void GameComponentUpdate()
         {
             if (!Active) return;
+            var fr = FrameSuite();
+            if (fr != null) { StepFrames(fr); return; }
             CloseDialogs();
             var tm = Find.TickManager;
             if (tm != null && !finished && (tm.Paused || tm.CurTimeSpeed != TimeSpeed.Ultrafast)) tm.CurTimeSpeed = TimeSpeed.Ultrafast;
@@ -144,6 +146,40 @@ namespace JBFramework.Testing
             }
         }
 
+        /// <summary>The running suite when it is driven by frames (started already), else null.</summary>
+        RunState FrameSuite()
+        {
+            if (finished || current < 0 || current >= runs.Count) return null;
+            var r = runs[current];
+            return r.It != null && !r.Done && r.Suite.DrivenByFrames ? r : null;
+        }
+
+        /// <summary>One frame of a frame-driven suite: no dialog is closed, the game is not sped up (pausing windows must pause).</summary>
+        void StepFrames(RunState r)
+        {
+            int now = UnityEngine.Time.frameCount;
+            if (now >= r.WaitUntil)
+            {
+                try
+                {
+                    if (r.It.MoveNext()) r.WaitUntil = now + Math.Max(1, r.It.Current);
+                    else r.Done = true;
+                }
+                catch (Exception e) { r.Error = e.ToString(); r.Done = true; }
+            }
+            if (!r.Done && now - r.Started > r.Suite.MaxFrames) { r.Error = "timeout after " + r.Suite.MaxFrames + " frames"; r.Done = true; }
+            if (r.Done) EndRun(r, now, "frames");
+        }
+
+        void EndRun(RunState r, int now, string unit)
+        {
+            try { r.It?.Dispose(); } catch (Exception e) { r.Ctx.Log("dispose threw: " + e.Message); }
+            if (r.Error != null) { r.Ctx.Failures++; r.Ctx.Log("EXCEPTION/TIMEOUT: " + r.Error); }
+            KeptWindows.Clear();
+            r.Ctx.Log($"end: {r.Ctx.Checks} checks, {r.Ctx.Failures} failures, {now - r.Started} {unit}");
+            current++;
+        }
+
         /// <summary>Windows a suite keeps open (TestContext.KeepOpen): the runner does not close them.</summary>
         internal static readonly HashSet<Window> KeptWindows = new HashSet<Window>();
 
@@ -168,9 +204,11 @@ namespace JBFramework.Testing
             {
                 NeutralizeGame(r.Suite.KeepsLoadedGame);
                 r.Started = now; r.WaitUntil = now;
-                r.Ctx.Log("start at tick " + now);
+                r.Ctx.Log("start at tick " + now + (r.Suite.DrivenByFrames ? " (driven by frames from frame " + UnityEngine.Time.frameCount + ")" : ""));
                 try { r.It = r.Suite.Run(r.Ctx).GetEnumerator(); } catch (Exception e) { r.Error = e.ToString(); r.Done = true; }
+                if (r.Suite.DrivenByFrames && !r.Done) { r.Started = UnityEngine.Time.frameCount; r.WaitUntil = r.Started; return; }
             }
+            if (r.Suite.DrivenByFrames && !r.Done) return;   // advanced from GameComponentUpdate
             if (!r.Done && now >= r.WaitUntil)
             {
                 try
@@ -181,14 +219,7 @@ namespace JBFramework.Testing
                 catch (Exception e) { r.Error = e.ToString(); r.Done = true; }
             }
             if (!r.Done && now - r.Started > r.Suite.MaxTicks) { r.Error = "timeout after " + r.Suite.MaxTicks + " ticks"; r.Done = true; }
-            if (r.Done)
-            {
-                try { r.It?.Dispose(); } catch (Exception e) { r.Ctx.Log("dispose threw: " + e.Message); }
-                if (r.Error != null) { r.Ctx.Failures++; r.Ctx.Log("EXCEPTION/TIMEOUT: " + r.Error); }
-                KeptWindows.Clear();
-                r.Ctx.Log($"end: {r.Ctx.Checks} checks, {r.Ctx.Failures} failures, {now - r.Started} ticks");
-                current++;
-            }
+            if (r.Done) EndRun(r, now, "ticks");
         }
 
         /// <summary>Nothing is saved (the runner is left out of saves anyway).</summary>

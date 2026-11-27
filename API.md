@@ -104,7 +104,9 @@ Every call takes only the essentials and returns an object; everything optional 
 - `WelcomeCard()` → `KitCard`: the mod's parts of its welcome card: `WithDraw(Func<Rect, float>)` (an area above the presets; returns the
   height used), `WithAction(id, label, tip, Func<bool> done, Action act)` (buttons under the presets; a done one shows a green chip;
   keys `<P>.Card.<id>`, `.Tip`), `WithoutPresets()`, `WithoutSections()`, `WhenClosed(Action<bool joined>)`. The card stays the framework's:
-  once per new colony / once when the mod joins a save (flag in the save's profile), never while `Framework.WelcomeCards` is false.
+  once per new colony / once when the mod joins a save (flag in the save's profile), never while `Framework.WelcomeCards` is false,
+  one card at a time and only while no other pausing window or settings window is open (1.0.1); Start, Open settings, the X and Escape
+  all close it and keep the choices.
   A per-save mod gets the card with a `FirstStartPitch` (translated through `<P>.FirstStartPitch`) or with this registration.
 
 ### Translation keys of a mod's registrations (prefix = `KitInfo.KeyPrefix`)

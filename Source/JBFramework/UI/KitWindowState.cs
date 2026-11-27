@@ -20,8 +20,10 @@ namespace JBFramework
         public readonly System.Collections.Generic.Dictionary<string, string> PageErrors = new System.Collections.Generic.Dictionary<string, string>();
 
         /// <summary>Where the last frame put the window's parts (read by the window test to check that they fit and do not overlap).</summary>
-        internal struct Layout { public Rect In, Side, Main, Title, Search, Nerd, Content, Chips; public float ContentH; public string Page; public int Frame; }
+        internal struct Layout { public Rect In, Side, Main, Title, Search, Nerd, Content, Chips, ChipsScreen; public float ContentH; public string Page; public int Frame; }
         internal Layout Last;
+        /// <summary>Screen rects (UI units) of the page list rows drawn last frame, by page id (the click tests aim at them).</summary>
+        internal readonly System.Collections.Generic.Dictionary<string, Rect> PageRowsScreen = new System.Collections.Generic.Dictionary<string, Rect>();
 
         public void SelectPage(KitMod k, string id)
         {

@@ -18,7 +18,7 @@
     <JBFrameworkPackageId>juliusberger.jbframework</JBFrameworkPackageId>
     <JBFrameworkAssemblyName>JBFramework</JBFrameworkAssemblyName>
     <JBFrameworkNamespace>JBFramework</JBFrameworkNamespace>
-    <JBFrameworkVersion>1.0.0</JBFrameworkVersion>
+    <JBFrameworkVersion>1.0.1</JBFrameworkVersion>
     <JBFrameworkApiLevel>1</JBFrameworkApiLevel>
     <JBFrameworkAuthor>Julius Berger</JBFrameworkAuthor>
   </PropertyGroup>

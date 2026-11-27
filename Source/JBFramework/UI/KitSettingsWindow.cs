@@ -128,6 +128,7 @@ namespace JBFramework
                 if (KitStyle.Chip(c1, l1, !k.Window.EditTemplate, KitText.K("Side.ThisSaveTip", "Edit the settings of the running game. They are saved with it."))) k.Window.EditTemplate = false;
                 if (KitStyle.Chip(c2, l2, k.Window.EditTemplate, KitText.K("Side.TemplateTip", "Edit the template that new games start from. The running game is not changed."))) k.Window.EditTemplate = true;
                 k.Window.Last.Chips = new Rect(r.x, y, r.width, c2.yMax - y);
+                k.Window.Last.ChipsScreen = KitUI.ToScreen(k.Window.Last.Chips);
                 y += stack ? 72f : 40f;
             }
             else
@@ -158,6 +159,7 @@ namespace JBFramework
                 var plr = new Rect(lx, row.y, row.xMax - lx - 2f, row.height);
                 KitStyle.LabelColored(plr, plabel.Truncate(plr.width), p.Dim ? KitStyle.DimGrey : Color.white, TextAnchor.MiddleLeft);
                 if (KitUI.TextW(plabel) > plr.width) TooltipHandler.TipRegion(row, plabel);
+                k.Window.PageRowsScreen[p.Id] = KitUI.ToScreen(row);
                 if (Widgets.ButtonInvisible(row)) { k.Window.PageId = p.Id; k.Window.Search = ""; KitRow.Unfocus(); k.Window.ScrollMain = Vector2.zero; k.Window.MainViewH = 1000f; }
                 py += pageRowH + 2f;
             }

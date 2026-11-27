@@ -4,7 +4,7 @@
   <name>JB Framework</name>
   <author>Julius Berger</author>
   <packageId>juliusberger.jbframework</packageId>
-  <modVersion>1.0.0</modVersion>
+  <modVersion>1.0.1</modVersion>
   <url>https://github.com/jb-rimworld/jb-framework</url>
   <supportedVersions>
     <li>1.6</li>

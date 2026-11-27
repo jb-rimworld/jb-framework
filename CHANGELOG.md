@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 (2026-11-27)
+- Fixed: welcome cards could cover a settings window and make it ignore every click. With several JB mods, "Open settings" on one mod's card opened its settings, and a moment later the next mod's card opened on top of them; the settings window then took no clicks and Escape did nothing. Now the next card waits until the settings window (or any other window that pauses the game, such as the scenario's intro) is closed, and only one card is ever on screen.
+- Welcome cards now have a close button (X) and close with Escape. Closing a card any way keeps your choices, exactly like Start.
+- With "Don't show welcome cards again" ticked, the remaining mods skip their cards at once instead of one after another.
+- Nothing changes for mods built on the framework: no rebuild or update of them needed.
+
 ## 1.0.0 (2026-11-25)
 - First public release: the settings window from Hearth and Harbor (sidebar, search, presets, switchable areas, values per save with a template for new games) for every mod that depends on the framework.
 - Error fences: a feature that keeps failing pauses itself with a letter and a Resume button; the game and every other mod keep running.

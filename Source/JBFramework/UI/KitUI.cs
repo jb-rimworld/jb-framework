@@ -18,6 +18,20 @@ namespace JBFramework
         /// <summary>Smallest settings window (also on small screens, as far as the screen allows).</summary>
         internal const float SettingsMinW = 860f, SettingsMinH = 560f;
 
+        /// <summary>
+        /// A rect of the current GUI group (window, scroll view) in screen coordinates (UI units), for the click tests: the offset is the
+        /// mouse in screen units minus the mouse in group units, exact inside nested groups. Never throws.
+        /// </summary>
+        internal static Rect ToScreen(Rect r)
+        {
+            try
+            {
+                var off = UI.MousePositionOnUIInverted - Event.current.mousePosition;
+                return new Rect(r.x + off.x, r.y + off.y, r.width, r.height);
+            }
+            catch (Exception) { return Rect.zero; }
+        }
+
         /// <summary>Tests only: pretend the screen has this size (Size and the clamps read it). Null = the real screen.</summary>
         internal static Vector2? TestScreen;
         internal static float ScreenW => TestScreen.HasValue ? TestScreen.Value.x : UI.screenWidth;

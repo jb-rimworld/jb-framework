@@ -12,8 +12,8 @@ namespace JBFramework
     /// <summary>
     /// The welcome card of one mod: once per new colony, and once when the mod joins an existing save. Shows the mod mark, the pitch
     /// (KitInfo.FirstStartPitch), the presets and the section switches; choices apply live to the save's profile, so closing the card in
-    /// any way keeps them. Needs PerSave (the "done" flag lives in the save's profile). The framework's global "Show welcome cards"
-    /// preference switches all cards off ("Don't show welcome cards again").
+    /// any way (Start, Open settings, the X, Escape) keeps them. Needs PerSave (the "done" flag lives in the save's profile). The
+    /// framework's global "Show welcome cards" preference switches all cards off ("Don't show welcome cards again").
     /// </summary>
     internal sealed class Dialog_KitFirstStartCard : Window
     {
@@ -29,14 +29,19 @@ namespace JBFramework
         public bool UseForAll { get => useForAll; set => useForAll = value; }
         public bool NeverAgain { get => neverAgain; set => neverAgain = value; }
         public KitPreset Preset => preset;
+        /// <summary>The mod whose card this is.</summary>
+        internal KitMod Owner => k;
+        /// <summary>Screen rects (UI units) of the footer controls drawn last frame (the click tests aim at them).</summary>
+        internal Rect StartScreen, OpenScreen, UseForAllScreen, NeverScreen;
 
         public Dialog_KitFirstStartCard(KitMod k, KitProfile profile, bool joinedExisting)
         {
             this.k = k;
             this.profile = profile;
             JoinedExisting = joinedExisting;
-            forcePause = true; absorbInputAroundWindow = true; closeOnClickedOutside = false; doCloseX = false; doCloseButton = false;
-            closeOnAccept = false; closeOnCancel = false; draggable = false; preventSave = false;
+            // 1.0.1: a visible X and Escape close the card like Start does (1.0.0 had neither: a player who could not reach Start was stuck)
+            forcePause = true; absorbInputAroundWindow = true; closeOnClickedOutside = false; doCloseX = true; doCloseButton = false;
+            closeOnAccept = false; closeOnCancel = true; draggable = false; preventSave = false;
             try { preset = k.Presets.Matching(profile); } catch { preset = null; }
         }
 
@@ -123,8 +128,10 @@ namespace JBFramework
             var neverR = new Rect(br.x, br.y + 40f, checksW, 28f);
             Widgets.CheckboxLabeled(neverR, KitText.K("Card.NeverAgain", "Don't show welcome cards again"), ref neverAgain, false, null, null, true);
             TooltipHandler.TipRegion(neverR, KitText.K("Card.NeverAgainTip", "For every JB mod: new colonies then start from the templates without asking. You can switch the cards back on in Mod settings, {0}.", Framework.Name));
-            if (Widgets.ButtonText(new Rect(br.xMax - startW - openW - 10f, br.y + 20f, openW, 36f), open)) { openSettings = true; Close(); }
+            var or = new Rect(br.xMax - startW - openW - 10f, br.y + 20f, openW, 36f);
             var sr = new Rect(br.xMax - startW, br.y + 20f, startW, 36f);
+            StartScreen = KitUI.ToScreen(sr); OpenScreen = KitUI.ToScreen(or); UseForAllScreen = KitUI.ToScreen(useR); NeverScreen = KitUI.ToScreen(neverR);
+            if (Widgets.ButtonText(or, open)) { openSettings = true; Close(); }
             Widgets.DrawBoxSolid(sr, KitStyle.AccentSoft);
             if (Widgets.ButtonText(sr, start)) Close();
 
@@ -223,7 +230,12 @@ namespace JBFramework
         }
     }
 
-    /// <summary>Decides when a card opens: from the framework's game component, once the map is shown and nothing else is loading. One card at a time.</summary>
+    /// <summary>
+    /// Decides when a card opens: from the framework's game component, once the map is shown, nothing is loading and no other window has
+    /// the player's attention (<see cref="ScreenBusy"/>), then after <see cref="Delay"/> seconds. One card at a time, and never over
+    /// another pausing window: in 1.0.0 the next mod's card opened over the settings window that "Open settings" of the previous card had
+    /// just opened, and blocked every click in it (Steam report, 25.11.2026).
+    /// </summary>
     internal static class KitFirstStartCard
     {
         /// <summary>Tests (or a mod) set this to keep every card from opening.</summary>
@@ -235,7 +247,7 @@ namespace JBFramework
 
         internal static void ResetForGame() { shown.Clear(); readySince = -1f; }
 
-        static bool Wants(KitMod k) => !k.Blocked && k.Cfg.PerSave && (!string.IsNullOrEmpty(k.Cfg.FirstStartPitch) || k.Card != null);
+        internal static bool Wants(KitMod k) => !k.Blocked && k.Cfg.PerSave && (!string.IsNullOrEmpty(k.Cfg.FirstStartPitch) || k.Card != null);
 
         /// <summary>The first mod whose card would open now if the delay had passed, or null.</summary>
         public static KitMod Due()
@@ -243,7 +255,7 @@ namespace JBFramework
             if (Suppressed) return null;
             if (Current.ProgramState != ProgramState.Playing || Find.CurrentMap == null || Find.WindowStack == null) return null;
             if (LongEventHandler.AnyEventNowOrWaiting) return null;
-            if (Find.WindowStack.WindowOfType<Page>() != null || Find.WindowStack.WindowOfType<Dialog_KitFirstStartCard>() != null) return null;
+            if (ScreenBusy()) return null;
             foreach (var k in Framework.Mods)
             {
                 if (!Wants(k) || shown.Contains(k)) continue;
@@ -255,6 +267,23 @@ namespace JBFramework
         }
 
         /// <summary>
+        /// True while a window has the player's attention: a welcome card, any mod settings window (the one "Open settings" opened), a page
+        /// of the new-game flow, or any window that pauses the game or blocks input around it (the scenario's intro, a message box). A card
+        /// added then would cover it and absorb its clicks, so the next card waits until it closed.
+        /// </summary>
+        internal static bool ScreenBusy()
+        {
+            var ws = Find.WindowStack?.Windows;
+            if (ws == null) return true;
+            for (int i = 0; i < ws.Count; i++)
+            {
+                var w = ws[i];
+                if (w is Dialog_KitFirstStartCard || w is Dialog_ModSettings || w is Page || w.forcePause || w.absorbInputAroundWindow) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Called every frame from the framework game component's Update, never from OnGUI: a window added during a Repaint pass can
         /// make Unity (RimWorld 1.6) log a GUI layout error once (1.6 hazard review, finding 1). Window.WindowUpdate-time adds are safe.
         /// </summary>
@@ -262,20 +291,24 @@ namespace JBFramework
         {
             var k = Due();
             if (k == null) { readySince = -1f; return; }
+            if (!Framework.WelcomeCards)
+            {
+                // cards off: every save keeps the template copy it already got, quietly, all at once (nothing to wait for)
+                for (; k != null; k = Due())
+                {
+                    shown.Add(k);
+                    k.SaveProfile.FirstStartCardDone = true;
+                    k.Log.Info("UI", "Welcome cards switched off: template used silently");
+                }
+                readySince = -1f;
+                return;
+            }
             float now = Time.realtimeSinceStartup;
             if (readySince < 0f) { readySince = now; return; }
             if (now - readySince < Delay) return;
             readySince = -1f;
             shown.Add(k);
-            var profile = k.SaveProfile;
-            if (!Framework.WelcomeCards)
-            {
-                // cards off: the save keeps the template copy it already got, quietly
-                profile.FirstStartCardDone = true;
-                k.Log.Info("UI", "Welcome cards switched off: template used silently");
-                return;
-            }
-            Find.WindowStack.Add(new Dialog_KitFirstStartCard(k, profile, k.Window.JoinedExistingSave));
+            Find.WindowStack.Add(new Dialog_KitFirstStartCard(k, k.SaveProfile, k.Window.JoinedExistingSave));
         }
 
         /// <summary>Tests: open a mod's card now for the running game (ignores the delay and the "done" flag).</summary>

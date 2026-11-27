@@ -38,8 +38,10 @@
 #   jbmod <Mod> migrate-test [--from FILE] [--class ModClass] [label]
 #                                               start with an OLD settings file (default: a copy of the player's Config/Mod_<folder>_<Class>.xml,
 #                                               read only) and run kit.migration
-#   jbmod <any> fw <tenants|removal|apilevel|alone|all>
-#                                               framework scenarios with sample/KitSampleA and sample/KitSampleB (suites fw.*)
+#   jbmod <any> fw <tenants|removal|apilevel|alone|cards|all>
+#                                               framework scenarios with sample/KitSampleA and sample/KitSampleB (suites fw.*); cards: the
+#                                               welcome cards of RimWard, Luciferium Overhaul and Set my Defaults (+ Hospital Beds Gen 2)
+#                                               in one colony, answered with injected clicks and keys (fw.cards; JB_UI_SHOTS for pictures)
 #   jbmod <Mod> freeze16 [args] | lang [--write|--refresh] [args] | release [args] | desc-lint [args]
 #                                               tools/freeze16.py, kit_lang.py (lang alone only checks; --write writes <XX>_Settings.xml
 #                                               from Source/settings_dump.json; --refresh runs kit.settingsdump first), release.py, desc_lint.py
@@ -652,8 +654,9 @@ PY2
                 echo "== phase 3: load the save made WITHOUT sample B with sample B again"; exec "$0" "$A" _back fw_removal jb_fw_removal_again "$B" ;;
       apilevel) JB_MSBUILD_ARGS="-p:JBMinApiLevel=99" exec "$0" "$A" test fw.apilevel fw_apilevel "$B" ;;
       alone)    exec "$0" "$KIT" test fw.alone fw_alone ;;
+      cards)    exec "$0" "$RW/RimWard" test fw.cards fw_cards "$RW/LuciferiumOverhaul" "$RW/BetterWorkbenchDefaults" "$RW/HospitalBedsGen2" ;;
       all)
-        res=""; for x in alone tenants removal apilevel; do "$0" "$MODARG" fw "$x" > "$S/jb_fw_$x.out" 2>&1; rc=$?; res="$res $x=$rc"; echo "fw $x: exit $rc ($S/jb_fw_$x.out)"; done
+        res=""; for x in alone tenants removal apilevel cards; do "$0" "$MODARG" fw "$x" > "$S/jb_fw_$x.out" 2>&1; rc=$?; res="$res $x=$rc"; echo "fw $x: exit $rc ($S/jb_fw_$x.out)"; done
         echo "fw all:$res"; echo "$res" | grep -q '=[1-9]' && exit 1; exit 0 ;;
       *) echo "unknown scenario $sc"; exit 2 ;;
     esac ;;
