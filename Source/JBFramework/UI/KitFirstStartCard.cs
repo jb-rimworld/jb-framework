@@ -60,6 +60,12 @@ namespace JBFramework
             if (applied) return; applied = true;
             if (profile == null) return;
             profile.FirstStartCardDone = true;
+            // nothing below may keep the card from closing (it pauses the game and takes the input around it)
+            try { FinishChoices(); } catch (Exception e) { try { k.Log.Warn("UI", "First-start card: saving the choices failed: " + e.Message); } catch { } }
+        }
+
+        void FinishChoices()
+        {
             if (useForAll && ReferenceEquals(profile, k.SaveProfile)) k.SaveAsTemplate();
             if (neverAgain)
             {
