@@ -2481,6 +2481,14 @@
         </member>
         <member name="M:JBFramework.KitRow.Unfocus">
             <summary>Drops the keyboard focus of a text field whose text is cleared from code (Unity would otherwise show it again).</summary>
+            <remarks>
+            Never while a mouse button holds a control (hotControl set, e.g. during the mouse-down of a button): on 1.6 (Unity) the focus
+            change then makes Unity drop the matching mouse-up, and the button never fires. Such a call is kept and done by
+            <see cref="M:JBFramework.KitRow.FlushPendingUnfocus"/> once the button is released.
+            </remarks>
+        </member>
+        <member name="M:JBFramework.KitRow.FlushPendingUnfocus">
+            <summary>Does a deferred <see cref="M:JBFramework.KitRow.Unfocus"/> once no control holds the mouse any more (called at the start of every window draw).</summary>
         </member>
         <member name="M:JBFramework.KitRow.DrawNumber(JBFramework.KitSetting,JBFramework.KitProfile,System.Single,UnityEngine.Rect,System.Single,System.Single,System.Single)">
             <summary>
