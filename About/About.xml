@@ -31,7 +31,7 @@ What it gives those mods:
 
 Mod settings, JB Framework: every mod that uses it, which areas are on, failed patches, one combined report.
 
-Built and tested on RimWorld 1.7. The 1.6 build is best effort: compiled against the 1.6 reference assemblies and checked statically (every game method it patches or reads exists in 1.6), but never run in a 1.6 game.
+Built and tested on RimWorld 1.7. The 1.6 build is best effort: compiled against RimWorld 1.6 and checked statically (every game method it patches or reads exists in 1.6); the settings windows and the welcome cards were also tested by hand in a real 1.6 game.
 
 For modders: MIT licence, source and documentation at https://github.com/jb-rimworld/jb-framework. A stable public API (additive only), XML docs, three sample mods, an in-game test harness, and a missing-framework guard your mod compiles in.</description>
 </ModMetaData>

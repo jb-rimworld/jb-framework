@@ -92,6 +92,7 @@ namespace JBFramework
         static void DrawInner(KitMod k, Rect inRect)
         {
             KitUiProbe.Hit("settings");
+            KitRow.FlushPendingUnfocus();
             if (!InGame(k)) k.Window.EditTemplate = true;
             var target = Target(k);
             var pages = BuildPages(k, target);
@@ -228,7 +229,9 @@ namespace JBFramework
                     var phR = new Rect(sr.x + 6f, sr.y, sr.width - 8f, sr.height);
                     KitStyle.LabelColored(phR, KitText.K("Header.Search", "Search all settings...").Truncate(phR.width), KitStyle.DimGrey, TextAnchor.MiddleLeft);
                 }
-                else if (Widgets.ButtonText(new Rect(sr.x - 32f, sr.y, 28f, 30f), "x")) k.Window.Search = ""; KitRow.Unfocus();
+                // braces: the unfocus belongs to the "x" click only. Without them it ran on EVERY event; on 1.6 (Unity) a focus change during
+                // a mouse-down made Unity drop the matching mouse-up, so no button in the window ever fired (Steam, 28.11.2026)
+                else if (Widgets.ButtonText(new Rect(sr.x - 32f, sr.y, 28f, 30f), "x")) { k.Window.Search = ""; KitRow.Unfocus(); }
                 if (nerdToggle)
                 {
                     bool nerd = ShowNerd, nb = nerd;

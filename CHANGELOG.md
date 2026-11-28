@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 (2026-11-28)
+- Fixed for RimWorld 1.6: in the settings window of every JB mod, clicks did nothing. You could open the window and see the highlight under the mouse, but no button, page, preset, close button (X) or Close worked; only the tick boxes and sliders did. The search box dropped the keyboard focus on every mouse click, and on 1.6 that made the game lose the release of the mouse button, so no button ever fired. Now the focus is only dropped when you clear the search, and never while a mouse button is held down.
+- RimWorld 1.7 was not affected and behaves as before.
+- The 1.6 build is now compiled against the RimWorld 1.6 game itself, and the settings windows and welcome cards were clicked through in a real 1.6 game.
+- Nothing changes for mods built on the framework: no rebuild or update of them needed.
+
 ## 1.0.1 (2026-11-27)
 - Fixed: welcome cards could cover a settings window and make it ignore every click. With several JB mods, "Open settings" on one mod's card opened its settings, and a moment later the next mod's card opened on top of them; the settings window then took no clicks and Escape did nothing. Now the next card waits until the settings window (or any other window that pauses the game, such as the scenario's intro) is closed, and only one card is ever on screen.
 - Welcome cards now have a close button (X) and close with Escape. Closing a card any way keeps your choices, exactly like Start.

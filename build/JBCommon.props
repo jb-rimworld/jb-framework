@@ -50,8 +50,13 @@
     <Reference Include="Waylith.UnityCompat"><HintPath>$(JBGameDir)/Waylith.UnityCompat.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="0Harmony"><HintPath>$(JBHarmonyRoot)/1.7/Assemblies/0Harmony.dll</HintPath><Private>False</Private></Reference>
   </ItemGroup>
+  <!-- JBRw16Managed=<RimWorldMac.app>/Contents/Resources/Data/Managed of a real 1.6.4871 game: build 1.6 against the game's own DLLs
+       instead of the Krafs reference assemblies (same version; used for the 1.6 runs in _Tools/rw16). Unset = Krafs, as before. -->
+  <ItemGroup Condition="'$(RimVersion)' == '1.6' and '$(JBRw16Managed)' != ''">
+    <Reference Include="$(JBRw16Managed)/Assembly-CSharp*.dll;$(JBRw16Managed)/UnityEngine*.dll;$(JBRw16Managed)/Unity.*.dll;$(JBRw16Managed)/ISharpZipLib.dll"><Private>False</Private></Reference>
+  </ItemGroup>
   <ItemGroup Condition="'$(RimVersion)' == '1.6'">
-    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4871" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Condition="'$(JBRw16Managed)' == ''" Include="Krafs.Rimworld.Ref" Version="1.6.4871" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="0Harmony"><HintPath>$(JBHarmonyRoot)/1.6/Assemblies/0Harmony.dll</HintPath><Private>False</Private></Reference>
   </ItemGroup>

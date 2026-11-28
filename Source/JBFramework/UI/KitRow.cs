@@ -76,7 +76,25 @@ namespace JBFramework
         public static void ClearBuffers() { if (buffers.Count > 0) Unfocus(); buffers.Clear(); }
 
         /// <summary>Drops the keyboard focus of a text field whose text is cleared from code (Unity would otherwise show it again).</summary>
-        internal static void Unfocus() { try { UI.UnfocusCurrentControl(); } catch { } }
+        /// <remarks>
+        /// Never while a mouse button holds a control (hotControl set, e.g. during the mouse-down of a button): on 1.6 (Unity) the focus
+        /// change then makes Unity drop the matching mouse-up, and the button never fires. Such a call is kept and done by
+        /// <see cref="FlushPendingUnfocus"/> once the button is released.
+        /// </remarks>
+        internal static void Unfocus()
+        {
+            try
+            {
+                if (GUIUtility.hotControl != 0) { pendingUnfocus = true; return; }
+                pendingUnfocus = false;
+                UI.UnfocusCurrentControl();
+            }
+            catch { }
+        }
+        static bool pendingUnfocus;
+
+        /// <summary>Does a deferred <see cref="Unfocus"/> once no control holds the mouse any more (called at the start of every window draw).</summary>
+        internal static void FlushPendingUnfocus() { if (pendingUnfocus && GUIUtility.hotControl == 0) Unfocus(); }
 
         static string Tags(KitSetting s)
         {

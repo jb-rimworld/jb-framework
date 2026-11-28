@@ -21,8 +21,8 @@ A RimWorld mod that other mods list as a dependency. It gives your mod, for free
 
 On its own it adds nothing to a game except one entry in Mod settings. MIT licence. Author: Julius Berger.
 
-**Built and tested on RimWorld 1.7. The 1.6 build is best effort and untested** (compiled against `Krafs.Rimworld.Ref 1.6.4871`; it
-should start without errors, nothing more is promised). Depends only on Harmony.
+**Built and tested on RimWorld 1.7. The 1.6 build is best effort** (compiled against RimWorld 1.6.4871; since 1.0.2 the settings
+windows and the welcome cards are also clicked through once in a real 1.6 game, the rest is only checked statically). Depends only on Harmony.
 
 <a id="install"></a>
 ## Install without Steam
